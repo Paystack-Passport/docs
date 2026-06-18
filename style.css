@@ -2,11 +2,13 @@
  * Custom styles for the GlobalStack docs. Auto-loaded by Mintlify (any .css
  * at the repo root is bundled).
  *
- * Mintlify's default type scale reads a little large. Tailwind sizes are rem-
- * based, so nudging the root font-size scales the whole site down evenly —
- * body, sidebar, and headings stay in proportion. 15px ≈ a 6% reduction from
- * the 16px default. Drop to 14px for a tighter feel.
+ * Mintlify's default body copy reads a little large. Scope the reduction to the
+ * documentation content (#content-area .mdx-content) so only the reading area
+ * shrinks — the sidebar, top nav, logo, and table of contents keep their
+ * default size. Mintlify's prose sizes its children in em, so scaling the
+ * container scales the article (paragraphs, headings, lists) proportionally.
+ * 0.9375rem ≈ 15px from the 16px default; drop to 0.875rem (14px) for tighter.
  */
-:root {
-  font-size: 15px;
+#content-area .mdx-content {
+  font-size: 0.9375rem;
 }
