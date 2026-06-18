@@ -1,0 +1,39 @@
+---
+title: "Idempotency"
+description: "Safely retry write requests without creating duplicates."
+---
+
+Network calls can fail after the server has already done the work. To retry safely, send an **idempotency key** on write requests (`POST`). If the same key arrives twice, GlobalStack replays the original response instead of performing the action again.
+
+## Sending a key
+
+Pass a unique value in the `Idempotency-Key` header:
+
+```bash
+curl https://api.paystack.com/v1/transfers \
+  -X POST \
+  -H "Authorization: Bearer YOUR_SECRET_KEY" \
+  -H "Idempotency-Key: 8f2a1c4e-7b3d-4a90-bf12-9c5e6a1d2b34" \
+  -H "Content-Type: application/json" \
+  -d '{ ... }'
+```
+
+The key must match `^[A-Za-z0-9_\-]{8,255}$` — 8 to 255 characters of letters, digits, underscores, or hyphens. A UUID works well. A malformed key returns `400 invalid_input`.
+
+## How replays are resolved
+
+<Steps>
+  <Step title="Same key, same body">
+    The original, stored response is replayed — the action runs only once.
+  </Step>
+  <Step title="Same key, still processing">
+    If the first request hasn't finished yet, the retry returns `idempotency_in_progress`. Wait and retry.
+  </Step>
+  <Step title="Same key, different body">
+    Reusing a key with a different request body returns `idempotency_conflict`. Always generate a fresh key for a genuinely new request.
+  </Step>
+</Steps>
+
+<Note>
+  Keys expire after a retention window, so reuse a key only for retries of the *same* request — not indefinitely.
+</Note>

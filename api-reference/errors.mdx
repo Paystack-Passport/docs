@@ -1,0 +1,52 @@
+---
+title: "Errors"
+description: "How the API signals failures, and the error codes you can branch on."
+---
+
+Every response — success or failure — is wrapped in a consistent envelope. On failure, `status` is `false`, `data` is `null`, and a stable, machine-readable `code` tells you what went wrong.
+
+```json
+{
+  "status": false,
+  "message": "Wallet not found",
+  "code": "not_found",
+  "data": null,
+  "meta": {
+    "request_id": "req_01HXYZ4K5ABCDEFGHJKLMNPQRS",
+    "timestamp": "2026-05-14T15:43:55.732Z",
+    "version": "1"
+  }
+}
+```
+
+Branch on `code`, not on `message` — messages are human-readable and may change, while `code` is stable. Include `meta.request_id` when contacting support.
+
+## HTTP status codes
+
+| Status | Meaning |
+| --- | --- |
+| `200` | Success. |
+| `400` | The request was malformed or failed validation. |
+| `401` | Authentication failed — missing or invalid API key. |
+| `403` | Authenticated, but not permitted to perform this action. |
+| `404` | The resource does not exist in your integration. |
+| `409` | The request conflicts with current state (e.g. a duplicate or an invalid status transition). |
+| `429` | Too many requests — you have been rate limited. |
+| `5xx` | An unexpected error on our side, or an upstream provider was unavailable. |
+
+## Error codes
+
+| Code | When it happens |
+| --- | --- |
+| `invalid_input` | A field is missing, malformed, or fails validation. |
+| `authentication_failed` | The API key is missing or invalid. |
+| `forbidden` | The key is not allowed to perform this action. |
+| `not_found` | The referenced resource does not exist. |
+| `invalid_status` | The resource is in a state that does not allow this operation. |
+| `duplicate_resource` | A resource with the same identity already exists. |
+| `idempotency_conflict` | An `Idempotency-Key` was reused with a different request body. See [Idempotency](/api-reference/idempotency). |
+| `idempotency_in_progress` | A request with the same `Idempotency-Key` is still being processed. |
+| `ledger_insufficient_funds` | The wallet does not have enough balance for this operation. |
+| `rate_limited` | You have exceeded the request rate limit. |
+| `external_service_unavailable` | An upstream provider was temporarily unavailable. Retry with backoff. |
+| `internal_error` | An unexpected error occurred on our side. |
