@@ -1,0 +1,12 @@
+/*
+ * Custom styles for the GlobalStack docs. Auto-loaded by Mintlify (any .css
+ * at the repo root is bundled).
+ *
+ * Mintlify's default type scale reads a little large. Tailwind sizes are rem-
+ * based, so nudging the root font-size scales the whole site down evenly —
+ * body, sidebar, and headings stay in proportion. 15px ≈ a 6% reduction from
+ * the 16px default. Drop to 14px for a tighter feel.
+ */
+:root {
+  font-size: 15px;
+}
