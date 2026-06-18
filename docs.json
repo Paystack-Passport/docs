@@ -3,9 +3,18 @@
   "theme": "mint",
   "name": "GlobalStack API",
   "colors": {
-    "primary": "#16A34A",
-    "light": "#07C983",
-    "dark": "#15803D"
+    "primary": "#0E141B",
+    "light": "#F2F1EE",
+    "dark": "#0E141B"
+  },
+  "background": {
+    "color": {
+      "light": "#F2F1EE",
+      "dark": "#0E0E0D"
+    }
+  },
+  "fonts": {
+    "family": "Inter"
   },
   "favicon": "/favicon.svg",
   "navigation": {
@@ -30,14 +39,14 @@
     "global": {
       "anchors": [
         {
-          "anchor": "Documentation",
-          "href": "https://mintlify.com/docs",
-          "icon": "book-open-cover"
+          "anchor": "Website",
+          "href": "https://globalstack.io",
+          "icon": "globe"
         },
         {
-          "anchor": "Blog",
-          "href": "https://mintlify.com/blog",
-          "icon": "newspaper"
+          "anchor": "Dashboard",
+          "href": "https://dashboard.globalstack.io",
+          "icon": "gauge"
         }
       ]
     }
@@ -49,14 +58,14 @@
   "navbar": {
     "links": [
       {
-        "label": "Support",
-        "href": "mailto:hi@mintlify.com"
+        "label": "Home",
+        "href": "https://globalstack.io"
       }
     ],
     "primary": {
       "type": "button",
       "label": "Dashboard",
-      "href": "https://app.mintlify.com"
+      "href": "https://dashboard.globalstack.io"
     }
   },
   "contextual": {
@@ -73,9 +82,7 @@
   },
   "footer": {
     "socials": {
-      "x": "https://x.com/mintlify",
-      "github": "https://github.com/mintlify",
-      "linkedin": "https://linkedin.com/company/mintlify"
+      "website": "https://globalstack.io"
     }
   }
 }
