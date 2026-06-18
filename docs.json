@@ -3,9 +3,15 @@
   "theme": "mint",
   "name": "GlobalStack API",
   "colors": {
-    "primary": "#16A34A",
-    "light": "#07C983",
-    "dark": "#15803D"
+    "primary": "#0E141B",
+    "light": "#F2F1EE",
+    "dark": "#0E141B"
+  },
+  "background": {
+    "color": {
+      "light": "#F2F1EE",
+      "dark": "#0E0E0D"
+    }
   },
   "favicon": "/favicon.svg",
   "navigation": {
@@ -24,20 +30,161 @@
       },
       {
         "tab": "API Reference",
-        "openapi": "api-reference/openapi.json"
+        "openapi": "api-reference/openapi.json",
+        "groups": [
+          {
+            "group": "Overview",
+            "pages": [
+              "api-reference/authentication",
+              "api-reference/errors",
+              "api-reference/idempotency",
+              "api-reference/pagination"
+            ]
+          },
+          {
+            "group": "Endpoints",
+            "pages": [
+              {
+                "group": "Beneficiaries",
+                "expanded": false,
+                "pages": [
+                  "GET /v1/beneficiaries",
+                  "POST /v1/beneficiaries",
+                  "GET /v1/beneficiaries/{beneficiaryId}",
+                  "PATCH /v1/beneficiaries/{beneficiaryId}",
+                  "DELETE /v1/beneficiaries/{beneficiaryId}"
+                ]
+              },
+              {
+                "group": "Conversions",
+                "expanded": false,
+                "pages": [
+                  "GET /v1/conversions",
+                  "POST /v1/conversions",
+                  "GET /v1/conversions/{conversionId}"
+                ]
+              },
+              {
+                "group": "Customers",
+                "expanded": false,
+                "pages": [
+                  "GET /v1/customers",
+                  "POST /v1/customers",
+                  "GET /v1/customers/{customerId}",
+                  "GET /v1/customers/{customerId}/verifications",
+                  "POST /v1/customers/{customerId}/verifications"
+                ]
+              },
+              {
+                "group": "Notification Webhooks",
+                "expanded": false,
+                "pages": [
+                  "GET /v1/notifications/webhooks",
+                  "POST /v1/notifications/webhooks",
+                  "GET /v1/notifications/webhooks/{id}",
+                  "PATCH /v1/notifications/webhooks/{id}",
+                  "DELETE /v1/notifications/webhooks/{id}",
+                  "POST /v1/notifications/webhooks/{id}/rotate-secret",
+                  "GET /v1/notifications/webhooks/{id}/logs",
+                  "GET /v1/notifications/webhooks/{id}/events",
+                  "POST /v1/notifications/webhooks/{id}/send"
+                ]
+              },
+              {
+                "group": "Offramps",
+                "expanded": false,
+                "pages": [
+                  "GET /v1/offramps",
+                  "POST /v1/offramps",
+                  "GET /v1/offramps/{offrampId}"
+                ]
+              },
+              {
+                "group": "Onramps",
+                "expanded": false,
+                "pages": [
+                  "GET /v1/onramps",
+                  "POST /v1/onramps",
+                  "GET /v1/onramps/{onrampId}"
+                ]
+              },
+              {
+                "group": "Quotes",
+                "expanded": false,
+                "pages": [
+                  "POST /v1/onramps/quotes",
+                  "POST /v1/offramps/quotes",
+                  "POST /v1/conversions/quotes",
+                  "GET /v1/quotes/{quoteId}"
+                ]
+              },
+              {
+                "group": "Supported Countries",
+                "expanded": false,
+                "pages": [
+                  "GET /v1/countries/",
+                  "GET /v1/countries/{countryCode}/providers"
+                ]
+              },
+              {
+                "group": "Supported Currencies",
+                "expanded": false,
+                "pages": [
+                  "GET /v1/currencies/",
+                  "GET /v1/currencies/{code}/rates"
+                ]
+              },
+              {
+                "group": "Transactions",
+                "expanded": false,
+                "pages": [
+                  "GET /v1/transactions",
+                  "GET /v1/transactions/{transactionId}"
+                ]
+              },
+              {
+                "group": "Transfers",
+                "expanded": false,
+                "pages": [
+                  "GET /v1/transfers",
+                  "POST /v1/transfers",
+                  "GET /v1/transfers/{transferId}"
+                ]
+              },
+              {
+                "group": "Wallets",
+                "expanded": false,
+                "pages": [
+                  "GET /v1/wallets",
+                  "POST /v1/wallets",
+                  "GET /v1/wallets/{walletId}",
+                  "PATCH /v1/wallets/{walletId}",
+                  "GET /v1/wallets/{id}/deposit-addresses",
+                  "POST /v1/wallets/{id}/deposit-addresses",
+                  "GET /v1/wallets/{id}/deposit-addresses/{depositAddressId}",
+                  "DELETE /v1/wallets/{id}/deposit-addresses/{depositAddressId}",
+                  "GET /v1/wallets/{id}/credentials",
+                  "POST /v1/wallets/{id}/credentials",
+                  "GET /v1/wallets/{id}/credentials/{credentialId}",
+                  "DELETE /v1/wallets/{id}/credentials/{credentialId}"
+                ]
+              }
+            ]
+          }
+        ]
       }
     ],
     "global": {
       "anchors": [
         {
-          "anchor": "Documentation",
-          "href": "https://mintlify.com/docs",
-          "icon": "book-open-cover"
+          "anchor": "Website",
+          "href": "https://globalstack.io",
+          "icon": "globe"
         },
         {
-          "anchor": "Blog",
-          "href": "https://mintlify.com/blog",
-          "icon": "newspaper"
+          "anchor": "Dashboard",
+          "href": "https://dashboard.globalstack.io",
+          "icon": "gauge"
         }
       ]
     }
@@ -49,14 +196,14 @@
   "navbar": {
     "links": [
       {
-        "label": "Support",
-        "href": "mailto:hi@mintlify.com"
+        "label": "Home",
+        "href": "https://globalstack.io"
       }
     ],
     "primary": {
       "type": "button",
       "label": "Dashboard",
-      "href": "https://app.mintlify.com"
+      "href": "https://dashboard.globalstack.io"
     }
   },
   "contextual": {
@@ -73,9 +220,7 @@
   },
   "footer": {
     "socials": {
-      "x": "https://x.com/mintlify",
-      "github": "https://github.com/mintlify",
-      "linkedin": "https://linkedin.com/company/mintlify"
+      "website": "https://globalstack.io"
     }
   }
 }

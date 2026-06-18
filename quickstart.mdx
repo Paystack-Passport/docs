@@ -1,47 +1,84 @@
 ---
 title: "Quickstart"
-description: "Begin with a guide on the fastest path to a successful outcome"
+description: "From an API key to your first wallet in a few minutes."
 ---
 
-Describe how someone begins using your product. What is the first thing they need to do? Are there any prerequisites?
-
-A quickstart should take someone from zero to using your product. They'll get a quick win and a sense of what they can accomplish.
+This guide takes you from zero to a funded-ready USDC wallet: authenticate, create a customer, and create a wallet for them. Every call uses the base URL `https://api.paystack.com`.
 
 ## Prerequisites
 
-Before you begin, you must have:
+- A **GlobalStack account** — request access from the [dashboard](https://dashboard.globalstack.io).
+- Your **secret API key**, issued during onboarding. Keep it server-side. See [Authentication](/api-reference/authentication).
 
-- Requirement one (for example, Node.js 18+, a free account, an API key)
-- Requirement two (for example, a compatible device, a compatible browser, a compatible operating system)
-
-## Get started
+## Steps
 
 <Steps>
-  <Step title="Install">
-    Describe how to install your product or sign up.
+  <Step title="Verify your key">
+    Make an authenticated call to a read-only endpoint to confirm your key works. Listing supported currencies needs no request body:
 
     ```bash
-    npm install your-package
+    curl https://api.paystack.com/v1/currencies \
+      -H "Authorization: Bearer YOUR_SECRET_KEY"
     ```
+
+    A `200` with a `"status": true` envelope means you're authenticated. A `401` with `authentication_failed` means the key is missing or wrong.
   </Step>
-  <Step title="Configure">
-    Describe any setup or configuration needed before first use.
+
+  <Step title="Create a customer">
+    Wallets belong to a customer. Create one with their type, name, email, and ISO 3166-1 alpha-2 `country_code`:
 
     ```bash
-    your-cli init
+    curl https://api.paystack.com/v1/customers \
+      -X POST \
+      -H "Authorization: Bearer YOUR_SECRET_KEY" \
+      -H "Content-Type: application/json" \
+      -d '{
+        "type": "individual",
+        "name": "Ada Lovelace",
+        "email": "ada@example.com",
+        "country_code": "NG"
+      }'
     ```
+
+    The response returns the new customer's id (prefixed `cus_`). Save it for the next step.
   </Step>
-  <Step title="Run it">
-    Show the first thing a user does to see it working.
+
+  <Step title="Create a wallet">
+    Create a USDC wallet for that customer. Only `currency` is required:
 
     ```bash
-    your-cli start
+    curl https://api.paystack.com/v1/wallets \
+      -X POST \
+      -H "Authorization: Bearer YOUR_SECRET_KEY" \
+      -H "Content-Type: application/json" \
+      -d '{
+        "currency": "USDC",
+        "customer_id": "cus_...",
+        "label": "Ada — USDC"
+      }'
     ```
+
+    You now have a wallet (id prefixed `wal_`) ready to hold and move funds.
   </Step>
 </Steps>
 
-<Tip>
-  Give people a way to get help. This could be a link to a support page, a chat with a customer support agent, or a forum for your product.
+## Next steps
 
-  Example: Need help? Reach out to us at [support@yourcompany.com](mailto:support@yourcompany.com).
+<CardGroup cols={2}>
+  <Card title="Get a quote" icon="tag" href="/api-reference/quotes/create-an-onramp-quote">
+    Lock an FX rate before you move money.
+  </Card>
+  <Card title="Run an onramp" icon="arrow-down-to-line" href="/api-reference/onramps/execute-an-onramp">
+    Turn stablecoins into local currency, settled to a beneficiary.
+  </Card>
+  <Card title="Stay idempotent" icon="rotate" href="/api-reference/idempotency">
+    Safely retry write requests without creating duplicates.
+  </Card>
+  <Card title="Handle errors" icon="triangle-exclamation" href="/api-reference/errors">
+    The response envelope and the error codes to branch on.
+  </Card>
+</CardGroup>
+
+<Tip>
+  Pass an `Idempotency-Key` header on every `POST` so a retry never creates a second customer or wallet.
 </Tip>

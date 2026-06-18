@@ -1,20 +1,53 @@
 ---
-title: "Introduction"
-description: "Welcome to your project"
+title: "Build with GlobalStack"
+description: "One API to accept, hold, convert, and pay out funds across 12 currencies in 18 African markets — powered by stablecoin infrastructure."
+mode: "wide"
 ---
 
-Write a short description of your product here. What it does, who it's for, and what they can accomplish with it.
+One API to **accept, hold, convert, and pay out** funds across 12 currencies in 18 African markets — powered by stablecoin infrastructure. Send, receive, or hold; GlobalStack handles the conversion, routing, and settlement.
 
-<Tip>
-  Ready to make this your own? Start by editing this page. Update your `docs.json` file to customize your site. Then fill out the [Quickstart](/quickstart) page.
-</Tip>
+<CardGroup cols={2}>
+  <Card title="Quickstart" icon="rocket" href="/quickstart" horizontal>
+    Go from zero to your first quote and onramp in minutes.
+  </Card>
+  <Card title="API Reference" icon="code" href="/api-reference" horizontal>
+    Every endpoint, request, and response — generated from the live spec.
+  </Card>
+</CardGroup>
 
-<Card title="Quickstart" icon="rocket" href="/quickstart">
-  This card links to the quickstart page in your project.
-</Card>
-<Card title="Components" icon="puzzle-piece" href="https://mintlify.com/docs/components">
-  Add cards, callouts, steps, tabs, and more to design and structure your pages.
-</Card>
-<Card title="Settings" icon="gear" href="https://mintlify.com/docs/organize/settings">
-  Set your site name, branding, and navigation in the `docs.json` file.
-</Card>
+## Core flows
+
+<CardGroup cols={3}>
+  <Card title="Quotes" icon="tag" href="/api-reference/quotes/create-an-onramp-quote">
+    Lock an FX rate before you move money.
+  </Card>
+  <Card title="Onramps" icon="arrow-down-to-line" href="/api-reference/onramps/execute-an-onramp">
+    Turn stablecoins into local currency, settled to a beneficiary.
+  </Card>
+  <Card title="Offramps" icon="arrow-up-from-line" href="/api-reference/offramps/execute-an-offramp">
+    Accept local currency and settle out in stablecoins.
+  </Card>
+  <Card title="Wallets" icon="wallet" href="/api-reference/wallets/create-a-wallet">
+    Hold stablecoins in a programmable, multi-currency wallet.
+  </Card>
+  <Card title="Conversions" icon="right-left" href="/api-reference/conversions/execute-a-conversion">
+    Convert between supported currencies on demand.
+  </Card>
+  <Card title="Webhooks" icon="bell" href="/api-reference/notification-webhooks/create-a-webhook-endpoint">
+    Subscribe to real-time events as money moves.
+  </Card>
+</CardGroup>
+
+## Why GlobalStack
+
+<CardGroup cols={3}>
+  <Card title="API-first" icon="terminal">
+    One integration covers every direction money moves — no per-country endpoints, no separate SDKs.
+  </Card>
+  <Card title="Stablecoin rails" icon="coins">
+    Settlement in seconds, not days — no FX desks, no correspondent delays.
+  </Card>
+  <Card title="18 markets, 12 currencies" icon="globe">
+    Broad African coverage behind a single, consistent API surface.
+  </Card>
+</CardGroup>

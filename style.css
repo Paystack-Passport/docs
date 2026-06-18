@@ -1,0 +1,14 @@
+/*
+ * Custom styles for the GlobalStack docs. Auto-loaded by Mintlify (any .css
+ * at the repo root is bundled).
+ *
+ * Mintlify's default body copy reads a little large. Scope the reduction to the
+ * documentation content (#content-area .mdx-content) so only the reading area
+ * shrinks — the sidebar, top nav, logo, and table of contents keep their
+ * default size. Mintlify's prose sizes its children in em, so scaling the
+ * container scales the article (paragraphs, headings, lists) proportionally.
+ * 0.9375rem ≈ 15px from the 16px default; drop to 0.875rem (14px) for tighter.
+ */
+#content-area .mdx-content {
+  font-size: 0.9375rem;
+}

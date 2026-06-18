@@ -1,0 +1,30 @@
+---
+title: "Authentication"
+description: "Authenticate every request with your secret API key."
+---
+
+The GlobalStack API uses **bearer authentication**. Pass your secret API key — issued during merchant onboarding — in the `Authorization` header of every request:
+
+```bash
+Authorization: Bearer YOUR_SECRET_KEY
+```
+
+## Example request
+
+```bash
+curl https://api.paystack.com/v1/wallets \
+  -H "Authorization: Bearer YOUR_SECRET_KEY"
+```
+
+## Keys
+
+<Card title="Get your keys" icon="key" href="https://dashboard.globalstack.io">
+  Manage and rotate your API keys from the GlobalStack dashboard.
+</Card>
+
+- Your secret key authenticates server-to-server calls. **Treat it like a password** — never commit it to source control or expose it in client-side code.
+- A missing or invalid key returns `401` with the `authentication_failed` code. See [Errors](/api-reference/errors).
+
+<Warning>
+  All requests must be made over HTTPS. Calls over plain HTTP fail.
+</Warning>

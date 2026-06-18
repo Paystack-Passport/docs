@@ -1,0 +1,44 @@
+---
+title: "Pagination"
+description: "Page through list endpoints with page and per_page."
+---
+
+List endpoints return results in pages. Control the window with two query parameters:
+
+| Parameter | Description |
+| --- | --- |
+| `page` | 1-indexed page number. Defaults to `1`. |
+| `per_page` | Number of results per page. |
+
+```bash
+curl "https://api.paystack.com/v1/transactions?page=2&per_page=50" \
+  -H "Authorization: Bearer YOUR_SECRET_KEY"
+```
+
+## Reading the page metadata
+
+Paginated responses carry the page state in `meta`:
+
+```json
+{
+  "status": true,
+  "message": "Transactions retrieved",
+  "code": "ok",
+  "data": [ ... ],
+  "meta": {
+    "page": 2,
+    "per_page": 50,
+    "total": 137,
+    "has_more": true,
+    "request_id": "req_01HXYZ4K5ABCDEFGHJKLMNPQRS",
+    "timestamp": "2026-05-14T15:43:55.732Z",
+    "version": "1"
+  }
+}
+```
+
+Keep requesting the next page while `has_more` is `true`; `total` tells you the full count of matching records.
+
+<Tip>
+  Combine pagination with the filters available on each list endpoint (for example `customer_id`, `status`, `created_after`, `created_before`) to narrow results before paging.
+</Tip>
