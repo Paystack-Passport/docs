@@ -2895,14 +2895,9 @@
       },
       "MeCurrentResponse": {
         "properties": {
-          "integration_id": {
-            "type": "string",
-            "description": "Integration external id",
-            "example": "int_01HXYZ..."
-          },
           "membership_id": {
             "type": "string",
-            "description": "Membership external id",
+            "description": "Membership external id — the selector for X-Membership-Id",
             "example": "mem_01HXYZ..."
           },
           "role": {
@@ -2918,7 +2913,6 @@
         },
         "type": "object",
         "required": [
-          "integration_id",
           "membership_id",
           "role"
         ]
