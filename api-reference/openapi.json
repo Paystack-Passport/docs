@@ -1451,6 +1451,54 @@
           "topic"
         ]
       },
+      "MeResponse": {
+        "properties": {
+          "auth_method": {
+            "type": "string",
+            "enum": [
+              "jwt",
+              "api_key"
+            ],
+            "example": "jwt"
+          },
+          "user": {
+            "$ref": "#/components/schemas/MeUserResponse"
+          },
+          "current": {
+            "$ref": "#/components/schemas/MeCurrentResponse"
+          },
+          "effective_role": {
+            "enum": [
+              "consumer_owner",
+              "consumer_admin",
+              "consumer_developer",
+              "consumer_viewer"
+            ],
+            "type": "string",
+            "description": "Effective role in the current integration",
+            "example": "consumer_admin"
+          },
+          "memberships": {
+            "items": {
+              "$ref": "#/components/schemas/Array"
+            },
+            "type": "array"
+          },
+          "api_key": {
+            "$ref": "#/components/schemas/Object",
+            "nullable": true,
+            "description": "API key context; null for JWT auth"
+          }
+        },
+        "type": "object",
+        "required": [
+          "auth_method",
+          "user",
+          "current",
+          "effective_role",
+          "memberships"
+        ]
+      },
       "CreateDepositAddressDto": {
         "properties": {
           "network": {
@@ -2822,6 +2870,57 @@
           "provider",
           "account_name",
           "account_number"
+        ]
+      },
+      "MeUserResponse": {
+        "properties": {
+          "consumer_user_id": {
+            "type": "string",
+            "nullable": true,
+            "description": "Consumer user external id (usr_…)",
+            "example": "usr_01HXYZ..."
+          },
+          "email": {
+            "type": "string",
+            "nullable": true,
+            "example": "alice@example.com"
+          },
+          "name": {
+            "type": "string",
+            "nullable": true,
+            "example": "Alice Johnson"
+          }
+        },
+        "type": "object"
+      },
+      "MeCurrentResponse": {
+        "properties": {
+          "integration_id": {
+            "type": "string",
+            "description": "Integration external id",
+            "example": "int_01HXYZ..."
+          },
+          "membership_id": {
+            "type": "string",
+            "description": "Membership external id",
+            "example": "mem_01HXYZ..."
+          },
+          "role": {
+            "enum": [
+              "consumer_owner",
+              "consumer_admin",
+              "consumer_developer",
+              "consumer_viewer"
+            ],
+            "type": "string",
+            "example": "consumer_admin"
+          }
+        },
+        "type": "object",
+        "required": [
+          "integration_id",
+          "membership_id",
+          "role"
         ]
       },
       "DepositAddressWalletRef": {
@@ -7553,6 +7652,101 @@
         "description": "Manually (re)send an existing event to this webhook endpoint. Identify the event by its\n`event_idempotency_key` (the id of an event already known to the system). The request is\naccepted for asynchronous delivery and the response echoes the queued event's `topic` and\n`status`.\n\nUse this to replay an event the endpoint missed — for example after fixing an outage on your\nreceiver, or after activating an endpoint that should have received an earlier event.\n\nEvents are only delivered to **active** endpoints. Sending to an inactive endpoint returns\n`409 invalid_status` (`\"… is inactive; reactivate it before sending.\"`) — activate it with\n`PATCH … { \"active\": true }` first, then retry.\n\n### Body\n\n- `event_idempotency_key` — required. The idempotency key of the existing event to (re)deliver.\n\n### Example\n\n```\nPOST /v1/notifications/webhooks/whr_01HXYZABC1234567890ABCDEFG/send\n{\n  \"event_idempotency_key\": \"evt-1\"\n}\n```\n"
       }
     },
+    "/v1/me": {
+      "get": {
+        "operationId": "MeController.getMe",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/ApiSuccessEnvelope"
+                    },
+                    {
+                      "type": "object",
+                      "required": [
+                        "data",
+                        "meta"
+                      ],
+                      "properties": {
+                        "message": {
+                          "type": "string",
+                          "example": "Identity fetched successfully"
+                        },
+                        "data": {
+                          "$ref": "#/components/schemas/MeResponse"
+                        },
+                        "meta": {
+                          "$ref": "#/components/schemas/ApiResponseMetaSchema"
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            },
+            "description": "Identity fetched successfully"
+          },
+          "401": {
+            "description": "Unauthorized — invalid or missing credential",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/ApiErrorEnvelope"
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string",
+                          "enum": [
+                            "authentication_failed"
+                          ]
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Insufficient role for this operation",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/ApiErrorEnvelope"
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string",
+                          "enum": [
+                            "authorization_failed"
+                          ]
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        },
+        "summary": "Get caller identity and memberships",
+        "tags": [
+          "Me"
+        ],
+        "description": "Returns the authenticated caller's identity, current active membership, all active memberships across integrations, and effective role. The `user` block represents the consumer principal the request acts as — populated for both JWT and API key auth via the bound membership. It is `null` for internal-owned keys (no consumer membership)."
+      }
+    },
     "/v1/wallets/{id}/deposit-addresses": {
       "post": {
         "operationId": "DepositAddressController.create",
@@ -11486,6 +11680,9 @@
     },
     {
       "name": "Notification Webhooks"
+    },
+    {
+      "name": "Me"
     }
   ],
   "servers": [
