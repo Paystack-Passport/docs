@@ -1451,183 +1451,6 @@
           "topic"
         ]
       },
-      "MeResponse": {
-        "properties": {
-          "auth_method": {
-            "type": "string",
-            "enum": [
-              "jwt",
-              "api_key"
-            ],
-            "example": "jwt"
-          },
-          "user": {
-            "$ref": "#/components/schemas/MeUserResponse"
-          },
-          "current": {
-            "$ref": "#/components/schemas/MeCurrentResponse"
-          },
-          "effective_role": {
-            "enum": [
-              "consumer_owner",
-              "consumer_admin",
-              "consumer_developer",
-              "consumer_viewer"
-            ],
-            "type": "string",
-            "description": "Effective role in the current integration",
-            "example": "consumer_admin"
-          },
-          "memberships": {
-            "items": {
-              "$ref": "#/components/schemas/Array"
-            },
-            "type": "array"
-          },
-          "api_key": {
-            "$ref": "#/components/schemas/Object",
-            "nullable": true,
-            "description": "API key context; null for JWT auth"
-          }
-        },
-        "type": "object",
-        "required": [
-          "auth_method",
-          "user",
-          "current",
-          "effective_role",
-          "memberships"
-        ]
-      },
-      "CreateDepositAddressDto": {
-        "properties": {
-          "network": {
-            "type": "string",
-            "enum": [
-              "solana",
-              "base",
-              "ethereum"
-            ]
-          },
-          "label": {
-            "maxLength": 128,
-            "type": "string"
-          },
-          "metadata": {
-            "type": "object"
-          },
-          "merchantReference": {
-            "maxLength": 128,
-            "type": "string"
-          }
-        },
-        "type": "object",
-        "required": [
-          "network"
-        ]
-      },
-      "DepositAddressResponse": {
-        "properties": {
-          "id": {
-            "type": "string",
-            "description": "Deposit address external id (prefixed da_).",
-            "example": "da_01HXYZABC1234567890ABCDEFG"
-          },
-          "type": {
-            "type": "string",
-            "description": "Always crypto for a deposit address",
-            "example": "crypto"
-          },
-          "currency": {
-            "type": "string",
-            "description": "Uppercase currency code of the wallet",
-            "example": "USDC"
-          },
-          "wallet": {
-            "$ref": "#/components/schemas/DepositAddressWalletRef"
-          },
-          "label": {
-            "type": "string",
-            "nullable": true,
-            "example": "Invoice payments"
-          },
-          "metadata": {
-            "type": "object",
-            "description": "Merchant-supplied opaque metadata. Values are stored as strings.",
-            "example": {
-              "invoice_id": "inv_001"
-            },
-            "additionalProperties": {
-              "type": "string"
-            }
-          },
-          "details": {
-            "type": "object",
-            "description": "Deposit-address detail. Contains the network on create; the on-chain address is added once FX Engine mints the resource.",
-            "example": {
-              "network": "base",
-              "address": "0xseedaliceusdc000000000000000000000000"
-            }
-          },
-          "status": {
-            "type": "string",
-            "description": "pending on create",
-            "example": "pending"
-          },
-          "created_at": {
-            "type": "string",
-            "format": "date-time",
-            "example": "2026-05-20T12:00:00.000Z"
-          },
-          "updated_at": {
-            "type": "string",
-            "format": "date-time",
-            "example": "2026-05-20T12:00:00.000Z"
-          }
-        },
-        "type": "object",
-        "required": [
-          "id",
-          "type",
-          "currency",
-          "wallet",
-          "metadata",
-          "details",
-          "status",
-          "created_at",
-          "updated_at"
-        ]
-      },
-      "DeactivateDepositAddressDto": {
-        "properties": {
-          "reason": {
-            "maxLength": 255,
-            "type": "string"
-          }
-        },
-        "type": "object"
-      },
-      "DeactivateDepositAddressResponse": {
-        "properties": {
-          "id": {
-            "type": "string",
-            "description": "Deposit address external id (prefixed da_).",
-            "example": "da_01HXYZABC1234567890ABCDEFG"
-          },
-          "success": {
-            "type": "boolean",
-            "enum": [
-              true
-            ],
-            "example": true
-          }
-        },
-        "type": "object",
-        "required": [
-          "id",
-          "success"
-        ]
-      },
       "CreateCustomerDto": {
         "properties": {
           "type": {
@@ -1855,6 +1678,183 @@
           "hosted_url_expires_at",
           "created_at",
           "updated_at"
+        ]
+      },
+      "MeResponse": {
+        "properties": {
+          "auth_method": {
+            "type": "string",
+            "enum": [
+              "jwt",
+              "api_key"
+            ],
+            "example": "jwt"
+          },
+          "user": {
+            "$ref": "#/components/schemas/MeUserResponse"
+          },
+          "current": {
+            "$ref": "#/components/schemas/MeCurrentResponse"
+          },
+          "effective_role": {
+            "enum": [
+              "consumer_owner",
+              "consumer_admin",
+              "consumer_developer",
+              "consumer_viewer"
+            ],
+            "type": "string",
+            "description": "Effective role in the current integration",
+            "example": "consumer_admin"
+          },
+          "memberships": {
+            "items": {
+              "$ref": "#/components/schemas/Array"
+            },
+            "type": "array"
+          },
+          "api_key": {
+            "$ref": "#/components/schemas/Object",
+            "nullable": true,
+            "description": "API key context; null for JWT auth"
+          }
+        },
+        "type": "object",
+        "required": [
+          "auth_method",
+          "user",
+          "current",
+          "effective_role",
+          "memberships"
+        ]
+      },
+      "CreateDepositAddressDto": {
+        "properties": {
+          "network": {
+            "type": "string",
+            "enum": [
+              "solana",
+              "base",
+              "ethereum"
+            ]
+          },
+          "label": {
+            "maxLength": 128,
+            "type": "string"
+          },
+          "metadata": {
+            "type": "object"
+          },
+          "merchantReference": {
+            "maxLength": 128,
+            "type": "string"
+          }
+        },
+        "type": "object",
+        "required": [
+          "network"
+        ]
+      },
+      "DepositAddressResponse": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "description": "Deposit address external id (prefixed da_).",
+            "example": "da_01HXYZABC1234567890ABCDEFG"
+          },
+          "type": {
+            "type": "string",
+            "description": "Always crypto for a deposit address",
+            "example": "crypto"
+          },
+          "currency": {
+            "type": "string",
+            "description": "Uppercase currency code of the wallet",
+            "example": "USDC"
+          },
+          "wallet": {
+            "$ref": "#/components/schemas/DepositAddressWalletRef"
+          },
+          "label": {
+            "type": "string",
+            "nullable": true,
+            "example": "Invoice payments"
+          },
+          "metadata": {
+            "type": "object",
+            "description": "Merchant-supplied opaque metadata. Values are stored as strings.",
+            "example": {
+              "invoice_id": "inv_001"
+            },
+            "additionalProperties": {
+              "type": "string"
+            }
+          },
+          "details": {
+            "type": "object",
+            "description": "Deposit-address detail. Contains the network on create; the on-chain address is added once FX Engine mints the resource.",
+            "example": {
+              "network": "base",
+              "address": "0xseedaliceusdc000000000000000000000000"
+            }
+          },
+          "status": {
+            "type": "string",
+            "description": "pending on create",
+            "example": "pending"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time",
+            "example": "2026-05-20T12:00:00.000Z"
+          },
+          "updated_at": {
+            "type": "string",
+            "format": "date-time",
+            "example": "2026-05-20T12:00:00.000Z"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "type",
+          "currency",
+          "wallet",
+          "metadata",
+          "details",
+          "status",
+          "created_at",
+          "updated_at"
+        ]
+      },
+      "DeactivateDepositAddressDto": {
+        "properties": {
+          "reason": {
+            "maxLength": 255,
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
+      "DeactivateDepositAddressResponse": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "description": "Deposit address external id (prefixed da_).",
+            "example": "da_01HXYZABC1234567890ABCDEFG"
+          },
+          "success": {
+            "type": "boolean",
+            "enum": [
+              true
+            ],
+            "example": true
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "success"
         ]
       },
       "CurrencyResponse": {
@@ -7646,6 +7646,785 @@
         "description": "Manually (re)send an existing event to this webhook endpoint. Identify the event by its\n`event_idempotency_key` (the id of an event already known to the system). The request is\naccepted for asynchronous delivery and the response echoes the queued event's `topic` and\n`status`.\n\nUse this to replay an event the endpoint missed — for example after fixing an outage on your\nreceiver, or after activating an endpoint that should have received an earlier event.\n\nEvents are only delivered to **active** endpoints. Sending to an inactive endpoint returns\n`409 invalid_status` (`\"… is inactive; reactivate it before sending.\"`) — activate it with\n`PATCH … { \"active\": true }` first, then retry.\n\n### Body\n\n- `event_idempotency_key` — required. The idempotency key of the existing event to (re)deliver.\n\n### Example\n\n```\nPOST /v1/notifications/webhooks/whr_01HXYZABC1234567890ABCDEFG/send\n{\n  \"event_idempotency_key\": \"evt-1\"\n}\n```\n"
       }
     },
+    "/v1/customers": {
+      "post": {
+        "operationId": "CustomerController.create",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateCustomerDto"
+              }
+            }
+          },
+          "description": "CreateCustomerDto",
+          "required": false
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/ApiSuccessEnvelope"
+                    },
+                    {
+                      "type": "object",
+                      "required": [
+                        "data",
+                        "meta"
+                      ],
+                      "properties": {
+                        "message": {
+                          "type": "string",
+                          "example": "Customer created successfully"
+                        },
+                        "data": {
+                          "$ref": "#/components/schemas/CustomerResponse"
+                        },
+                        "meta": {
+                          "$ref": "#/components/schemas/ApiResponseMetaSchema"
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            },
+            "description": "Customer created successfully"
+          },
+          "400": {
+            "description": "Request body failed validation, or Idempotency-Key header is malformed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/ApiErrorEnvelope"
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string",
+                          "enum": [
+                            "invalid_input"
+                          ]
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized — invalid or missing API key",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/ApiErrorEnvelope"
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string",
+                          "enum": [
+                            "authentication_failed"
+                          ]
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict — possible codes: `duplicate_resource` (merchant_reference, email, or another unique field already in use), `idempotency_conflict` (Idempotency-Key reused with a different request body), `idempotency_in_progress` (a request with the same Idempotency-Key is still in flight). Branch on the `code` field of the response envelope.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/ApiErrorEnvelope"
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string",
+                          "enum": [
+                            "duplicate_resource",
+                            "idempotency_conflict",
+                            "idempotency_in_progress"
+                          ]
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "FX Engine upstream is unreachable",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/ApiErrorEnvelope"
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string",
+                          "enum": [
+                            "external_service_unavailable"
+                          ]
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        },
+        "summary": "Create a customer",
+        "tags": [
+          "Customers"
+        ],
+        "description": "Creates a new customer scoped to the calling merchant's integration.\n\n### Body\n\n- `type` — required. One of `individual`, `business`.\n- `name` — required. Full name of the customer. Max 255 chars.\n- `email` — required. Valid email. Max 255 chars. Per-integration uniqueness\n  is enforced case-insensitively.\n- `country_code` — required. ISO-3166-1 alpha-2 (e.g. `NG`, `KE`).\n- `metadata` — optional. Free-form `Record<string, string>`.\n- `merchant_reference` — optional. Max 128 chars. Auto-generated as\n  `ref_<ULID>` when omitted. Per-integration unique.\n\n### Example\n\n```\nPOST /v1/customers\n{\n  \"type\": \"individual\",\n  \"name\": \"Alice Johnson\",\n  \"email\": \"alice@example.com\",\n  \"country_code\": \"NG\"\n}\n```\n",
+        "parameters": [
+          {
+            "in": "header",
+            "name": "Idempotency-Key",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9_\\-]{8,255}$"
+            },
+            "description": "Optional client-supplied key. Identical key + identical body within 24h replays the original response. Identical key + different body returns 409 idempotency_conflict. The hash is over raw bytes — clients retrying must send the byte-identical body; a re-serialised JSON payload will produce a different hash and a 409. Strongly recommended for retry-safe clients."
+          }
+        ]
+      },
+      "get": {
+        "operationId": "CustomerController.list",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "type",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "kyc_status",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "page",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "per_page",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/ApiSuccessEnvelope"
+                    },
+                    {
+                      "type": "object",
+                      "required": [
+                        "data",
+                        "meta"
+                      ],
+                      "properties": {
+                        "message": {
+                          "type": "string",
+                          "example": "Customers fetched successfully"
+                        },
+                        "data": {
+                          "type": "array",
+                          "items": {
+                            "$ref": "#/components/schemas/CustomerResponse"
+                          }
+                        },
+                        "meta": {
+                          "$ref": "#/components/schemas/ApiPaginatedResponseMetaSchema"
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            },
+            "description": "Customers fetched successfully"
+          },
+          "400": {
+            "description": "type, kyc_status, page, or per_page failed validation",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/ApiErrorEnvelope"
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string",
+                          "enum": [
+                            "invalid_input"
+                          ]
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized — invalid or missing API key",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/ApiErrorEnvelope"
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string",
+                          "enum": [
+                            "authentication_failed"
+                          ]
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        },
+        "summary": "List customers",
+        "tags": [
+          "Customers"
+        ],
+        "description": "List customers for your merchant. Filter by `type` and `kyc_status` to narrow results.\n\nAll filters are optional. When no filters are supplied every customer is returned (paginated).\n\n### Filter behavior\n\n- `type` — restricts to customers of the given type. One of `individual`, `business`.\n- `kyc_status` — restricts to customers in the given KYC state. One of\n  `not_started`, `pending`, `in_progress`, `approved`, `rejected`, `expired`.\n\n### Pagination\n\n- `page` — 1-indexed page number. Defaults to `1`. Must be between `1` and `1,000,000`.\n- `per_page` — page size. Defaults to `50`. Must be between `1` and `200`.\n\nThe response carries pagination metadata under `meta`:\n\n```json\n\"meta\": {\n  \"request_id\": \"req_...\",\n  \"timestamp\": \"...\",\n  \"version\": \"1\",\n  \"page\": 1,\n  \"per_page\": 50,\n  \"total\": 21,\n  \"has_more\": false\n}\n```\n\n`has_more` is `true` when at least one more page is available.\n\n### Ordering\n\nResults are sorted by `created_at DESC, id DESC` (newest first, deterministic on ties).\n\n### Example\n\n```\nGET /v1/customers?type=individual&kyc_status=not_started&page=1&per_page=25\n```\n"
+      }
+    },
+    "/v1/customers/{customerId}": {
+      "get": {
+        "operationId": "CustomerController.get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "customerId",
+            "required": true,
+            "schema": {
+              "pattern": "[^\\/#\\?]+?",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/ApiSuccessEnvelope"
+                    },
+                    {
+                      "type": "object",
+                      "required": [
+                        "data",
+                        "meta"
+                      ],
+                      "properties": {
+                        "message": {
+                          "type": "string",
+                          "example": "Customer fetched successfully"
+                        },
+                        "data": {
+                          "$ref": "#/components/schemas/CustomerResponse"
+                        },
+                        "meta": {
+                          "$ref": "#/components/schemas/ApiResponseMetaSchema"
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            },
+            "description": "Customer fetched successfully"
+          },
+          "400": {
+            "description": "customer_id is not a valid cust_… identifier",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/ApiErrorEnvelope"
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string",
+                          "enum": [
+                            "invalid_input"
+                          ]
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized — invalid or missing API key",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/ApiErrorEnvelope"
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string",
+                          "enum": [
+                            "authentication_failed"
+                          ]
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Customer not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/ApiErrorEnvelope"
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string",
+                          "enum": [
+                            "not_found"
+                          ]
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        },
+        "summary": "Fetch a customer",
+        "tags": [
+          "Customers"
+        ],
+        "description": "Returns a single customer scoped to the calling integration.\n\nThe path id is the GlobalStack external identifier (`cust_…`) returned by\n`POST /v1/customers` and `GET /v1/customers`.\n\n### Errors\n\n- `400 invalid_input` — `customer_id` does not start with `cust_`. This catches\n  callers passing a non-GlobalStack id.\n- `404 not_found` — returned for **all** lookup misses:\n  - the id does not exist;\n  - the customer exists but belongs to a different integration;\n  \n\n  These cases share a single 404 response so a caller cannot distinguish \"doesn't\n  exist\" from \"belongs to someone else\".\n\n### Example\n\n```\nGET /v1/customers/cust_01HXYZABC1234567890ABCDEFG\n```\n"
+      }
+    },
+    "/v1/customers/{customerId}/verifications": {
+      "post": {
+        "operationId": "CustomerController.createVerification",
+        "parameters": [
+          {
+            "in": "header",
+            "name": "Idempotency-Key",
+            "required": false,
+            "schema": {
+              "pattern": "^[A-Za-z0-9_\\-]{8,255}$",
+              "type": "string"
+            },
+            "description": "Optional client-supplied key. Identical key + identical body within 24h replays the original response. Identical key + different body returns 409 idempotency_conflict. The hash is over raw bytes — clients retrying must send the byte-identical body; a re-serialised JSON payload will produce a different hash and a 409. Strongly recommended for retry-safe clients."
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateVerifyDto"
+              }
+            }
+          },
+          "description": "CreateVerifyDto",
+          "required": false
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/ApiSuccessEnvelope"
+                    },
+                    {
+                      "type": "object",
+                      "required": [
+                        "data",
+                        "meta"
+                      ],
+                      "properties": {
+                        "message": {
+                          "type": "string",
+                          "example": "Verification session created"
+                        },
+                        "data": {
+                          "$ref": "#/components/schemas/KycSessionResponse"
+                        },
+                        "meta": {
+                          "$ref": "#/components/schemas/ApiResponseMetaSchema"
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            },
+            "description": "Verification session created"
+          },
+          "400": {
+            "description": "customer_id malformed, tier / redirect_url failed validation, or the customer is already at the highest tier",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/ApiErrorEnvelope"
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string",
+                          "enum": [
+                            "invalid_input"
+                          ]
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized — invalid or missing API key",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/ApiErrorEnvelope"
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string",
+                          "enum": [
+                            "authentication_failed"
+                          ]
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Customer not found in this integration",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/ApiErrorEnvelope"
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string",
+                          "enum": [
+                            "not_found"
+                          ]
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict — possible codes: `idempotency_conflict` (Idempotency-Key reused with a different request body), `idempotency_in_progress` (a request with the same Idempotency-Key is still in flight).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/ApiErrorEnvelope"
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string",
+                          "enum": [
+                            "idempotency_conflict",
+                            "idempotency_in_progress"
+                          ]
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "KYC provider upstream is unreachable",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/ApiErrorEnvelope"
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string",
+                          "enum": [
+                            "external_service_unavailable"
+                          ]
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        },
+        "summary": "Start verification for a customer",
+        "tags": [
+          "Customers"
+        ],
+        "description": "Creates a hosted verification session for a customer scoped to the calling\nintegration. The returned `hosted_url` is the hosted verification link that\nthe merchant must surface to their customer to complete verification.\n\n### Path\n\n- `customer_id` — required. The `cust_…` external id of an existing,\n  non-default customer that belongs to the calling integration.\n\n### Body\n\n- `tier` — optional. One of `tier_1`, `tier_2`. Defaults to the next tier\n  above the customer's current tier (`tier_0` → `tier_1`; `tier_1` →\n  `tier_2`). `tier_0` is never a valid requested tier.\n- `redirect_url` — optional. HTTPS URL the merchant wants the customer\n  redirected to after the verification flow completes. Stored verbatim and\n  echoed back on the response.\n\n### Replay & link refresh\n\nIf a `pending` session already exists for the same `(customer_id,\ntier_requested)` and its `hosted_url_expires_at` is in the future, this\nendpoint returns that existing session unchanged — no second upstream call.\nClients can safely retry POSTs without an Idempotency-Key header.\n\nIf that `pending` session exists but its `hosted_url` has **expired**, this\nendpoint mints a fresh hosted link and refreshes the same session in place,\nreturning it with a new `hosted_url` / `hosted_url_expires_at`. Call this\nendpoint again to regenerate an expired verification link.\n\n### Example\n\n```\nPOST /v1/customers/cust_01HXYZ/verifications\n{\n  \"tier\": \"tier_1\",\n  \"redirect_url\": \"https://merchant.com/onboarding/complete\"\n}\n```\n"
+      },
+      "get": {
+        "operationId": "CustomerController.getLatestVerification",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "customerId",
+            "required": true,
+            "schema": {
+              "pattern": "[^\\/#\\?]+?",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/ApiSuccessEnvelope"
+                    },
+                    {
+                      "type": "object",
+                      "required": [
+                        "data",
+                        "meta"
+                      ],
+                      "properties": {
+                        "message": {
+                          "type": "string",
+                          "example": "Verification session fetched successfully"
+                        },
+                        "data": {
+                          "$ref": "#/components/schemas/KycSessionResponse"
+                        },
+                        "meta": {
+                          "$ref": "#/components/schemas/ApiResponseMetaSchema"
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            },
+            "description": "Verification session fetched successfully"
+          },
+          "400": {
+            "description": "customer_id is not a valid cust_… identifier",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/ApiErrorEnvelope"
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string",
+                          "enum": [
+                            "invalid_input"
+                          ]
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized — invalid or missing API key",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/ApiErrorEnvelope"
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string",
+                          "enum": [
+                            "authentication_failed"
+                          ]
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Customer not found in this integration, or no verification session has been created for this customer",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/ApiErrorEnvelope"
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string",
+                          "enum": [
+                            "not_found"
+                          ]
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "KYC provider upstream is unreachable while polling the latest pending session",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/ApiErrorEnvelope"
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string",
+                          "enum": [
+                            "external_service_unavailable"
+                          ]
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        },
+        "summary": "Get customer's verification status",
+        "tags": [
+          "Customers"
+        ],
+        "description": "Return the current or most recent verification session for the customer.\n\nThe response includes `hosted_url` — the hosted verification URL the customer must open to complete verification — alongside `hosted_url_expires_at`. Callers can reuse the URL while the session is still `pending` and the expiry is in the future; once it expires, start a fresh session via `POST /v1/customers/{customer_id}/verifications`.\n\nIf no session exists yet, the response is a `404 not_found` whose `meta.next_steps` points the caller at `POST /v1/customers/{customer_id}/verifications` to create one.\n\n### Path\n\n- `customer_id` — required. The `cust_…` external id of an existing customer that belongs to the calling integration.\n\n### 404 cases\n\n- Customer does not exist or belongs to a different integration.\n- Customer has never had a verification session created — `meta.next_steps.action` guides the caller to start one via `POST /v1/customers/{customer_id}/verifications`.\n\n### Example\n\n```\nGET /v1/customers/cust_01HXYZ/verifications\n```\n"
+      }
+    },
     "/v1/me": {
       "get": {
         "operationId": "MeController.getMe",
@@ -8400,785 +9179,6 @@
           "Wallets"
         ],
         "description": "Deactivates a wallet deposit address by flipping its `status` to `disabled`. The record is\npreserved — list and get continue to return it.\n\nThe path ids are GlobalStack external identifiers: the wallet (`wal_…`) and the deposit address\n(`da_…`).\n\nAn optional JSON body `{ \"reason\": \"…\" }` (max 255 chars) records why the deposit address was\ndeactivated in `disabled_reason`.\n\nFunds sent to a deactivated address are not credited.\n\n### Response\n\n```json\n{\n  \"status\": true,\n  \"message\": \"Deposit address has been successfully deactivated\",\n  \"code\": \"ok\",\n  \"data\": { \"id\": \"da_01HXYZABC1234567890ABCDEFG\", \"success\": true },\n  \"meta\": { \"request_id\": \"req_…\", \"timestamp\": \"…\", \"version\": \"1\" }\n}\n```\n\n### Status preconditions\n\n- `pending` → disabled.\n- `active` → disabled.\n- `frozen` → `409 invalid_status`.\n- `disabled` → `409 invalid_status` (not idempotent).\n\n### Errors\n\n- `400 invalid_input` — `wal_…` or `da_…` id is malformed.\n- `401 authentication_failed` — invalid or missing API key.\n- `404 not_found` — wallet or deposit address does not exist in this integration.\n- `409 invalid_status` — deposit address is already disabled or is frozen.\n\n### Example\n\n```\nDELETE /v1/wallets/wal_01HXYZABC1234567890ABCDEFG/deposit-addresses/da_01HXYZABC1234567890ABCDEFG\n```\n"
-      }
-    },
-    "/v1/customers": {
-      "post": {
-        "operationId": "CustomerController.create",
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/CreateCustomerDto"
-              }
-            }
-          },
-          "description": "CreateCustomerDto",
-          "required": false
-        },
-        "responses": {
-          "200": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "allOf": [
-                    {
-                      "$ref": "#/components/schemas/ApiSuccessEnvelope"
-                    },
-                    {
-                      "type": "object",
-                      "required": [
-                        "data",
-                        "meta"
-                      ],
-                      "properties": {
-                        "message": {
-                          "type": "string",
-                          "example": "Customer created successfully"
-                        },
-                        "data": {
-                          "$ref": "#/components/schemas/CustomerResponse"
-                        },
-                        "meta": {
-                          "$ref": "#/components/schemas/ApiResponseMetaSchema"
-                        }
-                      }
-                    }
-                  ]
-                }
-              }
-            },
-            "description": "Customer created successfully"
-          },
-          "400": {
-            "description": "Request body failed validation, or Idempotency-Key header is malformed",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "allOf": [
-                    {
-                      "$ref": "#/components/schemas/ApiErrorEnvelope"
-                    },
-                    {
-                      "type": "object",
-                      "properties": {
-                        "code": {
-                          "type": "string",
-                          "enum": [
-                            "invalid_input"
-                          ]
-                        }
-                      }
-                    }
-                  ]
-                }
-              }
-            }
-          },
-          "401": {
-            "description": "Unauthorized — invalid or missing API key",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "allOf": [
-                    {
-                      "$ref": "#/components/schemas/ApiErrorEnvelope"
-                    },
-                    {
-                      "type": "object",
-                      "properties": {
-                        "code": {
-                          "type": "string",
-                          "enum": [
-                            "authentication_failed"
-                          ]
-                        }
-                      }
-                    }
-                  ]
-                }
-              }
-            }
-          },
-          "409": {
-            "description": "Conflict — possible codes: `duplicate_resource` (merchant_reference, email, or another unique field already in use), `idempotency_conflict` (Idempotency-Key reused with a different request body), `idempotency_in_progress` (a request with the same Idempotency-Key is still in flight). Branch on the `code` field of the response envelope.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "allOf": [
-                    {
-                      "$ref": "#/components/schemas/ApiErrorEnvelope"
-                    },
-                    {
-                      "type": "object",
-                      "properties": {
-                        "code": {
-                          "type": "string",
-                          "enum": [
-                            "duplicate_resource",
-                            "idempotency_conflict",
-                            "idempotency_in_progress"
-                          ]
-                        }
-                      }
-                    }
-                  ]
-                }
-              }
-            }
-          },
-          "500": {
-            "description": "FX Engine upstream is unreachable",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "allOf": [
-                    {
-                      "$ref": "#/components/schemas/ApiErrorEnvelope"
-                    },
-                    {
-                      "type": "object",
-                      "properties": {
-                        "code": {
-                          "type": "string",
-                          "enum": [
-                            "external_service_unavailable"
-                          ]
-                        }
-                      }
-                    }
-                  ]
-                }
-              }
-            }
-          }
-        },
-        "summary": "Create a customer",
-        "tags": [
-          "Customers"
-        ],
-        "description": "Creates a new customer scoped to the calling merchant's integration.\n\n### Body\n\n- `type` — required. One of `individual`, `business`.\n- `name` — required. Full name of the customer. Max 255 chars.\n- `email` — required. Valid email. Max 255 chars. Per-integration uniqueness\n  is enforced case-insensitively.\n- `country_code` — required. ISO-3166-1 alpha-2 (e.g. `NG`, `KE`).\n- `metadata` — optional. Free-form `Record<string, string>`.\n- `merchant_reference` — optional. Max 128 chars. Auto-generated as\n  `ref_<ULID>` when omitted. Per-integration unique.\n\n### Example\n\n```\nPOST /v1/customers\n{\n  \"type\": \"individual\",\n  \"name\": \"Alice Johnson\",\n  \"email\": \"alice@example.com\",\n  \"country_code\": \"NG\"\n}\n```\n",
-        "parameters": [
-          {
-            "in": "header",
-            "name": "Idempotency-Key",
-            "required": false,
-            "schema": {
-              "type": "string",
-              "pattern": "^[A-Za-z0-9_\\-]{8,255}$"
-            },
-            "description": "Optional client-supplied key. Identical key + identical body within 24h replays the original response. Identical key + different body returns 409 idempotency_conflict. The hash is over raw bytes — clients retrying must send the byte-identical body; a re-serialised JSON payload will produce a different hash and a 409. Strongly recommended for retry-safe clients."
-          }
-        ]
-      },
-      "get": {
-        "operationId": "CustomerController.list",
-        "parameters": [
-          {
-            "in": "query",
-            "name": "type",
-            "required": false,
-            "schema": {
-              "type": "string"
-            }
-          },
-          {
-            "in": "query",
-            "name": "kyc_status",
-            "required": false,
-            "schema": {
-              "type": "string"
-            }
-          },
-          {
-            "in": "query",
-            "name": "page",
-            "required": false,
-            "schema": {
-              "type": "string"
-            }
-          },
-          {
-            "in": "query",
-            "name": "per_page",
-            "required": false,
-            "schema": {
-              "type": "string"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "allOf": [
-                    {
-                      "$ref": "#/components/schemas/ApiSuccessEnvelope"
-                    },
-                    {
-                      "type": "object",
-                      "required": [
-                        "data",
-                        "meta"
-                      ],
-                      "properties": {
-                        "message": {
-                          "type": "string",
-                          "example": "Customers fetched successfully"
-                        },
-                        "data": {
-                          "type": "array",
-                          "items": {
-                            "$ref": "#/components/schemas/CustomerResponse"
-                          }
-                        },
-                        "meta": {
-                          "$ref": "#/components/schemas/ApiPaginatedResponseMetaSchema"
-                        }
-                      }
-                    }
-                  ]
-                }
-              }
-            },
-            "description": "Customers fetched successfully"
-          },
-          "400": {
-            "description": "type, kyc_status, page, or per_page failed validation",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "allOf": [
-                    {
-                      "$ref": "#/components/schemas/ApiErrorEnvelope"
-                    },
-                    {
-                      "type": "object",
-                      "properties": {
-                        "code": {
-                          "type": "string",
-                          "enum": [
-                            "invalid_input"
-                          ]
-                        }
-                      }
-                    }
-                  ]
-                }
-              }
-            }
-          },
-          "401": {
-            "description": "Unauthorized — invalid or missing API key",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "allOf": [
-                    {
-                      "$ref": "#/components/schemas/ApiErrorEnvelope"
-                    },
-                    {
-                      "type": "object",
-                      "properties": {
-                        "code": {
-                          "type": "string",
-                          "enum": [
-                            "authentication_failed"
-                          ]
-                        }
-                      }
-                    }
-                  ]
-                }
-              }
-            }
-          }
-        },
-        "summary": "List customers",
-        "tags": [
-          "Customers"
-        ],
-        "description": "List customers for your merchant. Filter by `type` and `kyc_status` to narrow results.\n\nAll filters are optional. When no filters are supplied every customer is returned (paginated).\n\n### Filter behavior\n\n- `type` — restricts to customers of the given type. One of `individual`, `business`.\n- `kyc_status` — restricts to customers in the given KYC state. One of\n  `not_started`, `pending`, `in_progress`, `approved`, `rejected`, `expired`.\n\n### Pagination\n\n- `page` — 1-indexed page number. Defaults to `1`. Must be between `1` and `1,000,000`.\n- `per_page` — page size. Defaults to `50`. Must be between `1` and `200`.\n\nThe response carries pagination metadata under `meta`:\n\n```json\n\"meta\": {\n  \"request_id\": \"req_...\",\n  \"timestamp\": \"...\",\n  \"version\": \"1\",\n  \"page\": 1,\n  \"per_page\": 50,\n  \"total\": 21,\n  \"has_more\": false\n}\n```\n\n`has_more` is `true` when at least one more page is available.\n\n### Ordering\n\nResults are sorted by `created_at DESC, id DESC` (newest first, deterministic on ties).\n\n### Example\n\n```\nGET /v1/customers?type=individual&kyc_status=not_started&page=1&per_page=25\n```\n"
-      }
-    },
-    "/v1/customers/{customerId}": {
-      "get": {
-        "operationId": "CustomerController.get",
-        "parameters": [
-          {
-            "in": "path",
-            "name": "customerId",
-            "required": true,
-            "schema": {
-              "pattern": "[^\\/#\\?]+?",
-              "type": "string"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "allOf": [
-                    {
-                      "$ref": "#/components/schemas/ApiSuccessEnvelope"
-                    },
-                    {
-                      "type": "object",
-                      "required": [
-                        "data",
-                        "meta"
-                      ],
-                      "properties": {
-                        "message": {
-                          "type": "string",
-                          "example": "Customer fetched successfully"
-                        },
-                        "data": {
-                          "$ref": "#/components/schemas/CustomerResponse"
-                        },
-                        "meta": {
-                          "$ref": "#/components/schemas/ApiResponseMetaSchema"
-                        }
-                      }
-                    }
-                  ]
-                }
-              }
-            },
-            "description": "Customer fetched successfully"
-          },
-          "400": {
-            "description": "customer_id is not a valid cust_… identifier",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "allOf": [
-                    {
-                      "$ref": "#/components/schemas/ApiErrorEnvelope"
-                    },
-                    {
-                      "type": "object",
-                      "properties": {
-                        "code": {
-                          "type": "string",
-                          "enum": [
-                            "invalid_input"
-                          ]
-                        }
-                      }
-                    }
-                  ]
-                }
-              }
-            }
-          },
-          "401": {
-            "description": "Unauthorized — invalid or missing API key",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "allOf": [
-                    {
-                      "$ref": "#/components/schemas/ApiErrorEnvelope"
-                    },
-                    {
-                      "type": "object",
-                      "properties": {
-                        "code": {
-                          "type": "string",
-                          "enum": [
-                            "authentication_failed"
-                          ]
-                        }
-                      }
-                    }
-                  ]
-                }
-              }
-            }
-          },
-          "404": {
-            "description": "Customer not found",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "allOf": [
-                    {
-                      "$ref": "#/components/schemas/ApiErrorEnvelope"
-                    },
-                    {
-                      "type": "object",
-                      "properties": {
-                        "code": {
-                          "type": "string",
-                          "enum": [
-                            "not_found"
-                          ]
-                        }
-                      }
-                    }
-                  ]
-                }
-              }
-            }
-          }
-        },
-        "summary": "Fetch a customer",
-        "tags": [
-          "Customers"
-        ],
-        "description": "Returns a single customer scoped to the calling integration.\n\nThe path id is the GlobalStack external identifier (`cust_…`) returned by\n`POST /v1/customers` and `GET /v1/customers`.\n\n### Errors\n\n- `400 invalid_input` — `customer_id` does not start with `cust_`. This catches\n  callers passing a non-GlobalStack id.\n- `404 not_found` — returned for **all** lookup misses:\n  - the id does not exist;\n  - the customer exists but belongs to a different integration;\n  \n\n  These cases share a single 404 response so a caller cannot distinguish \"doesn't\n  exist\" from \"belongs to someone else\".\n\n### Example\n\n```\nGET /v1/customers/cust_01HXYZABC1234567890ABCDEFG\n```\n"
-      }
-    },
-    "/v1/customers/{customerId}/verifications": {
-      "post": {
-        "operationId": "CustomerController.createVerification",
-        "parameters": [
-          {
-            "in": "header",
-            "name": "Idempotency-Key",
-            "required": false,
-            "schema": {
-              "pattern": "^[A-Za-z0-9_\\-]{8,255}$",
-              "type": "string"
-            },
-            "description": "Optional client-supplied key. Identical key + identical body within 24h replays the original response. Identical key + different body returns 409 idempotency_conflict. The hash is over raw bytes — clients retrying must send the byte-identical body; a re-serialised JSON payload will produce a different hash and a 409. Strongly recommended for retry-safe clients."
-          }
-        ],
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/CreateVerifyDto"
-              }
-            }
-          },
-          "description": "CreateVerifyDto",
-          "required": false
-        },
-        "responses": {
-          "200": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "allOf": [
-                    {
-                      "$ref": "#/components/schemas/ApiSuccessEnvelope"
-                    },
-                    {
-                      "type": "object",
-                      "required": [
-                        "data",
-                        "meta"
-                      ],
-                      "properties": {
-                        "message": {
-                          "type": "string",
-                          "example": "Verification session created"
-                        },
-                        "data": {
-                          "$ref": "#/components/schemas/KycSessionResponse"
-                        },
-                        "meta": {
-                          "$ref": "#/components/schemas/ApiResponseMetaSchema"
-                        }
-                      }
-                    }
-                  ]
-                }
-              }
-            },
-            "description": "Verification session created"
-          },
-          "400": {
-            "description": "customer_id malformed, tier / redirect_url failed validation, or the customer is already at the highest tier",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "allOf": [
-                    {
-                      "$ref": "#/components/schemas/ApiErrorEnvelope"
-                    },
-                    {
-                      "type": "object",
-                      "properties": {
-                        "code": {
-                          "type": "string",
-                          "enum": [
-                            "invalid_input"
-                          ]
-                        }
-                      }
-                    }
-                  ]
-                }
-              }
-            }
-          },
-          "401": {
-            "description": "Unauthorized — invalid or missing API key",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "allOf": [
-                    {
-                      "$ref": "#/components/schemas/ApiErrorEnvelope"
-                    },
-                    {
-                      "type": "object",
-                      "properties": {
-                        "code": {
-                          "type": "string",
-                          "enum": [
-                            "authentication_failed"
-                          ]
-                        }
-                      }
-                    }
-                  ]
-                }
-              }
-            }
-          },
-          "404": {
-            "description": "Customer not found in this integration",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "allOf": [
-                    {
-                      "$ref": "#/components/schemas/ApiErrorEnvelope"
-                    },
-                    {
-                      "type": "object",
-                      "properties": {
-                        "code": {
-                          "type": "string",
-                          "enum": [
-                            "not_found"
-                          ]
-                        }
-                      }
-                    }
-                  ]
-                }
-              }
-            }
-          },
-          "409": {
-            "description": "Conflict — possible codes: `idempotency_conflict` (Idempotency-Key reused with a different request body), `idempotency_in_progress` (a request with the same Idempotency-Key is still in flight).",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "allOf": [
-                    {
-                      "$ref": "#/components/schemas/ApiErrorEnvelope"
-                    },
-                    {
-                      "type": "object",
-                      "properties": {
-                        "code": {
-                          "type": "string",
-                          "enum": [
-                            "idempotency_conflict",
-                            "idempotency_in_progress"
-                          ]
-                        }
-                      }
-                    }
-                  ]
-                }
-              }
-            }
-          },
-          "500": {
-            "description": "KYC provider upstream is unreachable",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "allOf": [
-                    {
-                      "$ref": "#/components/schemas/ApiErrorEnvelope"
-                    },
-                    {
-                      "type": "object",
-                      "properties": {
-                        "code": {
-                          "type": "string",
-                          "enum": [
-                            "external_service_unavailable"
-                          ]
-                        }
-                      }
-                    }
-                  ]
-                }
-              }
-            }
-          }
-        },
-        "summary": "Start verification for a customer",
-        "tags": [
-          "Customers"
-        ],
-        "description": "Creates a hosted verification session for a customer scoped to the calling\nintegration. The returned `hosted_url` is the hosted verification link that\nthe merchant must surface to their customer to complete verification.\n\n### Path\n\n- `customer_id` — required. The `cust_…` external id of an existing,\n  non-default customer that belongs to the calling integration.\n\n### Body\n\n- `tier` — optional. One of `tier_1`, `tier_2`. Defaults to the next tier\n  above the customer's current tier (`tier_0` → `tier_1`; `tier_1` →\n  `tier_2`). `tier_0` is never a valid requested tier.\n- `redirect_url` — optional. HTTPS URL the merchant wants the customer\n  redirected to after the verification flow completes. Stored verbatim and\n  echoed back on the response.\n\n### Replay\n\nIf a `pending` session already exists for the same `(customer_id,\ntier_requested)` and its `hosted_url_expires_at` is in the future, this\nendpoint returns that existing session unchanged — no second upstream call.\nClients can safely retry POSTs without an Idempotency-Key header.\n\n### Example\n\n```\nPOST /v1/customers/cust_01HXYZ/verifications\n{\n  \"tier\": \"tier_1\",\n  \"redirect_url\": \"https://merchant.com/onboarding/complete\"\n}\n```\n"
-      },
-      "get": {
-        "operationId": "CustomerController.getLatestVerification",
-        "parameters": [
-          {
-            "in": "path",
-            "name": "customerId",
-            "required": true,
-            "schema": {
-              "pattern": "[^\\/#\\?]+?",
-              "type": "string"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "allOf": [
-                    {
-                      "$ref": "#/components/schemas/ApiSuccessEnvelope"
-                    },
-                    {
-                      "type": "object",
-                      "required": [
-                        "data",
-                        "meta"
-                      ],
-                      "properties": {
-                        "message": {
-                          "type": "string",
-                          "example": "Verification session fetched successfully"
-                        },
-                        "data": {
-                          "$ref": "#/components/schemas/KycSessionResponse"
-                        },
-                        "meta": {
-                          "$ref": "#/components/schemas/ApiResponseMetaSchema"
-                        }
-                      }
-                    }
-                  ]
-                }
-              }
-            },
-            "description": "Verification session fetched successfully"
-          },
-          "400": {
-            "description": "customer_id is not a valid cust_… identifier",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "allOf": [
-                    {
-                      "$ref": "#/components/schemas/ApiErrorEnvelope"
-                    },
-                    {
-                      "type": "object",
-                      "properties": {
-                        "code": {
-                          "type": "string",
-                          "enum": [
-                            "invalid_input"
-                          ]
-                        }
-                      }
-                    }
-                  ]
-                }
-              }
-            }
-          },
-          "401": {
-            "description": "Unauthorized — invalid or missing API key",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "allOf": [
-                    {
-                      "$ref": "#/components/schemas/ApiErrorEnvelope"
-                    },
-                    {
-                      "type": "object",
-                      "properties": {
-                        "code": {
-                          "type": "string",
-                          "enum": [
-                            "authentication_failed"
-                          ]
-                        }
-                      }
-                    }
-                  ]
-                }
-              }
-            }
-          },
-          "404": {
-            "description": "Customer not found in this integration, or no verification session has been created for this customer",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "allOf": [
-                    {
-                      "$ref": "#/components/schemas/ApiErrorEnvelope"
-                    },
-                    {
-                      "type": "object",
-                      "properties": {
-                        "code": {
-                          "type": "string",
-                          "enum": [
-                            "not_found"
-                          ]
-                        }
-                      }
-                    }
-                  ]
-                }
-              }
-            }
-          },
-          "500": {
-            "description": "KYC provider upstream is unreachable while polling the latest pending session",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "allOf": [
-                    {
-                      "$ref": "#/components/schemas/ApiErrorEnvelope"
-                    },
-                    {
-                      "type": "object",
-                      "properties": {
-                        "code": {
-                          "type": "string",
-                          "enum": [
-                            "external_service_unavailable"
-                          ]
-                        }
-                      }
-                    }
-                  ]
-                }
-              }
-            }
-          }
-        },
-        "summary": "Get customer's verification status",
-        "tags": [
-          "Customers"
-        ],
-        "description": "Return the current or most recent verification session for the customer.\n\nThe response includes `hosted_url` — the hosted verification URL the customer must open to complete verification — alongside `hosted_url_expires_at`. Callers can reuse the URL while the session is still `pending` and the expiry is in the future; once it expires, start a fresh session via `POST /v1/customers/{customer_id}/verifications`.\n\nIf no session exists yet, the response is a `404 not_found` whose `meta.next_steps` points the caller at `POST /v1/customers/{customer_id}/verifications` to create one.\n\n### Path\n\n- `customer_id` — required. The `cust_…` external id of an existing customer that belongs to the calling integration.\n\n### 404 cases\n\n- Customer does not exist or belongs to a different integration.\n- Customer has never had a verification session created — `meta.next_steps.action` guides the caller to start one via `POST /v1/customers/{customer_id}/verifications`.\n\n### Example\n\n```\nGET /v1/customers/cust_01HXYZ/verifications\n```\n"
       }
     },
     "/v1/currencies/": {
