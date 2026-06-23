@@ -2895,6 +2895,11 @@
       },
       "MeCurrentResponse": {
         "properties": {
+          "integration_id": {
+            "type": "string",
+            "description": "Integration id — identifies the integration this context acts on; also carried as the webhook event_developer_id",
+            "example": "int_01HXYZ..."
+          },
           "membership_id": {
             "type": "string",
             "description": "Membership external id — the selector for X-Membership-Id",
@@ -2913,6 +2918,7 @@
         },
         "type": "object",
         "required": [
+          "integration_id",
           "membership_id",
           "role"
         ]
