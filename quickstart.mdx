@@ -3,7 +3,7 @@ title: "Quickstart"
 description: "From an API key to your first wallet in a few minutes."
 ---
 
-This guide takes you from zero to a funded-ready USDC wallet: authenticate, create a customer, and create a wallet for them. Every call uses the base URL `https://api.paystack.com`.
+This guide takes you from zero to a funded-ready USDC wallet: authenticate, create a customer, and create a wallet for them. Every call uses the base URL `https://api.globalstack.io`.
 
 ## Prerequisites
 
@@ -17,7 +17,7 @@ This guide takes you from zero to a funded-ready USDC wallet: authenticate, crea
     Make an authenticated call to a read-only endpoint to confirm your key works. Listing supported currencies needs no request body:
 
     ```bash
-    curl https://api.paystack.com/v1/currencies \
+    curl https://api.globalstack.io/v1/currencies \
       -H "Authorization: Bearer YOUR_SECRET_KEY"
     ```
 
@@ -28,7 +28,7 @@ This guide takes you from zero to a funded-ready USDC wallet: authenticate, crea
     Wallets belong to a customer. Create one with their type, name, email, and ISO 3166-1 alpha-2 `country_code`:
 
     ```bash
-    curl https://api.paystack.com/v1/customers \
+    curl https://api.globalstack.io/v1/customers \
       -X POST \
       -H "Authorization: Bearer YOUR_SECRET_KEY" \
       -H "Content-Type: application/json" \
@@ -47,7 +47,7 @@ This guide takes you from zero to a funded-ready USDC wallet: authenticate, crea
     Create a USDC wallet for that customer. Only `currency` is required:
 
     ```bash
-    curl https://api.paystack.com/v1/wallets \
+    curl https://api.globalstack.io/v1/wallets \
       -X POST \
       -H "Authorization: Bearer YOUR_SECRET_KEY" \
       -H "Content-Type: application/json" \
