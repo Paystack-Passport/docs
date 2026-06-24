@@ -10,7 +10,7 @@ Network calls can fail after the server has already done the work. To retry safe
 Pass a unique value in the `Idempotency-Key` header:
 
 ```bash
-curl https://api.paystack.com/v1/transfers \
+curl https://api.globalstack.io/v1/transfers \
   -X POST \
   -H "Authorization: Bearer YOUR_SECRET_KEY" \
   -H "Idempotency-Key: 8f2a1c4e-7b3d-4a90-bf12-9c5e6a1d2b34" \
