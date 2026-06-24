@@ -588,93 +588,6 @@
           "updated_at"
         ]
       },
-      "CreateResourceAccessRequestDto": {
-        "properties": {
-          "countryCode": {
-            "pattern": "^[A-Z]{2}$",
-            "type": "string"
-          },
-          "reason": {
-            "maxLength": 1000,
-            "type": "string"
-          }
-        },
-        "type": "object"
-      },
-      "ResourceAccessRequestResponse": {
-        "properties": {
-          "id": {
-            "type": "string",
-            "description": "External id of the request (prefixed rar_).",
-            "example": "rar_01KPBAP7WTDKQKW5B3R31VPNX4"
-          },
-          "resource_type": {
-            "enum": [
-              "currency"
-            ],
-            "type": "string",
-            "description": "Resource kind being requested.",
-            "example": "currency"
-          },
-          "resource_id": {
-            "type": "string",
-            "description": "Resource id (currency UUID)."
-          },
-          "resource_code": {
-            "type": "string",
-            "description": "Resource code at request time (currency code).",
-            "example": "XAU"
-          },
-          "status": {
-            "enum": [
-              "pending",
-              "approved",
-              "rejected"
-            ],
-            "type": "string",
-            "example": "pending"
-          },
-          "reason": {
-            "type": "string",
-            "nullable": true,
-            "description": "Merchant-supplied reason.",
-            "example": "q2 launch"
-          },
-          "reviewer_id": {
-            "type": "string",
-            "nullable": true,
-            "description": "Internal user who reviewed the request (null until per-user admin auth lands)."
-          },
-          "review_reason": {
-            "type": "string",
-            "nullable": true,
-            "description": "Reviewer-supplied reason."
-          },
-          "reviewed_at": {
-            "type": "string",
-            "nullable": true,
-            "format": "date-time"
-          },
-          "created_at": {
-            "type": "string",
-            "format": "date-time"
-          },
-          "updated_at": {
-            "type": "string",
-            "format": "date-time"
-          }
-        },
-        "type": "object",
-        "required": [
-          "id",
-          "resource_type",
-          "resource_id",
-          "resource_code",
-          "status",
-          "created_at",
-          "updated_at"
-        ]
-      },
       "CreateOnrampQuoteDto": {
         "properties": {
           "wallet_id": {
@@ -2063,6 +1976,93 @@
           "country_code",
           "buy",
           "sell"
+        ]
+      },
+      "CreateResourceAccessRequestDto": {
+        "properties": {
+          "countryCode": {
+            "pattern": "^[A-Z]{2}$",
+            "type": "string"
+          },
+          "reason": {
+            "maxLength": 1000,
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
+      "ResourceAccessRequestResponse": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "description": "External id of the request (prefixed rar_).",
+            "example": "rar_01KPBAP7WTDKQKW5B3R31VPNX4"
+          },
+          "resource_type": {
+            "enum": [
+              "currency"
+            ],
+            "type": "string",
+            "description": "Resource kind being requested.",
+            "example": "currency"
+          },
+          "resource_id": {
+            "type": "string",
+            "description": "Resource id (currency UUID)."
+          },
+          "resource_code": {
+            "type": "string",
+            "description": "Resource code at request time (currency code).",
+            "example": "XAU"
+          },
+          "status": {
+            "enum": [
+              "pending",
+              "approved",
+              "rejected"
+            ],
+            "type": "string",
+            "example": "pending"
+          },
+          "reason": {
+            "type": "string",
+            "nullable": true,
+            "description": "Merchant-supplied reason.",
+            "example": "q2 launch"
+          },
+          "reviewer_id": {
+            "type": "string",
+            "nullable": true,
+            "description": "Internal user who reviewed the request (null until per-user admin auth lands)."
+          },
+          "review_reason": {
+            "type": "string",
+            "nullable": true,
+            "description": "Reviewer-supplied reason."
+          },
+          "reviewed_at": {
+            "type": "string",
+            "nullable": true,
+            "format": "date-time"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "updated_at": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "resource_type",
+          "resource_id",
+          "resource_code",
+          "status",
+          "created_at",
+          "updated_at"
         ]
       },
       "CreateCredentialDto": {
@@ -4750,281 +4750,6 @@
           "Transactions"
         ],
         "description": "Fetch a transaction by its txn_… external id, scoped to the authenticated merchant. Returns 404 not_found when the id is unknown."
-      }
-    },
-    "/v1/currencies/{code}/access-requests": {
-      "post": {
-        "operationId": "ResourceAccessController.create",
-        "parameters": [
-          {
-            "in": "path",
-            "name": "code",
-            "required": true,
-            "schema": {
-              "pattern": "[^\\/#\\?]+?",
-              "type": "string"
-            }
-          }
-        ],
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/CreateResourceAccessRequestDto"
-              }
-            }
-          },
-          "description": "CreateResourceAccessRequestDto",
-          "required": false
-        },
-        "responses": {
-          "200": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "allOf": [
-                    {
-                      "$ref": "#/components/schemas/ApiSuccessEnvelope"
-                    },
-                    {
-                      "type": "object",
-                      "required": [
-                        "data",
-                        "meta"
-                      ],
-                      "properties": {
-                        "message": {
-                          "type": "string",
-                          "example": "Access request received"
-                        },
-                        "data": {
-                          "$ref": "#/components/schemas/ResourceAccessRequestResponse"
-                        },
-                        "meta": {
-                          "$ref": "#/components/schemas/ApiResponseMetaSchema"
-                        }
-                      }
-                    }
-                  ]
-                }
-              }
-            },
-            "description": "Access request received"
-          },
-          "400": {
-            "description": "Currency does not require access, or the body failed validation",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "allOf": [
-                    {
-                      "$ref": "#/components/schemas/ApiErrorEnvelope"
-                    },
-                    {
-                      "type": "object",
-                      "properties": {
-                        "code": {
-                          "type": "string",
-                          "enum": [
-                            "invalid_input"
-                          ]
-                        }
-                      }
-                    }
-                  ]
-                }
-              }
-            }
-          },
-          "401": {
-            "description": "Unauthorized — invalid or missing API key",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "allOf": [
-                    {
-                      "$ref": "#/components/schemas/ApiErrorEnvelope"
-                    },
-                    {
-                      "type": "object",
-                      "properties": {
-                        "code": {
-                          "type": "string",
-                          "enum": [
-                            "authentication_failed"
-                          ]
-                        }
-                      }
-                    }
-                  ]
-                }
-              }
-            }
-          },
-          "404": {
-            "description": "Currency not found for the resolved country",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "allOf": [
-                    {
-                      "$ref": "#/components/schemas/ApiErrorEnvelope"
-                    },
-                    {
-                      "type": "object",
-                      "properties": {
-                        "code": {
-                          "type": "string",
-                          "enum": [
-                            "not_found"
-                          ]
-                        }
-                      }
-                    }
-                  ]
-                }
-              }
-            }
-          },
-          "409": {
-            "description": "Merchant already holds an active grant for this currency",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "allOf": [
-                    {
-                      "$ref": "#/components/schemas/ApiErrorEnvelope"
-                    },
-                    {
-                      "type": "object",
-                      "properties": {
-                        "code": {
-                          "type": "string",
-                          "enum": [
-                            "access_already_granted"
-                          ]
-                        }
-                      }
-                    }
-                  ]
-                }
-              }
-            }
-          }
-        },
-        "summary": "Request access to a gated currency",
-        "tags": [
-          "Supported Currencies"
-        ],
-        "description": "Request access to a currency that is gated behind `requires_access = true`.\n\nBehaviour:\n\n- If the currency does not require access, returns `400 invalid_input`.\n- If the merchant already holds an active grant, returns `409 access_already_granted`.\n- If a pending request already exists for the merchant + currency, the existing\n  row is returned verbatim (idempotent re-issue).\n- Otherwise a new pending request is created and returned.\n\nResource scope is the merchant — all integrations under one merchant share the\ngrant.\n"
-      }
-    },
-    "/v1/currencies/access-requests": {
-      "get": {
-        "operationId": "ResourceAccessController.list",
-        "parameters": [
-          {
-            "in": "query",
-            "name": "status",
-            "required": false,
-            "schema": {
-              "type": "string"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "allOf": [
-                    {
-                      "$ref": "#/components/schemas/ApiSuccessEnvelope"
-                    },
-                    {
-                      "type": "object",
-                      "required": [
-                        "data",
-                        "meta"
-                      ],
-                      "properties": {
-                        "message": {
-                          "type": "string",
-                          "example": "Access requests fetched"
-                        },
-                        "data": {
-                          "type": "array",
-                          "items": {
-                            "$ref": "#/components/schemas/ResourceAccessRequestResponse"
-                          }
-                        },
-                        "meta": {
-                          "$ref": "#/components/schemas/ApiResponseMetaSchema"
-                        }
-                      }
-                    }
-                  ]
-                }
-              }
-            },
-            "description": "Access requests fetched"
-          },
-          "400": {
-            "description": "status query parameter failed validation",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "allOf": [
-                    {
-                      "$ref": "#/components/schemas/ApiErrorEnvelope"
-                    },
-                    {
-                      "type": "object",
-                      "properties": {
-                        "code": {
-                          "type": "string",
-                          "enum": [
-                            "invalid_input"
-                          ]
-                        }
-                      }
-                    }
-                  ]
-                }
-              }
-            }
-          },
-          "401": {
-            "description": "Unauthorized — invalid or missing API key",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "allOf": [
-                    {
-                      "$ref": "#/components/schemas/ApiErrorEnvelope"
-                    },
-                    {
-                      "type": "object",
-                      "properties": {
-                        "code": {
-                          "type": "string",
-                          "enum": [
-                            "authentication_failed"
-                          ]
-                        }
-                      }
-                    }
-                  ]
-                }
-              }
-            }
-          }
-        },
-        "summary": "List the calling merchant's currency access requests",
-        "tags": [
-          "Supported Currencies"
-        ],
-        "description": "List the calling merchant's currency access requests, newest first.\n\nFilter by `status` (`pending`, `approved`, or `rejected`); omit it to return\nevery request regardless of state.\n"
       }
     },
     "/v1/onramps/quotes": {
@@ -9864,6 +9589,281 @@
           "Supported Currencies"
         ],
         "description": "Get buy and sell rates for a currency against every currency it pairs with directly.\n\n`buy` is the rate when you acquire the listed `currency` using the path code currency. sell is the rate when you dispose of the listed `currency` to receive the path currency. For fiat currencies the only pair is USDC. For USDC you receive one row per supported fiat. Fiat-to-fiat pairs are not listed here (they price through USDC internally).\n\nValues include a small mock spread and deterministic jitter so consecutive calls stay in a narrow band.\n\nRates are quoted as decimal strings with two places — they are not numbers,\nto avoid floating-point precision loss for downstream callers handling\nfinancial amounts.\n\n### Path parameters\n\n- `code` — the currency code (e.g. `NGN`, `USDC`).\n\n### Query parameters\n\n- `country_code` *(optional)* — restricts the rates to a specific country\n  (ISO 3166-1 alpha-2). Useful for currencies that quote differently per\n  market.\n\n### Example\n\n```\nGET /v1/currencies/NGN/rates?country_code=NG\n```\n"
+      }
+    },
+    "/v1/currencies/{code}/access-requests": {
+      "post": {
+        "operationId": "CurrencyController.createAccessRequest",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "code",
+            "required": true,
+            "schema": {
+              "pattern": "[^\\/#\\?]+?",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateResourceAccessRequestDto"
+              }
+            }
+          },
+          "description": "CreateResourceAccessRequestDto",
+          "required": false
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/ApiSuccessEnvelope"
+                    },
+                    {
+                      "type": "object",
+                      "required": [
+                        "data",
+                        "meta"
+                      ],
+                      "properties": {
+                        "message": {
+                          "type": "string",
+                          "example": "Access request received"
+                        },
+                        "data": {
+                          "$ref": "#/components/schemas/ResourceAccessRequestResponse"
+                        },
+                        "meta": {
+                          "$ref": "#/components/schemas/ApiResponseMetaSchema"
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            },
+            "description": "Access request received"
+          },
+          "400": {
+            "description": "Currency does not require access, or the body failed validation",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/ApiErrorEnvelope"
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string",
+                          "enum": [
+                            "invalid_input"
+                          ]
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized — invalid or missing API key",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/ApiErrorEnvelope"
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string",
+                          "enum": [
+                            "authentication_failed"
+                          ]
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Currency not found for the resolved country",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/ApiErrorEnvelope"
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string",
+                          "enum": [
+                            "not_found"
+                          ]
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Merchant already holds an active grant for this currency",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/ApiErrorEnvelope"
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string",
+                          "enum": [
+                            "access_already_granted"
+                          ]
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        },
+        "summary": "Request access to a gated currency",
+        "tags": [
+          "Supported Currencies"
+        ],
+        "description": "Request access to a currency that is gated behind `requires_access = true`."
+      }
+    },
+    "/v1/currencies/access-requests": {
+      "get": {
+        "operationId": "CurrencyController.listAccessRequests",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "status",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/ApiSuccessEnvelope"
+                    },
+                    {
+                      "type": "object",
+                      "required": [
+                        "data",
+                        "meta"
+                      ],
+                      "properties": {
+                        "message": {
+                          "type": "string",
+                          "example": "Access requests fetched"
+                        },
+                        "data": {
+                          "type": "array",
+                          "items": {
+                            "$ref": "#/components/schemas/ResourceAccessRequestResponse"
+                          }
+                        },
+                        "meta": {
+                          "$ref": "#/components/schemas/ApiResponseMetaSchema"
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            },
+            "description": "Access requests fetched"
+          },
+          "400": {
+            "description": "status query parameter failed validation",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/ApiErrorEnvelope"
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string",
+                          "enum": [
+                            "invalid_input"
+                          ]
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized — invalid or missing API key",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/ApiErrorEnvelope"
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string",
+                          "enum": [
+                            "authentication_failed"
+                          ]
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        },
+        "summary": "List the calling merchant's currency access requests",
+        "tags": [
+          "Supported Currencies"
+        ],
+        "description": "List the calling merchant's currency access requests, newest first.\n"
       }
     },
     "/v1/wallets/{id}/credentials": {
