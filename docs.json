@@ -24,13 +24,11 @@
   "navigation": {
     "tabs": [
       {
-        "tab": "Home",
-        "icon": "🏠",
+        "tab": "🏠 Home",
         "pages": ["index"]
       },
       {
-        "tab": "Get Started",
-        "icon": "🚀",
+        "tab": "🚀 Get Started",
         "groups": [
           {
             "group": "Get Started",
@@ -39,8 +37,7 @@
         ]
       },
       {
-        "tab": "Developer Platform",
-        "icon": "🛠️",
+        "tab": "🛠️ Developer Platform",
         "groups": [
           {
             "group": "Platform",
@@ -56,8 +53,7 @@
         ]
       },
       {
-        "tab": "API Reference",
-        "icon": "📖",
+        "tab": "📖 API Reference",
         "openapi": "api-reference/openapi.json",
         "groups": [
           {
