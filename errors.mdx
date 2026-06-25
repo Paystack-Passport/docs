@@ -27,6 +27,8 @@ Every API response — success or failure — uses the same envelope. On failure
 `message` is for developers and logs — do not show it to end users. Quote `meta.request_id` when contacting support.
 </Note>
 
+These are **request-level** errors — the API call itself was rejected. If a call *succeeds* but the resulting money movement or verification later ends in a failed state, the reason is reported on the resource's `failure_reason` field instead — see [Failure reasons](/api-reference/failure-reasons).
+
 ## Bad request {#bad_request}
 
 **HTTP 400** · `bad_request`
