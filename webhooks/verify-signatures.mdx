@@ -1,0 +1,216 @@
+---
+title: "Verify webhook signatures"
+description: "Confirm each webhook delivery came from GlobalStack and was not tampered with in transit."
+---
+
+Every webhook GlobalStack sends is signed. Verify the signature on each delivery before you act
+on it — it proves the request came from GlobalStack and the body was not altered in transit.
+
+Signatures follow the [Svix](https://docs.svix.com/receiving/verifying-payloads/how) standard, so
+you can verify them with an official Svix library in one call, or implement the check yourself.
+
+## What's on each delivery
+
+Every request carries three headers:
+
+| Header | Example | Meaning |
+| --- | --- | --- |
+| `svix-id` | `msg_2gT8sV...` | Unique message id. Equals the body's `event_id` with a `msg_` prefix. |
+| `svix-timestamp` | `1718960400` | Unix seconds when the delivery was signed. |
+| `svix-signature` | `v1,g0hM9SsE...` | Space-separated list of `v1,<base64-signature>` entries. |
+
+Your **signing secret** (prefixed `whsec_`) is shown in plaintext **once** — when you create a
+webhook endpoint or rotate its secret. Store it securely; you cannot retrieve it again.
+
+<Warning>
+  Verify against the **raw** request body — the exact bytes you received. If you parse the JSON and
+  re-serialize it before verifying, the bytes change and verification fails. Read the raw body first,
+  verify, then parse.
+</Warning>
+
+## Verify with a Svix library (recommended)
+
+The library handles the construction, the multi-signature format, timing-safe comparison, and
+timestamp (replay) checks for you.
+
+<CodeGroup>
+
+```ts Node.js
+import { Webhook } from "svix";
+
+const secret = process.env.WEBHOOK_SIGNING_SECRET; // whsec_...
+
+// `rawBody` must be the raw request body string, not the parsed object.
+const wh = new Webhook(secret);
+const payload = wh.verify(rawBody, {
+  "svix-id": req.headers["svix-id"],
+  "svix-timestamp": req.headers["svix-timestamp"],
+  "svix-signature": req.headers["svix-signature"],
+}); // throws on an invalid signature
+```
+
+```python Python
+from svix.webhooks import Webhook, WebhookVerificationError
+
+secret = os.environ["WEBHOOK_SIGNING_SECRET"]  # whsec_...
+
+wh = Webhook(secret)
+try:
+    payload = wh.verify(raw_body, dict(request.headers))
+except WebhookVerificationError:
+    return "", 400
+```
+
+```go Go
+import svix "github.com/svix/svix-webhooks/go"
+
+wh, err := svix.NewWebhook(secret) // whsec_...
+if err != nil {
+    // handle bad secret
+}
+if err := wh.Verify(rawBody, req.Header); err != nil {
+    http.Error(w, "invalid signature", http.StatusBadRequest)
+    return
+}
+```
+
+```ruby Ruby
+require "svix"
+
+wh = Svix::Webhook.new(secret) # whsec_...
+begin
+  payload = wh.verify(raw_body, headers)
+rescue Svix::WebhookVerificationError
+  halt 400
+end
+```
+
+```php PHP
+use Svix\Webhook;
+
+$wh = new Webhook($secret); // whsec_...
+try {
+    $payload = $wh->verify($rawBody, $headers);
+} catch (\Svix\Exception\WebhookVerificationException $e) {
+    http_response_code(400);
+    exit;
+}
+```
+
+```java Java
+import com.svix.Webhook;
+
+Webhook webhook = new Webhook(secret); // whsec_...
+webhook.verify(rawBody, headers); // throws WebhookVerificationException
+```
+
+</CodeGroup>
+
+## Verify manually
+
+If there's no Svix library for your stack, reproduce the signature yourself:
+
+<Steps>
+  <Step title="Build the signed content">
+    Join the id, timestamp, and the **raw** body with dots:
+    `signed_content = svix_id + "." + svix_timestamp + "." + raw_body`
+  </Step>
+  <Step title="Derive the key">
+    Drop the `whsec_` prefix from your signing secret and base64-decode the remainder. Those bytes
+    are your HMAC key.
+  </Step>
+  <Step title="Sign">
+    Compute `base64(HMAC-SHA256(key, signed_content))`.
+  </Step>
+  <Step title="Compare">
+    The `svix-signature` header is a space-separated list of `v1,<signature>` entries (an endpoint can
+    have more than one valid secret during a rotation). Compare your value against each entry's
+    signature — the part after `v1,` — using a constant-time comparison. Accept if any matches.
+  </Step>
+  <Step title="Check the timestamp">
+    Reject deliveries whose `svix-timestamp` is more than a few minutes from your current time, to
+    guard against replay.
+  </Step>
+</Steps>
+
+<CodeGroup>
+
+```js Node.js
+const crypto = require("crypto");
+
+function verify(rawBody, headers, secret) {
+  const id = headers["svix-id"];
+  const ts = headers["svix-timestamp"];
+  const sigHeader = headers["svix-signature"]; // "v1,aaa v1,bbb"
+
+  if (Math.abs(Date.now() / 1000 - Number(ts)) > 300) return false; // replay guard
+
+  const signedContent = `${id}.${ts}.${rawBody}`;
+  const key = Buffer.from(secret.replace(/^whsec_/, ""), "base64");
+  const expected = crypto.createHmac("sha256", key).update(signedContent).digest("base64");
+
+  return sigHeader.split(" ").some((part) => {
+    const sig = part.split(",")[1];
+    return (
+      sig &&
+      sig.length === expected.length &&
+      crypto.timingSafeEqual(Buffer.from(sig), Buffer.from(expected))
+    );
+  });
+}
+```
+
+```python Python
+import base64, hashlib, hmac, time
+
+def verify(raw_body: str, headers, secret: str) -> bool:
+    svix_id = headers["svix-id"]
+    svix_ts = headers["svix-timestamp"]
+    sig_header = headers["svix-signature"]  # "v1,aaa v1,bbb"
+
+    if abs(time.time() - int(svix_ts)) > 300:  # replay guard
+        return False
+
+    signed_content = f"{svix_id}.{svix_ts}.{raw_body}"
+    key = base64.b64decode(secret.removeprefix("whsec_"))
+    expected = base64.b64encode(
+        hmac.new(key, signed_content.encode(), hashlib.sha256).digest()
+    ).decode()
+
+    return any(
+        hmac.compare_digest(part.split(",", 1)[1], expected)
+        for part in sig_header.split()
+        if "," in part
+    )
+```
+
+```go Go
+func verify(rawBody, id, ts, sigHeader, secret string) bool {
+    n, err := strconv.ParseInt(ts, 10, 64)
+    if err != nil || math.Abs(float64(time.Now().Unix()-n)) > 300 {
+        return false // replay guard
+    }
+
+    signed := id + "." + ts + "." + rawBody
+    key, _ := base64.StdEncoding.DecodeString(strings.TrimPrefix(secret, "whsec_"))
+    mac := hmac.New(sha256.New, key)
+    mac.Write([]byte(signed))
+    expected := base64.StdEncoding.EncodeToString(mac.Sum(nil))
+
+    for _, part := range strings.Fields(sigHeader) {
+        if sig := strings.SplitN(part, ",", 2); len(sig) == 2 &&
+            hmac.Equal([]byte(sig[1]), []byte(expected)) {
+            return true
+        }
+    }
+    return false
+}
+```
+
+</CodeGroup>
+
+## Deduplicating events
+
+The body's `event_id` equals the `svix-id` without its `msg_` prefix. Use either to deduplicate —
+a delivery may be retried, and the same `event_id` arrives more than once. Treat your handler as
+idempotent: record processed `event_id`s and ignore repeats.
