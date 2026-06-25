@@ -101,30 +101,6 @@ The merchant account is authenticated but not yet active.
 
 **What to do** — This merchant account is not active yet. Please follow the KYC link provided to complete identity verification (KYC/KYB) to activate it.
 
-## Webhook signature invalid {#webhook_signature_invalid}
-
-**HTTP 401** · `webhook_signature_invalid`
-
-A webhook's signature or timestamp could not be verified.
-
-**Common causes**
-- The shared signing secret used to compute the signature doesn't match.
-- The request fell outside the 5-minute replay window.
-- The raw body was altered before signing/verification.
-
-**What to do** — The webhook signature or timestamp could not be verified. Confirm the shared secret and that the request was sent within the 5-minute replay window.
-
-## Invite expired {#invite_expired}
-
-**HTTP 403** · `invite_expired`
-
-The invite token is past its expiry.
-
-**Common causes**
-- The invite link was used after its time-to-live elapsed.
-
-**What to do** — Request a new invite from the team that issued the original one.
-
 ## Forbidden {#forbidden}
 
 **HTTP 403** · `forbidden`
@@ -259,18 +235,6 @@ The source balance doesn't have enough available funds.
 
 **What to do** — The source balance does not have enough available funds for this amount. Fund the wallet or lower the amount and retry.
 
-## Webhook payload invalid {#webhook_payload_invalid}
-
-**HTTP 422** · `webhook_payload_invalid`
-
-A webhook event payload was missing required fields or couldn't be parsed.
-
-**Common causes**
-- The sender emitted an event that doesn't match the documented shape.
-- Malformed JSON in the event body.
-
-**What to do** — The webhook event payload was missing required fields or could not be parsed. Verify the sender is emitting the documented event shape.
-
 ## Rate limited {#rate_limited}
 
 **HTTP 429** · `rate_limited`
@@ -282,50 +246,6 @@ You've exceeded the request rate limit.
 
 **What to do** — You have exceeded the request rate limit. Slow down and retry shortly.
 
-## Configuration error {#configuration_error}
-
-**HTTP 500** · `configuration_error`
-
-The service is misconfigured for this operation.
-
-**Common causes**
-- A server-side misconfiguration (not something the caller can fix).
-
-**What to do** — Contact support — the service is misconfigured.
-
-## Registration failed {#registration_failed}
-
-**HTTP 500** · `registration_failed`
-
-Account registration failed unexpectedly.
-
-**Common causes**
-- A downstream dependency rejected or failed the registration step.
-
-**What to do** — Retry the registration. If the failure persists, contact support.
-
-## Persistence error {#persistence_error}
-
-**HTTP 500** · `persistence_error`
-
-A database operation failed unexpectedly.
-
-**Common causes**
-- A transient database failure.
-
-**What to do** — A database operation failed unexpectedly. Retry after a short delay. If the failure persists, contact support.
-
-## External service unavailable {#external_service_unavailable}
-
-**HTTP 500** · `external_service_unavailable`
-
-A dependent provider or service is unavailable.
-
-**Common causes**
-- An upstream provider (e.g. a payment or FX provider) is down or timed out.
-
-**What to do** — A dependent service is unavailable. Retry the request after a short delay.
-
 ## Internal error {#internal_error}
 
 **HTTP 500** · `internal_error`
@@ -336,14 +256,3 @@ An unexpected server error occurred.
 - An unhandled condition on the server.
 
 **What to do** — Retry the request after a short delay. If the failure persists, contact support.
-
-## Unhealthy {#unhealthy}
-
-**HTTP 503** · `unhealthy`
-
-A health check reported the service (or a dependency) as unhealthy.
-
-**Common causes**
-- A dependency the health check probes is degraded or unreachable.
-
-**What to do** — Retry the health check after a short delay. If the failure persists, contact support.
