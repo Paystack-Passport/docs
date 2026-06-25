@@ -24,18 +24,28 @@
   "navigation": {
     "tabs": [
       {
-        "tab": "Guides",
+        "tab": "Home",
+        "icon": "🏠",
+        "pages": ["index"]
+      },
+      {
+        "tab": "Get Started",
         "groups": [
           {
-            "group": "Getting Started",
-            "pages": [
-              "index",
-              "quickstart"
-            ]
-          },
+            "group": "Get Started",
+            "pages": ["quickstart"]
+          }
+        ]
+      },
+      {
+        "tab": "Developer Platform",
+        "groups": [
           {
-            "group": "Webhooks",
+            "group": "Platform",
             "pages": [
+              "api-reference/authentication",
+              "api-reference/idempotency",
+              "api-reference/pagination",
               "webhooks/verify-signatures"
             ]
           }
@@ -45,15 +55,6 @@
         "tab": "API Reference",
         "openapi": "api-reference/openapi.json",
         "groups": [
-          {
-            "group": "Overview",
-            "pages": [
-              "api-reference/authentication",
-              "api-reference/errors",
-              "api-reference/idempotency",
-              "api-reference/pagination"
-            ]
-          },
           {
             "group": "Endpoints",
             "pages": [
