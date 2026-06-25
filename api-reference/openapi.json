@@ -2041,6 +2041,18 @@
             "description": "Country the currency is scoped to (ISO 3166-1 alpha-2); null for country-agnostic (crypto) currencies. Identifies which row a request targets when a code is available in multiple countries.",
             "example": "CI"
           },
+          "merchant_id": {
+            "type": "string",
+            "nullable": true,
+            "description": "External id of the requesting merchant (prefixed mer_). Populated on the cross-merchant admin listing; null on the merchant-facing endpoints.",
+            "example": "mer_01KPBAP7WTDKQKW5B3R31VPNX4"
+          },
+          "merchant_name": {
+            "type": "string",
+            "nullable": true,
+            "description": "Business name of the requesting merchant. Populated on the cross-merchant admin listing; null on the merchant-facing endpoints.",
+            "example": "Acme Corp"
+          },
           "status": {
             "enum": [
               "pending",
