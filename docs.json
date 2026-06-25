@@ -43,6 +43,7 @@
           {
             "group": "Platform",
             "pages": [
+              "errors",
               "api-reference/authentication",
               "api-reference/idempotency",
               "api-reference/pagination",
@@ -203,6 +204,9 @@
       ]
     }
   },
+  "redirects": [
+    { "source": "/api-reference/errors", "destination": "/errors" }
+  ],
   "logo": {
     "light": "/logo/light.svg",
     "dark": "/logo/dark.svg"
