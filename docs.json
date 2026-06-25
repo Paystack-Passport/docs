@@ -46,6 +46,7 @@
             "group": "Platform",
             "pages": [
               "errors",
+              "api-reference/failure-reasons",
               "api-reference/authentication",
               "api-reference/idempotency",
               "api-reference/pagination",
