@@ -1,0 +1,77 @@
+---
+title: "Failure reasons"
+description: "Stable codes that tell you why a money movement or verification failed, so you can branch on the outcome."
+---
+
+When a money movement or verification fails, the resource carries two fields that explain why:
+
+- **`failure_reason`** — a stable, machine-readable code. Branch on this.
+- **`failure_reason_message`** — human-readable copy describing the failure. Show this to a user, but
+  do not hardcode or match on it: the wording is English today and may be reworded or localized later.
+
+Both fields appear in REST responses **and** in the matching webhook event payloads, so you get the
+same reason whether you poll or receive a push.
+
+```json
+{
+  "id": "ofr_01HXYZ4K5ABCDEFGHJKLMNPQRS",
+  "status": "failed",
+  "failure_reason": "insufficient_funds",
+  "failure_reason_message": "There were not enough funds to complete this transaction."
+}
+```
+
+<Note>
+  Branch on `failure_reason`, not on `failure_reason_message` — the code is stable, the message is
+  not. This mirrors how you branch on a top-level error `code` rather than its `message`. See
+  [Errors](/api-reference/errors).
+</Note>
+
+## When the fields are present
+
+`failure_reason` and `failure_reason_message` are `null` (or absent) unless the resource actually
+failed. They are populated on:
+
+- Failed money movements — an `onramp`, `offramp`, `conversion`, or `transfer` that ends in a failed
+  state.
+- Failed verifications — the `kyc.rejected` webhook event and the verification endpoints.
+
+Some codes are intentionally generic. We expose what is safe and actionable; we do not reveal
+internal or provider mechanics. Any internal state we do not surface specifically collapses to a
+generic code — `failed` for money movements, `verification_failed` for verifications.
+
+## Money movement codes
+
+These apply to a failed `onramp`, `offramp`, `conversion`, or `transfer`.
+
+| `failure_reason` | `failure_reason_message` |
+| --- | --- |
+| `insufficient_funds` | There were not enough funds to complete this transaction. |
+| `temporarily_unavailable` | This transaction could not be completed right now. Please try again later. |
+| `cancelled` | The transaction was cancelled. |
+| `reversed` | The transaction was reversed. |
+| `failed` | This transaction could not be completed. |
+
+`temporarily_unavailable` is the retryable one — retry the request with backoff. `failed` is
+deliberately generic: a provider decline, invalid upstream input, a released hold, and anything
+otherwise unrecognised all collapse to it.
+
+## Verification (KYC) codes
+
+These apply to the `kyc.rejected` webhook event and the verification endpoints.
+
+| `failure_reason` | `failure_reason_message` |
+| --- | --- |
+| `document_quality` | The submitted document could not be read clearly. Please upload a clearer copy. |
+| `document_invalid` | The submitted document is not valid or not accepted for verification. |
+| `identity_mismatch` | The submitted details or selfie did not match the identity document. |
+| `additional_information_required` | Additional information or documents are required to complete verification. |
+| `verification_unavailable` | Verification could not be completed because a required check was unavailable. |
+| `duplicate` | A verification already exists for this applicant. |
+| `not_eligible` | The applicant is not eligible for verification. |
+| `business_verification_failed` | The business could not be verified with the information provided. |
+| `verification_failed` | Your verification could not be approved. Please contact support. |
+
+The first eight are actionable — the applicant can usually fix the problem and resubmit.
+`verification_failed` is deliberately generic: any rejection we should not detail collapses to it,
+and we never reveal the underlying detection.
