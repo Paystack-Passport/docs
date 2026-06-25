@@ -25,6 +25,12 @@
               "index",
               "quickstart"
             ]
+          },
+          {
+            "group": "Webhooks",
+            "pages": [
+              "webhooks/verify-signatures"
+            ]
           }
         ]
       },
