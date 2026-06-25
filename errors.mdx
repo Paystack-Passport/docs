@@ -1,0 +1,260 @@
+---
+title: "Error reference"
+description: "Every error code the GlobalStack API can return, with HTTP status, common causes, and how to resolve it."
+---
+
+Every API response — success or failure — uses the same envelope. On failure, `status` is `false`, `data` is `null`, `code` is a stable machine-readable error code, and `meta.next_steps` carries an `action` and a `docs_url` that links straight to this page at the matching anchor.
+
+```json
+{
+  "status": false,
+  "message": "Human-readable explanation for developers and logs.",
+  "code": "bad_request",
+  "data": null,
+  "meta": {
+    "request_id": "req_01ABC...",
+    "timestamp": "2026-04-22T02:00:00Z",
+    "version": "1",
+    "next_steps": {
+      "action": "Review the request and retry with corrected parameters.",
+      "docs_url": "https://docs.globalstack.io/errors#bad_request"
+    }
+  }
+}
+```
+
+<Note>
+`message` is for developers and logs — do not show it to end users. Quote `meta.request_id` when contacting support.
+</Note>
+
+These are **request-level** errors — the API call itself was rejected. If a call *succeeds* but the resulting money movement or verification later ends in a failed state, the reason is reported on the resource's `failure_reason` field instead — see [Failure reasons](/api-reference/failure-reasons).
+
+## Bad request {#bad_request}
+
+**HTTP 400** · `bad_request`
+
+The request failed validation — a required field is missing, or a value has the wrong type or format.
+
+**Common causes**
+- A required field was omitted from the request body.
+- A field has the wrong type (e.g. a string where a number is expected).
+- A value fails a format or enum constraint. The `meta.errors` array lists the offending fields.
+
+**What to do** — Review the request and retry with corrected parameters.
+
+## Invalid input {#invalid_input}
+
+**HTTP 400** · `invalid_input`
+
+A field passed schema validation but failed a semantic check the API applies before processing.
+
+**Common causes**
+- A value is individually valid but invalid in context (e.g. an amount below the minimum, or mismatched currency pair).
+- A referenced field combination isn't permitted.
+
+**What to do** — Inspect the request payload for missing or malformed fields and retry.
+
+## Unsupported country {#unsupported_country}
+
+**HTTP 400** · `unsupported_country`
+
+The country supplied is not supported for the requested operation (e.g. customer verification).
+
+**Common causes**
+- The `country` value is outside GlobalStack's supported markets.
+- A typo or wrong ISO code in the country field.
+
+**What to do** — This country is not supported for verification. Choose a supported country and retry.
+
+## Account resolution failed {#account_resolution_failed}
+
+**HTTP 400** · `account_resolution_failed`
+
+The bank account could not be verified with the provider.
+
+**Common causes**
+- The `account_number` is wrong or doesn't exist at the named institution.
+- The `provider_id` (bank/institution) doesn't match the account.
+
+**What to do** — The account could not be verified with the provider. Confirm the account_number and provider_id and retry.
+
+## Authentication failed {#authentication_failed}
+
+**HTTP 401** · `authentication_failed`
+
+The request was not authenticated.
+
+**Common causes**
+- Missing `Authorization` header.
+- An invalid, revoked, or malformed API key / bearer token.
+- Using a key from the wrong environment.
+
+**What to do** — Include a valid Bearer token in the Authorization header.
+
+## Merchant inactive {#merchant_inactive}
+
+**HTTP 401** · `merchant_inactive`
+
+The merchant account is authenticated but not yet active.
+
+**Common causes**
+- KYC/KYB verification is not complete.
+- The account is pending review.
+
+**What to do** — This merchant account is not active yet. Please follow the KYC link provided to complete identity verification (KYC/KYB) to activate it.
+
+## Forbidden {#forbidden}
+
+**HTTP 403** · `forbidden`
+
+The credentials are valid but don't grant access to this resource.
+
+**Common causes**
+- The API key or user lacks permission for the resource.
+- Accessing a resource that belongs to another merchant.
+
+**What to do** — The credentials supplied do not have access to this resource.
+
+## Forbidden key role {#forbidden_key_role}
+
+**HTTP 403** · `forbidden_key_role`
+
+The requested API-key role isn't permitted for this caller.
+
+**Common causes**
+- Creating or granting a key with a role above the caller's own grant.
+
+**What to do** — The requested API-key role is not permitted under this user or integration. Use a role at or below the caller's own grant.
+
+## Resource access required {#resource_access_required}
+
+**HTTP 403** · `resource_access_required`
+
+The resource requires an explicit access grant the caller doesn't have yet.
+
+**Common causes**
+- Using a resource (e.g. a currency) that is gated behind an access request.
+
+**What to do** — This resource requires explicit access. Request it via POST /v1/currencies/:code/access-requests and retry after approval.
+
+## Not found {#not_found}
+
+**HTTP 404** · `not_found`
+
+The referenced resource doesn't exist.
+
+**Common causes**
+- A wrong, mistyped, or already-deleted resource id in the path.
+- The resource belongs to a different merchant account.
+
+**What to do** — Verify the resource identifier and retry.
+
+## Invalid status {#invalid_status}
+
+**HTTP 409** · `invalid_status`
+
+The action isn't allowed while the resource is in its current state.
+
+**Common causes**
+- Acting on a resource whose lifecycle has moved past the point the action is valid (e.g. cancelling an already-settled transfer).
+
+**What to do** — Check the resource status and ensure the action is permitted in its current state.
+
+## Conflict {#conflict}
+
+**HTTP 409** · `conflict`
+
+The request conflicts with the current state of the resource.
+
+**Common causes**
+- A concurrent update changed the resource since you last read it.
+
+**What to do** — The request conflicts with the current state of the resource. Refresh and retry.
+
+## Duplicate resource {#duplicate_resource}
+
+**HTTP 409** · `duplicate_resource`
+
+A resource with the same unique value already exists.
+
+**Common causes**
+- Re-using a value that must be unique (e.g. a `reference` or a beneficiary already on file).
+
+**What to do** — A resource with the same unique identifier already exists. Retry with different values.
+
+## Idempotency conflict {#idempotency_conflict}
+
+**HTTP 409** · `idempotency_conflict`
+
+The `Idempotency-Key` was already used with a different request body.
+
+**Common causes**
+- Reusing an idempotency key for a request whose body differs from the original.
+
+**What to do** — The Idempotency-Key has already been used with a different request body. Use a new key, or replay the request with the original body.
+
+## Idempotency in progress {#idempotency_in_progress}
+
+**HTTP 409** · `idempotency_in_progress`
+
+A request with the same `Idempotency-Key` is still being processed.
+
+**Common causes**
+- A retry fired while the original request with that key is still in flight.
+
+**What to do** — A request with the same Idempotency-Key is still in progress. Retry after a short delay.
+
+## API key limit exceeded {#api_key_limit_exceeded}
+
+**HTTP 409** · `api_key_limit_exceeded`
+
+The account has reached its maximum number of active API keys.
+
+**Common causes**
+- Creating a new key while at the active-key cap.
+
+**What to do** — Revoke an unused API key before creating a new one.
+
+## Access already granted {#access_already_granted}
+
+**HTTP 409** · `access_already_granted`
+
+The merchant already has an active grant for the resource.
+
+**Common causes**
+- Submitting an access request for a resource that's already granted.
+
+**What to do** — This merchant already has an active grant for the resource. No further action is required.
+
+## Ledger insufficient funds {#ledger_insufficient_funds}
+
+**HTTP 422** · `ledger_insufficient_funds`
+
+The source balance doesn't have enough available funds.
+
+**Common causes**
+- The wallet's available balance is below the requested amount (funds may be held/pending).
+
+**What to do** — The source balance does not have enough available funds for this amount. Fund the wallet or lower the amount and retry.
+
+## Rate limited {#rate_limited}
+
+**HTTP 429** · `rate_limited`
+
+You've exceeded the request rate limit.
+
+**Common causes**
+- Too many requests in a short window.
+
+**What to do** — You have exceeded the request rate limit. Slow down and retry shortly.
+
+## Internal error {#internal_error}
+
+**HTTP 500** · `internal_error`
+
+An unexpected server error occurred.
+
+**Common causes**
+- An unhandled condition on the server.
+
+**What to do** — Retry the request after a short delay. If the failure persists, contact support.

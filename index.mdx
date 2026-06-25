@@ -1,19 +1,24 @@
 ---
-title: "Build with GlobalStack"
 description: "One API to accept, hold, convert, and pay out funds across 12 currencies in 18 African markets — powered by stablecoin infrastructure."
 mode: "wide"
 ---
 
-One API to **accept, hold, convert, and pay out** funds across 12 currencies in 18 African markets — powered by stablecoin infrastructure. Send, receive, or hold; GlobalStack handles the conversion, routing, and settlement.
+<div className="gs-hero">
+  <p className="gs-hero-eyebrow">Cross-border · stablecoin rails</p>
+  <h1>Build with GlobalStack</h1>
+  <p>One API to accept, hold, convert, and pay out funds across 12 currencies in 18 African markets. Send, receive, or hold — GlobalStack handles the conversion, routing, and settlement.</p>
+  <div className="gs-hero-btns">
+    <a className="gs-btn-primary" href="/quickstart">Get Started →</a>
+    <a className="gs-btn-secondary" href="/api-reference/supported-countries/list-countries">API Reference</a>
+  </div>
+</div>
 
-<CardGroup cols={2}>
-  <Card title="Quickstart" icon="rocket" href="/quickstart" horizontal>
-    Go from zero to your first quote and onramp in minutes.
-  </Card>
-  <Card title="API Reference" icon="code" href="/api-reference" horizontal>
-    Every endpoint, request, and response — generated from the live spec.
-  </Card>
-</CardGroup>
+```bash Your first quote
+curl https://api.globalstack.io/v1/onramps/quotes \
+  -H "Authorization: Bearer gsa_sk_live_..." \
+  -H "Content-Type: application/json" \
+  -d '{ "amount": "100", "source_currency": "USDC", "target_currency": "NGN" }'
+```
 
 ## Core flows
 
