@@ -106,6 +106,13 @@ webhook.verify(rawBody, headers); // throws WebhookVerificationException
 
 </CodeGroup>
 
+<Note>
+  Svix maintains official verification libraries for these and more languages. Install with your
+  package manager — `npm i svix`, `pip install svix`, `go get github.com/svix/svix-webhooks/go`,
+  `gem install svix`, `composer require svix/svix`, or Maven/Gradle (`com.svix:svix`) — and see the
+  [full list](https://github.com/svix/svix-webhooks).
+</Note>
+
 ## Verify manually
 
 If there's no Svix library for your stack, reproduce the signature yourself:
