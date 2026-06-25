@@ -4,13 +4,20 @@
   "name": "GlobalStack API",
   "colors": {
     "primary": "#0E141B",
-    "light": "#F2F1EE",
+    "light": "#FFFFFF",
     "dark": "#0E141B"
   },
   "background": {
     "color": {
-      "light": "#F2F1EE",
+      "light": "#FFFFFF",
       "dark": "#0E0E0D"
+    }
+  },
+  "fonts": {
+    "family": "Geist",
+    "heading": {
+      "family": "Geist",
+      "weight": 600
     }
   },
   "favicon": "/favicon.svg",
