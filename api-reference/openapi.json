@@ -1612,6 +1612,27 @@
           "updated_at"
         ]
       },
+      "UpdateCustomerDto": {
+        "properties": {
+          "name": {
+            "maxLength": 255,
+            "type": "string",
+            "minLength": 1
+          },
+          "email": {
+            "maxLength": 255,
+            "type": "string",
+            "format": "email"
+          },
+          "metadata": {
+            "type": "object"
+          },
+          "profile": {
+            "$ref": "#/components/schemas/UpdateCustomerProfileDto"
+          }
+        },
+        "type": "object"
+      },
       "CreateVerifyDto": {
         "properties": {
           "tier": {
@@ -3086,6 +3107,40 @@
             "type": "string",
             "description": "Merchant-provided business registration number",
             "example": "RC123456"
+          }
+        },
+        "type": "object"
+      },
+      "UpdateCustomerProfileDto": {
+        "properties": {
+          "phone": {
+            "maxLength": 32,
+            "type": "string",
+            "minLength": 1
+          },
+          "address": {
+            "maxLength": 255,
+            "type": "string",
+            "minLength": 1
+          },
+          "date_of_birth": {
+            "pattern": "^(0[1-9]|1[0-2])\\/(0[1-9]|[12]\\d|3[01])\\/\\d{4}$",
+            "type": "string"
+          },
+          "id_number": {
+            "maxLength": 64,
+            "type": "string",
+            "minLength": 1
+          },
+          "id_type": {
+            "maxLength": 64,
+            "type": "string",
+            "minLength": 1
+          },
+          "business_licence": {
+            "maxLength": 64,
+            "type": "string",
+            "minLength": 1
           }
         },
         "type": "object"
@@ -8025,7 +8080,7 @@
         "tags": [
           "Customers"
         ],
-        "description": "Creates a new customer scoped to the calling merchant's integration.\n\n### Body\n\n- `type` — required. One of `individual`, `business`.\n- `name` — required. Full name of the customer. Max 255 chars.\n- `email` — required. Valid email. Max 255 chars. Per-integration uniqueness\n  is enforced case-insensitively.\n- `country_code` — required. ISO-3166-1 alpha-2 (e.g. `NG`, `KE`).\n- `metadata` — optional. Free-form `Record<string, string>`.\n- `merchant_reference` — optional. Max 128 chars. Auto-generated as\n  `ref_<ULID>` when omitted. Per-integration unique.\n- `profile` — optional object carrying the identity fields required to convert\n  (onramp/offramp). When supplied it must be complete for the customer `type`:\n  - `individual` requires `phone`, `address`, `date_of_birth`, `id_number`, `id_type`.\n  - `business` requires `phone`, `business_licence`.\n\n  Fields: `phone`, `address`, `id_number`, `id_type`, `business_licence` are strings;\n  `date_of_birth` must be `mm/dd/yyyy`. A supplied-but-incomplete `profile` for the\n  `type` returns `400 invalid_input`. These values are used as a fallback when an\n  identity verification has not already supplied them. Only the fields you provide are\n  stored and echoed back under `profile` in the response.\n\n### Example\n\n```\nPOST /v1/customers\n{\n  \"type\": \"individual\",\n  \"name\": \"Alice Johnson\",\n  \"email\": \"alice@example.com\",\n  \"country_code\": \"NG\",\n  \"profile\": {\n    \"phone\": \"+2348012345678\",\n    \"address\": \"1 Marina Rd, Lagos\",\n    \"date_of_birth\": \"01/15/1990\",\n    \"id_number\": \"A12345678\",\n    \"id_type\": \"passport\"\n  }\n}\n```\n",
+        "description": "Creates a new customer scoped to the calling merchant's integration.\n\n### Body\n\n- `type` — required. One of `individual`, `business`.\n- `name` — required. Full name of the customer. Max 255 chars.\n- `email` — required. Valid email. Max 255 chars. Per-integration uniqueness\n  is enforced case-insensitively.\n- `country_code` — required. ISO-3166-1 alpha-2 (e.g. `NG`, `KE`).\n- `metadata` — optional. Free-form `Record<string, string>`.\n- `merchant_reference` — optional. Max 128 chars. Auto-generated as\n  `ref_<ULID>` when omitted. Per-integration unique.\n- `profile` — optional object carrying the identity fields required to convert\n  (onramp/offramp). When supplied it must be complete for the customer `type`:\n  - `individual` requires `phone`, `address`, `date_of_birth`, `id_number`, `id_type`.\n  - `business` requires `phone`, `business_licence`.\n\n  Fields: `phone`, `address`, `id_number`, `id_type`, `business_licence` are strings;\n  `date_of_birth` must be `mm/dd/yyyy`. A supplied-but-incomplete `profile` for the\n  `type` returns `400 invalid_input`.\n\n### Example\n\n```\nPOST /v1/customers\n{\n  \"type\": \"individual\",\n  \"name\": \"Alice Johnson\",\n  \"email\": \"alice@example.com\",\n  \"country_code\": \"NG\",\n  \"profile\": {\n    \"phone\": \"+2348012345678\",\n    \"address\": \"1 Marina Rd, Lagos\",\n    \"date_of_birth\": \"01/15/1990\",\n    \"id_number\": \"A12345678\",\n    \"id_type\": \"passport\"\n  }\n}\n```\n",
         "parameters": [
           {
             "in": "header",
@@ -8299,6 +8354,172 @@
           "Customers"
         ],
         "description": "Returns a single customer scoped to the calling integration.\n\nThe path id is the GlobalStack external identifier (`cust_…`) returned by\n`POST /v1/customers` and `GET /v1/customers`.\n\n### Errors\n\n- `400 invalid_input` — `customer_id` does not start with `cust_`. This catches\n  callers passing a non-GlobalStack id.\n- `404 not_found` — returned for **all** lookup misses:\n  - the id does not exist;\n  - the customer exists but belongs to a different integration;\n  \n\n  These cases share a single 404 response so a caller cannot distinguish \"doesn't\n  exist\" from \"belongs to someone else\".\n\n### Example\n\n```\nGET /v1/customers/cust_01HXYZABC1234567890ABCDEFG\n```\n"
+      },
+      "patch": {
+        "operationId": "CustomerController.update",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "customerId",
+            "required": true,
+            "schema": {
+              "pattern": "[^\\/#\\?]+?",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateCustomerDto"
+              }
+            }
+          },
+          "description": "UpdateCustomerDto",
+          "required": false
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/ApiSuccessEnvelope"
+                    },
+                    {
+                      "type": "object",
+                      "required": [
+                        "data",
+                        "meta"
+                      ],
+                      "properties": {
+                        "message": {
+                          "type": "string",
+                          "example": "Customer updated successfully"
+                        },
+                        "data": {
+                          "$ref": "#/components/schemas/CustomerResponse"
+                        },
+                        "meta": {
+                          "$ref": "#/components/schemas/ApiResponseMetaSchema"
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            },
+            "description": "Customer updated successfully"
+          },
+          "400": {
+            "description": "Possible codes: `bad_request` (body failed DTO validation — unknown field including type/country_code/merchant_reference/tier/kyc_status, bad email, date_of_birth not mm/dd/yyyy), `invalid_input` (customer_id is not a valid cust_… identifier, or an individual `name` was sent without whitespace). Branch on the `code` field of the response envelope.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/ApiErrorEnvelope"
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string",
+                          "enum": [
+                            "bad_request",
+                            "invalid_input"
+                          ]
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized — invalid or missing API key",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/ApiErrorEnvelope"
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string",
+                          "enum": [
+                            "authentication_failed"
+                          ]
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Customer not found in this integration",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/ApiErrorEnvelope"
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string",
+                          "enum": [
+                            "not_found"
+                          ]
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict — `duplicate_resource`: the new email is already in use by another customer in this integration (case-insensitive).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/ApiErrorEnvelope"
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string",
+                          "enum": [
+                            "duplicate_resource"
+                          ]
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        },
+        "summary": "Update a customer",
+        "tags": [
+          "Customers"
+        ],
+        "description": "Updates a customer scoped to the calling merchant's integration. Supports partial updates —\nomit any field to leave it unchanged. An empty body is valid and returns the current customer\nwith `200`.\n\n### Mutable fields\n\n- `name` — optional. Full name. Max 255 chars. Re-validated only when present in the patch;\n  `individual` customers must still have a whitespace-separated first + last name.\n- `email` — optional. Valid email. Max 255 chars. Per-integration uniqueness is enforced\n  case-insensitively — colliding with another customer's email returns\n  `409 duplicate_resource`.\n- `metadata` — optional. Free-form `Record<string, string>`. **Sending `metadata` replaces\n  the entire object** — existing keys not present in the new value are removed.\n- `profile` — optional. Field-by-field merge: only the sub-keys you send are written;\n  untouched slots are preserved. Sub-fields:\n  - `phone`, `address`, `id_number`, `id_type`, `business_licence` — strings.\n  - `date_of_birth` — must be `mm/dd/yyyy`.\n\nThere is no way to clear a `profile` or `metadata` key via this endpoint — omit a key to\nleave it; send a value to overwrite it.\n\n### Read-only fields\n\nThese are rejected with `400 bad_request` if included in the body (DTO validation rejects\nany unknown top-level key). Set them at create time and they remain fixed:\n\n- `type`\n- `country_code`\n- `merchant_reference`\n\n### Example\n\n```\nPATCH /v1/customers/cust_01HXYZABC1234567890ABCDEFG\n{\n  \"profile\": {\n    \"phone\": \"+2349999999999\"\n  },\n  \"metadata\": {\n    \"plan\": \"gold\"\n  }\n}\n```\n"
       }
     },
     "/v1/customers/{customerId}/verifications": {
