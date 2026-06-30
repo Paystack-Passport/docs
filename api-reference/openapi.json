@@ -1500,6 +1500,9 @@
           "merchant_reference": {
             "maxLength": 128,
             "type": "string"
+          },
+          "profile": {
+            "$ref": "#/components/schemas/CustomerProfileDto"
           }
         },
         "type": "object",
@@ -1588,6 +1591,10 @@
             "type": "string",
             "format": "date-time",
             "example": "2026-04-16T16:14:08.000Z"
+          },
+          "profile": {
+            "$ref": "#/components/schemas/CustomerProfileResponse",
+            "description": "Merchant-provided identity fields (only fields that were supplied)."
           }
         },
         "type": "object",
@@ -3013,6 +3020,75 @@
           "account_name",
           "account_number"
         ]
+      },
+      "CustomerProfileDto": {
+        "properties": {
+          "phone": {
+            "maxLength": 32,
+            "type": "string",
+            "minLength": 1
+          },
+          "address": {
+            "maxLength": 255,
+            "type": "string",
+            "minLength": 1
+          },
+          "date_of_birth": {
+            "pattern": "^(0[1-9]|1[0-2])\\/(0[1-9]|[12]\\d|3[01])\\/\\d{4}$",
+            "type": "string"
+          },
+          "id_number": {
+            "maxLength": 64,
+            "type": "string",
+            "minLength": 1
+          },
+          "id_type": {
+            "maxLength": 64,
+            "type": "string",
+            "minLength": 1
+          },
+          "business_licence": {
+            "maxLength": 64,
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "type": "object"
+      },
+      "CustomerProfileResponse": {
+        "properties": {
+          "phone": {
+            "type": "string",
+            "description": "Merchant-provided phone number",
+            "example": "+2348012345678"
+          },
+          "address": {
+            "type": "string",
+            "description": "Merchant-provided residential address",
+            "example": "1 Marina Rd, Lagos"
+          },
+          "date_of_birth": {
+            "type": "string",
+            "description": "Merchant-provided date of birth (mm/dd/yyyy)",
+            "example": "01/15/1990"
+          },
+          "id_number": {
+            "type": "string",
+            "description": "Merchant-provided ID document number",
+            "example": "A12345678"
+          },
+          "id_type": {
+            "type": "string",
+            "description": "Merchant-provided ID document type",
+            "example": "passport"
+          },
+          "business_licence": {
+            "type": "string",
+            "description": "Merchant-provided business registration number",
+            "example": "RC123456"
+          }
+        },
+        "type": "object"
       },
       "MeUserResponse": {
         "properties": {
@@ -7843,7 +7919,7 @@
             "description": "Customer created successfully"
           },
           "400": {
-            "description": "Request body failed validation, or Idempotency-Key header is malformed",
+            "description": "Request body failed validation (including a supplied-but-incomplete `profile` for the customer type, or a `date_of_birth` not in mm/dd/yyyy format), or Idempotency-Key header is malformed",
             "content": {
               "application/json": {
                 "schema": {
@@ -7949,7 +8025,7 @@
         "tags": [
           "Customers"
         ],
-        "description": "Creates a new customer scoped to the calling merchant's integration.\n\n### Body\n\n- `type` — required. One of `individual`, `business`.\n- `name` — required. Full name of the customer. Max 255 chars.\n- `email` — required. Valid email. Max 255 chars. Per-integration uniqueness\n  is enforced case-insensitively.\n- `country_code` — required. ISO-3166-1 alpha-2 (e.g. `NG`, `KE`).\n- `metadata` — optional. Free-form `Record<string, string>`.\n- `merchant_reference` — optional. Max 128 chars. Auto-generated as\n  `ref_<ULID>` when omitted. Per-integration unique.\n\n### Example\n\n```\nPOST /v1/customers\n{\n  \"type\": \"individual\",\n  \"name\": \"Alice Johnson\",\n  \"email\": \"alice@example.com\",\n  \"country_code\": \"NG\"\n}\n```\n",
+        "description": "Creates a new customer scoped to the calling merchant's integration.\n\n### Body\n\n- `type` — required. One of `individual`, `business`.\n- `name` — required. Full name of the customer. Max 255 chars.\n- `email` — required. Valid email. Max 255 chars. Per-integration uniqueness\n  is enforced case-insensitively.\n- `country_code` — required. ISO-3166-1 alpha-2 (e.g. `NG`, `KE`).\n- `metadata` — optional. Free-form `Record<string, string>`.\n- `merchant_reference` — optional. Max 128 chars. Auto-generated as\n  `ref_<ULID>` when omitted. Per-integration unique.\n- `profile` — optional object carrying the identity fields required to convert\n  (onramp/offramp). When supplied it must be complete for the customer `type`:\n  - `individual` requires `phone`, `address`, `date_of_birth`, `id_number`, `id_type`.\n  - `business` requires `phone`, `business_licence`.\n\n  Fields: `phone`, `address`, `id_number`, `id_type`, `business_licence` are strings;\n  `date_of_birth` must be `mm/dd/yyyy`. A supplied-but-incomplete `profile` for the\n  `type` returns `400 invalid_input`. These values are used as a fallback when an\n  identity verification has not already supplied them. Only the fields you provide are\n  stored and echoed back under `profile` in the response.\n\n### Example\n\n```\nPOST /v1/customers\n{\n  \"type\": \"individual\",\n  \"name\": \"Alice Johnson\",\n  \"email\": \"alice@example.com\",\n  \"country_code\": \"NG\",\n  \"profile\": {\n    \"phone\": \"+2348012345678\",\n    \"address\": \"1 Marina Rd, Lagos\",\n    \"date_of_birth\": \"01/15/1990\",\n    \"id_number\": \"A12345678\",\n    \"id_type\": \"passport\"\n  }\n}\n```\n",
         "parameters": [
           {
             "in": "header",
