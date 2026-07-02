@@ -54,17 +54,17 @@ A field passed schema validation but failed a semantic check the API applies bef
 
 **What to do** — Inspect the request payload for missing or malformed fields and retry.
 
-## Unsupported country {#unsupported_country}
+## Prohibited country {#prohibited_country}
 
-**HTTP 400** · `unsupported_country`
+**HTTP 400** · `prohibited_country`
 
-The country supplied is not supported for the requested operation (e.g. customer verification).
+The `country_code` supplied is on GlobalStack's compliance prohibited list, so the merchant or customer cannot be onboarded from it. Onboarding is open to all other countries; this is a presence restriction only — it does not limit which currencies or corridors an onboarded merchant can transact in.
 
 **Common causes**
-- The `country` value is outside GlobalStack's supported markets.
-- A typo or wrong ISO code in the country field.
+- Registering a merchant or creating a customer with a `country_code` on the prohibited list.
+- A typo producing a prohibited ISO code. (A value that isn't a valid ISO-3166-1 alpha-2 code at all returns `invalid_input` instead.)
 
-**What to do** — This country is not supported for verification. Choose a supported country and retry.
+**What to do** — This country is not available for onboarding.
 
 ## Account resolution failed {#account_resolution_failed}
 
