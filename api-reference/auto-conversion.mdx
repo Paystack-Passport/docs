@@ -16,7 +16,7 @@ Pass an explicit `currency` on [`POST /v1/wallets/:id/credentials`](/api-referen
 
 <CodeGroup>
 ```bash Auto-onramp (NGN on USDC wallet)
-curl https://api.globalstack.io/v1/wallets/wal_01HXYZ.../credentials \
+curl https://api.globalstack.io/v1/wallets/wal_01HXYZABC1234567890ABCDEFG/credentials \
   -H "Authorization: Bearer YOUR_SECRET_KEY" \
   -H "Content-Type: application/json" \
   -d '{
@@ -26,7 +26,7 @@ curl https://api.globalstack.io/v1/wallets/wal_01HXYZ.../credentials \
 ```
 
 ```bash Auto-offramp (USDC on NGN wallet)
-curl https://api.globalstack.io/v1/wallets/wal_01ABCD.../credentials \
+curl https://api.globalstack.io/v1/wallets/wal_01HXYZDEF9876543210ZYXWVUT/credentials \
   -H "Authorization: Bearer YOUR_SECRET_KEY" \
   -H "Content-Type: application/json" \
   -d '{
@@ -49,37 +49,38 @@ Cross-currency is admitted only when **every** condition below holds. Any failur
 - The credential currency must resolve to a supported currency row. An unknown code returns `404` `not_found`.
 
 <Note>
-  The set of currencies that support `canOnramp` / `canOfframp` is fixed by Paystack. If your wallet's currency isn't eligible for a given direction, cross-currency provisioning will fail — reach out to support to confirm coverage.
+  The set of currencies that support `canOnramp` / `canOfframp` is fixed by GlobalStack. If your wallet's currency isn't eligible for a given direction, cross-currency provisioning will fail — reach out to support to confirm coverage.
 </Note>
 
 ## Deposit lifecycle
 
-The deposit lifecycle differs from same-currency credentials. Instead of one `deposit.confirmed` webhook, a cross-currency deposit fires **conversion** webhooks:
+Cross-currency deposits skip the `deposit.*` topics entirely. The first webhook you receive is `conversion.created` (or `conversion.funds_received` — whichever the FX pipeline emits first for the run); the deposit terminals via the `conversion.*` topics:
 
 | Event | When it fires | Meaning |
 | --- | --- | --- |
-| `deposit.received` | Deposit arrived on the credential | Funds are held on the credential's own balance while conversion is in flight. |
-| `conversion.created` | Conversion quote issued | The FX conversion is registered; rate is locked. |
+| `conversion.created` | Conversion quote issued | The FX conversion is registered against the deposit; rate is locked. |
+| `conversion.funds_received` | FX Engine has custody of the source funds | The FX-side settlement leg is queued. |
 | `conversion.processing` | Conversion is executing | Money is moving through the FX rails. |
 | `conversion.success` | Conversion settled | The **wallet balance** has been credited in the wallet's currency. |
-| `conversion.failed` | Conversion did not settle | Funds are parked on the credential balance until Paystack drains it (see [Recovery](#recovery)). |
+| `conversion.failed` | Conversion did not settle | Funds are parked on the credential balance until GlobalStack drains it (see [Recovery on failure](#recovery-on-failure)). |
+| `conversion.returned` | Conversion reversed after success | Same "funds parked, contact support" recovery as `conversion.failed`. |
 
-Same-currency credentials continue to fire `deposit.received` followed by `deposit.confirmed`; cross-currency ones **never** fire `deposit.confirmed`.
+Same-currency credentials keep the original lifecycle across the `deposit.*` topics — `deposit.received` on arrival, then `deposit.held` if a tier gate applies, then `deposit.confirmed` when the credit settles (or `deposit.failed` if it doesn't). Cross-currency credentials **never** fire any `deposit.*` topic.
 
 <Info>
-  Rate is locked at deposit time. The actual conversion amount you see on `conversion.success` reflects the rate as of the deposit's arrival — not the rate as of the auto-conversion attempt.
+  Rate is locked at deposit time. The `destination_amount` you see on `conversion.success` reflects the rate as of the deposit's arrival, not the rate as of the auto-conversion attempt.
 </Info>
 
 ## Fees
 
-Auto-conversion fees follow the FX conversion contract: the destination amount is **net of fees**, and the fee breakdown is on the `conversion.*` webhook payloads. No separate fee event fires on the deposit itself.
+Auto-conversion fees follow the FX conversion contract: the destination amount is **net of fees**, and the fee breakdown is on the `conversion.*` webhook payloads. See [failure reasons](/api-reference/failure-reasons) for the codes surfaced on a failed conversion.
 
 ## Recovery on failure
 
-If `conversion.failed` fires, funds stay on the credential's own balance — no auto-retry (FX failures are typically structural, not transient). Contact Paystack support to drain the parked funds; ops will run a fresh conversion at the then-current rate. Once the drain lands, the wallet balance is credited and the credential balance clears.
+If `conversion.failed` (or `conversion.returned`) fires, funds stay on the credential's own balance — no auto-retry (FX failures are typically structural, not transient). Contact GlobalStack support to drain the parked funds; ops will run a fresh conversion at the then-current rate. Once the drain lands, the wallet balance is credited and the credential balance clears.
 
 <Warning>
-  There is no merchant-facing "retry" or "refund" endpoint in v1. Recovery goes through Paystack support.
+  There is no merchant-facing "retry" or "refund" endpoint in v1. Recovery goes through GlobalStack support.
 </Warning>
 
 ## When to use auto-conversion
