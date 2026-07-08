@@ -45,6 +45,7 @@
               "api-reference/authentication",
               "api-reference/idempotency",
               "api-reference/pagination",
+              "api-reference/auto-conversion",
               "webhooks/verify-signatures",
               "errors",
               "api-reference/failure-reasons"

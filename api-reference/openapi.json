@@ -2171,6 +2171,11 @@
               "fiat"
             ]
           },
+          "currency": {
+            "pattern": "^[A-Z]{2,10}$",
+            "type": "string",
+            "example": "NGN"
+          },
           "label": {
             "maxLength": 128,
             "type": "string"
@@ -10289,7 +10294,7 @@
             "description": "Wallet credential created successfully"
           },
           "400": {
-            "description": "Bad request. `bad_request` covers class-validator failures on the body (missing/invalid `network`, `type`, `label`, `metadata`, `merchantReference`). `invalid_input` covers domain-level rejections: a malformed `wal_…` path id, a malformed `Idempotency-Key` header, an unsupported `network` for the wallet currency, a fiat credential requested on a non-`bank` network (only `bank` is supported for fiat credentials today), or a supplied `type` that does not match the wallet's currency. Branch on the `code` field of the response envelope.",
+            "description": "Bad request. `bad_request` covers class-validator failures on the body (missing/invalid `network`, `type`, `currency`, `label`, `metadata`, `merchantReference`). `invalid_input` covers domain-level rejections: a malformed `wal_…` path id; a malformed `Idempotency-Key` header; an unsupported `network` for the credential's own currency; a fiat credential requested on a non-`bank` network (only `bank` is supported for fiat credentials today); a supplied `type` that does not match the wallet's currency on the same-currency path; a cross-currency pair that is not crypto↔fiat; or a cross-currency pair where either currency does not advertise the required `canOnramp` / `canOfframp` capability. Branch on the `code` field of the response envelope.",
             "content": {
               "application/json": {
                 "schema": {
@@ -10340,7 +10345,7 @@
             }
           },
           "404": {
-            "description": "Wallet not found in this integration",
+            "description": "Not found. `not_found` covers a wallet id that does not resolve in this integration OR a supplied `currency` code that does not resolve to a supported currency row.",
             "content": {
               "application/json": {
                 "schema": {
@@ -10395,7 +10400,7 @@
         "tags": [
           "Wallets"
         ],
-        "description": "Create a fiat or crypto funding credential on a wallet identified\nby the `wal_…` id in the path.\n\n`network` must be a network supported by the wallet's currency (e.g. `base`,\n`ethereum`, `solana` for crypto). For fiat credentials only `bank` is supported\ntoday — even if the wallet's currency advertises other fiat networks (e.g.\n`mobile_money`), a non-`bank` network is rejected with `invalid_input`. `type` is\noptional — when omitted it is derived from the wallet's currency; when supplied\nit must match the wallet's currency type. `merchantReference` is optional and is\ngenerated when not provided.\n"
+        "description": "Create a fiat or crypto funding credential on a wallet identified\nby the `wal_…` id in the path.\n\n## Same-currency credentials (default)\n\nBy default the credential's currency matches the wallet's currency — deposits\nland directly on the wallet balance. `network` must be a network supported by\nthe wallet's currency (e.g. `base`, `ethereum`, `solana` for crypto). For fiat\ncredentials only `bank` is supported today — even if the wallet's currency\nadvertises other fiat networks (e.g. `mobile_money`), a non-`bank` network is\nrejected with `invalid_input`. `type` is optional — when omitted it is derived\nfrom the wallet's currency; when supplied it must match the wallet's currency\ntype. `merchantReference` is optional and is generated when not provided.\n\n## Cross-currency credentials (auto-onramp / auto-offramp)\n\nPassing an explicit `currency` different from the wallet's currency creates a\ncross-currency credential. Every deposit is automatically converted into the\nwallet's currency at the FX rate live at deposit time:\n\n- **Auto-onramp** — a fiat currency on a crypto wallet (e.g. `NGN` on a `USDC`\n  wallet). The payer sends fiat; the wallet is credited in crypto.\n- **Auto-offramp** — a crypto currency on a fiat wallet (e.g. `USDC` on an\n  `NGN` wallet). The payer sends crypto; the wallet is credited in fiat.\n\nOnly crypto↔fiat pairs are supported — a crypto credential on a crypto wallet\n(or fiat on fiat) is rejected. Both currencies in the pair must have matching capabilities: `canOnramp` for auto-onramp, `canOfframp` for\nauto-offramp. `network` is validated against the **credential's own** currency,\nnot the wallet's — so an `NGN` credential on a `USDC` wallet uses `bank`, and a\n`USDC` credential on an `NGN` wallet uses `base` / `ethereum` / `solana`.\n"
       },
       "get": {
         "operationId": "CredentialController.list",

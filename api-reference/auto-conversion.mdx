@@ -1,0 +1,87 @@
+---
+title: "Auto-conversion credentials"
+description: "Accept deposits in one currency and settle them into a wallet in a different currency, automatically."
+---
+
+Wallet credentials can accept deposits in a currency that differs from the wallet's own — every arriving deposit is automatically converted into the wallet's currency at the FX rate live at deposit time. Two directions:
+
+- **Auto-onramp** — a fiat credential on a crypto wallet. The payer sends fiat; the wallet is credited in crypto.
+- **Auto-offramp** — a crypto credential on a fiat wallet. The payer sends crypto; the wallet is credited in fiat.
+
+Same-currency credentials — where the credential currency matches the wallet's currency — remain the default and credit the wallet balance directly, with no conversion.
+
+## Create a cross-currency credential
+
+Pass an explicit `currency` on [`POST /v1/wallets/:id/credentials`](/api-reference/openapi#tag/wallets/POST/v1/wallets/{id}/credentials) that is different from the wallet's currency. Currency codes are uppercase (`NGN`, `USDC`, `GHS`, `USDT`, `KES`, …).
+
+<CodeGroup>
+```bash Auto-onramp (NGN on USDC wallet)
+curl https://api.globalstack.io/v1/wallets/wal_01HXYZ.../credentials \
+  -H "Authorization: Bearer YOUR_SECRET_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "network": "bank",
+    "currency": "NGN"
+  }'
+```
+
+```bash Auto-offramp (USDC on NGN wallet)
+curl https://api.globalstack.io/v1/wallets/wal_01ABCD.../credentials \
+  -H "Authorization: Bearer YOUR_SECRET_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "network": "base",
+    "currency": "USDC"
+  }'
+```
+</CodeGroup>
+
+`network` is validated against the **credential's own** currency, not the wallet's. So an `NGN` credential uses `bank`; a `USDC` credential uses `base` / `ethereum` / `solana`.
+
+## Eligibility
+
+Cross-currency is admitted only when **every** condition below holds. Any failure returns a `400` with `invalid_input`.
+
+- The pair must be **crypto ↔ fiat**. Crypto ↔ crypto and fiat ↔ fiat are rejected.
+- **Both** currencies must advertise the matching direction capability:
+  - Auto-onramp requires `canOnramp` on the credential currency AND on the wallet currency.
+  - Auto-offramp requires `canOfframp` on both.
+- The credential currency must resolve to a supported currency row. An unknown code returns `404` `not_found`.
+
+<Note>
+  The set of currencies that support `canOnramp` / `canOfframp` is fixed by Paystack. If your wallet's currency isn't eligible for a given direction, cross-currency provisioning will fail — reach out to support to confirm coverage.
+</Note>
+
+## Deposit lifecycle
+
+The deposit lifecycle differs from same-currency credentials. Instead of one `deposit.confirmed` webhook, a cross-currency deposit fires **conversion** webhooks:
+
+| Event | When it fires | Meaning |
+| --- | --- | --- |
+| `deposit.received` | Deposit arrived on the credential | Funds are held on the credential's own balance while conversion is in flight. |
+| `conversion.created` | Conversion quote issued | The FX conversion is registered; rate is locked. |
+| `conversion.processing` | Conversion is executing | Money is moving through the FX rails. |
+| `conversion.success` | Conversion settled | The **wallet balance** has been credited in the wallet's currency. |
+| `conversion.failed` | Conversion did not settle | Funds are parked on the credential balance until Paystack drains it (see [Recovery](#recovery)). |
+
+Same-currency credentials continue to fire `deposit.received` followed by `deposit.confirmed`; cross-currency ones **never** fire `deposit.confirmed`.
+
+<Info>
+  Rate is locked at deposit time. The actual conversion amount you see on `conversion.success` reflects the rate as of the deposit's arrival — not the rate as of the auto-conversion attempt.
+</Info>
+
+## Fees
+
+Auto-conversion fees follow the FX conversion contract: the destination amount is **net of fees**, and the fee breakdown is on the `conversion.*` webhook payloads. No separate fee event fires on the deposit itself.
+
+## Recovery on failure
+
+If `conversion.failed` fires, funds stay on the credential's own balance — no auto-retry (FX failures are typically structural, not transient). Contact Paystack support to drain the parked funds; ops will run a fresh conversion at the then-current rate. Once the drain lands, the wallet balance is credited and the credential balance clears.
+
+<Warning>
+  There is no merchant-facing "retry" or "refund" endpoint in v1. Recovery goes through Paystack support.
+</Warning>
+
+## When to use auto-conversion
+
+Reach for auto-conversion when your payers want to pay in a familiar local currency but your treasury runs in a different one — the classic example is accepting NGN bank deposits into a USDC treasury without a manual conversion step per deposit. If your payers already hold funds in the same currency as your wallet, stick with same-currency credentials: they credit the wallet directly with no FX exposure.
