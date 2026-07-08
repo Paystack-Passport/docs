@@ -2235,13 +2235,14 @@
           },
           "details": {
             "type": "object",
-            "description": "Credential detail. For crypto credentials contains the network on create; the address is added once FX Engine mints the resource. For fiat credentials contains the FX Engine fiat-account details (account_name, account_number, bank_name, bank_code, currency) once provisioning completes.",
+            "description": "Credential detail. For crypto credentials contains the network on create; the address is added once FX Engine mints the resource. For fiat credentials contains the FX Engine fiat-account details (account_name, account_number, bank_name, bank_code, currency) once provisioning completes, plus an optional `reference` — a rail-specific deposit reference the merchant must echo on the wire when funding the account (e.g. ZAR bank rails such as ABSA). Present only for currencies whose rail requires it; treat its absence as \"no reference needed\" rather than an error.",
             "example": {
               "accountName": "Medard Ilunga",
               "accountNumber": "1234567890",
               "bankName": "Wema Bank",
               "bankCode": "035",
-              "currency": "NGN"
+              "currency": "NGN",
+              "reference": "GSVRYTZ496CM"
             }
           },
           "status": {
