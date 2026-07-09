@@ -1685,10 +1685,11 @@
           },
           "status": {
             "enum": [
+              "not_started",
+              "in_progress",
               "pending",
               "completed",
-              "failed",
-              "expired"
+              "failed"
             ],
             "type": "string",
             "description": "Current session status",
