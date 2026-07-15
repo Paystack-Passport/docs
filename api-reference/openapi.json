@@ -940,7 +940,7 @@
           },
           "deposit_instruction": {
             "type": "object",
-            "description": "Fiat deposit instruction returned by FX Engine; populated when the onramp is executed.",
+            "description": "Deposit instruction populated when the onramp is executed. Discriminated on `type`: `fiat` (bank onramps — the payer funds the returned bank account) or `mobile_money` (MoMo onramps — the payer authorizes the debit on their phone; the payload echoes the phone/provider and a human-readable prompt).",
             "example": {
               "version": 1,
               "type": "fiat",
