@@ -596,6 +596,21 @@
             "type": "string",
             "format": "date-time",
             "example": "2026-04-16T16:16:07.000Z"
+          },
+          "parent_transaction_id": {
+            "type": "string",
+            "nullable": true,
+            "description": "External id (txn_) of this row's parent transaction, when the row is part of a hierarchy. Null on tree roots and on historical rows.",
+            "example": null
+          },
+          "root_transaction_id": {
+            "type": "string",
+            "nullable": true,
+            "description": "External id (txn_) of this row's tree root. Equal to `id` for a row that is its own root. Null on historical rows written before the hierarchy feature.",
+            "example": "txn_01KPBG1Q3Z8X1Q6VJRE5R8ZFBG"
+          },
+          "related_transactions": {
+            "description": "Every other transaction in the same tree, ordered by creation time. Populated on detail responses and on list responses when `include_related=true`. Empty array when the row has no relatives; omitted otherwise."
           }
         },
         "type": "object",
@@ -4716,6 +4731,14 @@
           {
             "in": "query",
             "name": "created_before",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "include_related",
             "required": false,
             "schema": {
               "type": "string"
