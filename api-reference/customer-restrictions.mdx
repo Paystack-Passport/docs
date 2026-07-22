@@ -1,0 +1,57 @@
+---
+title: "Customer restrictions"
+description: "Why a capability the platform supports can be unavailable to a specific customer, and what to do about it."
+---
+
+`GET /v1/currencies` describes what the platform supports: each currency carries
+capability flags (`can_deposit`, `can_onramp`, …) that are the same for every caller.
+
+Some capabilities also depend on the state of the customer you are acting for. Pass the
+optional `customer_id` query parameter and the same flags answer a narrower question —
+what can **this customer** do right now? The capability filters (`can_deposit=true`, …)
+are then evaluated against the customer's view too.
+
+## Reading `customer_restrictions`
+
+When a capability the platform supports is unavailable to the customer, the flag reads
+`false` and the row carries a `customer_restrictions` entry explaining why:
+
+```json
+{
+  "code": "NGN",
+  "type": "fiat",
+  "can_deposit": false,
+  "customer_restrictions": [
+    {
+      "capability": "deposit",
+      "reason": "customer_kyc_not_approved",
+      "next_steps": {
+        "action": "Drive the customer through KYC via POST /v1/customers/:id/verifications, then retry.",
+        "docs_url": "https://docs.globalstack.io/api-reference/customer-restrictions"
+      }
+    }
+  ]
+}
+```
+
+`customer_restrictions` lists exactly the difference between the platform view and the
+customer's view:
+
+- It appears only when you pass `customer_id`, and only on rows where a capability the
+  platform supports was removed by the customer's state.
+- Capabilities the platform itself does not support are never listed — a flag that is
+  `false` in the platform view stays a plain `false`.
+
+<Note>
+  Branch on `reason`, not on the `next_steps` copy — the code is stable, the wording is
+  not. This mirrors how you branch on `failure_reason` for failed money movements. See
+  [Failure reasons](/api-reference/failure-reasons).
+</Note>
+
+## Restriction reasons
+
+Branch on `reason` — it is a stable, machine-readable code.
+
+| Reason | Meaning | How to lift it |
+| --- | --- | --- |
+| `customer_kyc_not_approved` | The customer has not completed KYC verification, so fiat deposits are unavailable to them. | Start a verification with `POST /v1/customers/{customerId}/verifications` and have the customer complete it. Once their `kyc_status` is `approved`, the restriction disappears. |
