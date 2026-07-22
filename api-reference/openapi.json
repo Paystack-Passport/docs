@@ -9855,7 +9855,7 @@
             "description": "Supported currencies fetched successfully"
           },
           "400": {
-            "description": "One of the boolean/enum filters failed validation",
+            "description": "One of the boolean/enum filters or customer_id failed validation",
             "content": {
               "application/json": {
                 "schema": {
