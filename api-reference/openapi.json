@@ -2008,6 +2008,11 @@
             },
             "type": "array"
           },
+          "fees": {
+            "$ref": "#/components/schemas/CurrencyFeesResponse",
+            "description": "Conversion fees for this currency, keyed by payment method (settlement network). null when the caller is unauthenticated pre-KYC, when the currency has no published fees (e.g. crypto), or when fee lookup upstream failed.",
+            "nullable": true
+          },
           "created_at": {
             "type": "string",
             "format": "date-time",
@@ -3300,6 +3305,20 @@
           "outbound"
         ]
       },
+      "CurrencyFeesResponse": {
+        "properties": {
+          "payment_methods": {
+            "items": {
+              "$ref": "#/components/schemas/PaymentMethodFeesResponse"
+            },
+            "type": "array"
+          }
+        },
+        "type": "object",
+        "required": [
+          "payment_methods"
+        ]
+      },
       "CredentialWalletRef": {
         "properties": {
           "id": {
@@ -3515,6 +3534,32 @@
           "max"
         ]
       },
+      "PaymentMethodFeesResponse": {
+        "properties": {
+          "network": {
+            "enum": [
+              "mobile_money",
+              "bank",
+              "solana",
+              "base",
+              "ethereum"
+            ],
+            "type": "string",
+            "description": "Settlement network these fees apply to.",
+            "example": "bank"
+          },
+          "offramp": {
+            "$ref": "#/components/schemas/FeeScheduleResponse"
+          },
+          "onramp": {
+            "$ref": "#/components/schemas/FeeScheduleResponse"
+          }
+        },
+        "type": "object",
+        "required": [
+          "network"
+        ]
+      },
       "BeneficiaryFiatProviderResponse": {
         "properties": {
           "id": {
@@ -3537,6 +3582,85 @@
           "id",
           "name",
           "code"
+        ]
+      },
+      "FeeScheduleResponse": {
+        "properties": {
+          "tiers": {
+            "items": {
+              "$ref": "#/components/schemas/FeeTierResponse"
+            },
+            "type": "array"
+          },
+          "network_fees": {
+            "$ref": "#/components/schemas/FeeNetworkFeesResponse"
+          }
+        },
+        "type": "object",
+        "required": [
+          "tiers",
+          "network_fees"
+        ]
+      },
+      "FeeTierResponse": {
+        "properties": {
+          "transaction_value_min": {
+            "type": "number",
+            "description": "Inclusive lower bound of the tier in the currency's minor units, or null when unbounded below.",
+            "example": 4001
+          },
+          "transaction_value_max": {
+            "type": "number",
+            "description": "Inclusive upper bound of the tier in the currency's minor units, or null when unbounded above.",
+            "example": 22000
+          },
+          "fee_type": {
+            "type": "string",
+            "enum": [
+              "percentage",
+              "flat"
+            ],
+            "example": "percentage"
+          },
+          "fee_value": {
+            "type": "number",
+            "description": "Fee value — a percentage when fee_type is percentage, otherwise a flat amount in the currency's minor units.",
+            "example": 1.5
+          },
+          "min_fee": {
+            "type": "number",
+            "description": "Minimum fee floor (currency minor units), or null when unbounded.",
+            "example": 60
+          },
+          "max_fee": {
+            "type": "number",
+            "description": "Maximum fee cap (currency minor units), or null when uncapped.",
+            "example": 330
+          }
+        },
+        "type": "object",
+        "required": [
+          "fee_type",
+          "fee_value"
+        ]
+      },
+      "FeeNetworkFeesResponse": {
+        "properties": {
+          "ethereum": {
+            "type": "number"
+          },
+          "base": {
+            "type": "number"
+          },
+          "solana": {
+            "type": "number"
+          }
+        },
+        "type": "object",
+        "required": [
+          "ethereum",
+          "base",
+          "solana"
         ]
       }
     },
@@ -9848,7 +9972,7 @@
         "tags": [
           "Supported Currencies"
         ],
-        "description": "List supported currencies with networks, directional transaction limits\n(inbound / outbound), and capability flags (`can_onramp`, `can_offramp`,\n`can_deposit`, `can_convert`). Flag meaning depends on `type` — see the API\noverview.\n\nEach row is unique by `code` plus `country_code` (for example every WAEMU\ncountry has its own `XOF` entry with its own networks and limits). Use filters\nto find currencies that support a given operation or network, then paginate\nwith `page` and `per_page`.\n\nFor which countries and networks we cover, start with `GET /v1/countries`. For\nbanks and mobile money operators (`provider_id` on fiat beneficiaries), use\n`GET /v1/countries/{country_code}/providers` — not this resource.\n\n### Filter behavior\n\n- `code` — filter by ISO currency code (e.g. `XOF` returns all WAEMU country\n  rows).\n- `type` — `fiat` or `crypto`.\n- `country_code` — filter by ISO 3166-1 alpha-2 country code.\n- `can_onramp` — boolean. Currencies that can participate in onramps. For\n  fiat, usable as onramp source; for crypto, as onramp destination.\n- `can_offramp` — boolean. Currencies that can participate in offramps. For\n  fiat, usable as offramp destination; for crypto, as offramp source.\n- `can_deposit` — boolean. Currencies that can participate in deposits\n  (typically crypto only).\n- `can_convert` — boolean. Currencies that participate in wallet-to-wallet\n  conversions.\n- `network` — only currencies that include this network in their `networks`\n  array.\n- `min_inbound_amount` — decimal string. Only currencies where at least one\n  network has inbound min less than or equal to this value.\n- `max_inbound_amount` — decimal string. Only currencies where at least one\n  network has inbound max greater than or equal to this value.\n- `min_outbound_amount` — decimal string. Only currencies where at least one\n  network has outbound min less than or equal to this value.\n- `max_outbound_amount` — decimal string. Only currencies where at least one\n  network has outbound max greater than or equal to this value.\n- `page` — integer, 1-indexed page number.\n- `per_page` — integer page size (max 200).\n\n### Example\n\n```\nGET /v1/currencies?type=fiat&can_offramp=true\n```\n"
+        "description": "List supported currencies with networks, directional transaction limits\n(inbound / outbound), capability flags (`can_onramp`, `can_offramp`,\n`can_deposit`, `can_convert`), and current conversion fees (`fees`) keyed by\nsettlement network. Flag meaning depends on `type` — see the API overview.\n\nEach `fees.payment_methods` entry describes the tiered fee ladder and\nper-chain network fees for its settlement network, split by `offramp` /\n`onramp` when both directions are supported. `fees` is `null` for crypto\ncurrencies and when fee data is unavailable.\n\nEach row is unique by `code` plus `country_code` (for example every WAEMU\ncountry has its own `XOF` entry with its own networks and limits). Use filters\nto find currencies that support a given operation or network, then paginate\nwith `page` and `per_page`.\n\nFor which countries and networks we cover, start with `GET /v1/countries`. For\nbanks and mobile money operators (`provider_id` on fiat beneficiaries), use\n`GET /v1/countries/{country_code}/providers` — not this resource.\n\n### Filter behavior\n\n- `code` — filter by ISO currency code (e.g. `XOF` returns all WAEMU country\n  rows).\n- `type` — `fiat` or `crypto`.\n- `country_code` — filter by ISO 3166-1 alpha-2 country code.\n- `can_onramp` — boolean. Currencies that can participate in onramps. For\n  fiat, usable as onramp source; for crypto, as onramp destination.\n- `can_offramp` — boolean. Currencies that can participate in offramps. For\n  fiat, usable as offramp destination; for crypto, as offramp source.\n- `can_deposit` — boolean. Currencies that can participate in deposits\n  (typically crypto only).\n- `can_convert` — boolean. Currencies that participate in wallet-to-wallet\n  conversions.\n- `network` — only currencies that include this network in their `networks`\n  array.\n- `min_inbound_amount` — decimal string. Only currencies where at least one\n  network has inbound min less than or equal to this value.\n- `max_inbound_amount` — decimal string. Only currencies where at least one\n  network has inbound max greater than or equal to this value.\n- `min_outbound_amount` — decimal string. Only currencies where at least one\n  network has outbound min less than or equal to this value.\n- `max_outbound_amount` — decimal string. Only currencies where at least one\n  network has outbound max greater than or equal to this value.\n- `page` — integer, 1-indexed page number.\n- `per_page` — integer page size (max 200).\n\n### Example\n\n```\nGET /v1/currencies?type=fiat&can_offramp=true\n```\n"
       }
     },
     "/v1/currencies/{code}/rates": {
