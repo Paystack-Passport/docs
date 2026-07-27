@@ -48,7 +48,8 @@
               "api-reference/auto-conversion",
               "webhooks/verify-signatures",
               "errors",
-              "api-reference/failure-reasons"
+              "api-reference/failure-reasons",
+              "api-reference/customer-restrictions"
             ]
           }
         ]
