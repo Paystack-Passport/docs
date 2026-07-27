@@ -57,6 +57,10 @@
       {
         "tab": "📖 API Reference",
         "openapi": "api-reference/openapi.json"
+      },
+      {
+        "tab": "🗒️ Changelog",
+        "pages": ["changelog"]
       }
     ]
   },

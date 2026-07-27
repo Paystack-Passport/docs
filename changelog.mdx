@@ -1,0 +1,31 @@
+---
+title: "Changelog"
+description: "Notable changes to the GlobalStack API — new endpoints, behavior changes, and new error and failure codes."
+---
+
+Changes that affect how you integrate: new endpoints and fields, behavior changes, and new error
+or failure codes. Breaking changes are called out explicitly.
+
+<Update label="2026-07-27" tags={["Behavior change"]}>
+  ## USDC amounts are limited to 2 decimal places
+
+  USDC settles in whole US cents, so USDC amounts now accept at most **2 significant decimal
+  places**. Trailing zeros are fine — `2.980000` is accepted, `2.980228` is rejected with
+  [`400 invalid_amount_precision`](/errors#invalid_amount_precision).
+
+  This applies to `source_amount` on offramp quotes and conversion quotes, and to `amount` on
+  transfers. The request is rejected before anything is created, so a rejected call leaves no
+  quote and moves no funds.
+
+  If you derive amounts from a balance or a destination-anchored price, round to 2 decimal places
+  before sending them.
+
+  ## Offramps fail immediately when funding fails
+
+  An offramp whose funding transfer cannot be completed now fails as soon as that becomes known,
+  with the new failure reason [`funding_failed`](/api-reference/failure-reasons). Previously the
+  offramp stayed in `processing` until its provider quote expired, roughly an hour later.
+
+  No funds move in this case. Branch on `failure_reason` to retry with a new quote — and expect
+  the `offramp.failed` webhook sooner than before.
+</Update>
