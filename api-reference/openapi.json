@@ -2015,6 +2015,13 @@
             "description": "Conversion fees for this currency, keyed by payment method (settlement network). null when the caller is unauthenticated pre-KYC, when the currency has no published fees (e.g. crypto), or when fee lookup upstream failed.",
             "nullable": true
           },
+          "customer_restrictions": {
+            "items": {
+              "$ref": "#/components/schemas/CustomerRestrictionResponse"
+            },
+            "type": "array",
+            "description": "Present only when customer_id was provided AND this customer's state removes a capability the platform otherwise supports. Each entry is one downgraded capability with a machine reason and next steps — the exact diff between the platform view and this customer's view. Capabilities the platform itself does not support are never listed here."
+          },
           "created_at": {
             "type": "string",
             "format": "date-time",
@@ -3321,6 +3328,35 @@
           "payment_methods"
         ]
       },
+      "CustomerRestrictionResponse": {
+        "properties": {
+          "capability": {
+            "enum": [
+              "deposit"
+            ],
+            "type": "string",
+            "description": "The capability removed for this customer",
+            "example": "deposit"
+          },
+          "reason": {
+            "enum": [
+              "customer_kyc_not_approved"
+            ],
+            "type": "string",
+            "description": "Stable machine reason for the restriction",
+            "example": "customer_kyc_not_approved"
+          },
+          "next_steps": {
+            "$ref": "#/components/schemas/CustomerRestrictionNextStepsResponse"
+          }
+        },
+        "type": "object",
+        "required": [
+          "capability",
+          "reason",
+          "next_steps"
+        ]
+      },
       "CredentialWalletRef": {
         "properties": {
           "id": {
@@ -3560,6 +3596,23 @@
         "type": "object",
         "required": [
           "network"
+        ]
+      },
+      "CustomerRestrictionNextStepsResponse": {
+        "properties": {
+          "action": {
+            "type": "string",
+            "description": "What to do to lift the restriction"
+          },
+          "docs_url": {
+            "type": "string",
+            "description": "Documentation link for the restriction"
+          }
+        },
+        "type": "object",
+        "required": [
+          "action",
+          "docs_url"
         ]
       },
       "BeneficiaryFiatProviderResponse": {
@@ -9843,6 +9896,14 @@
           },
           {
             "in": "query",
+            "name": "customer_id",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
             "name": "can_onramp",
             "required": false,
             "schema": {
@@ -9920,7 +9981,7 @@
             "description": "Supported currencies fetched successfully"
           },
           "400": {
-            "description": "One of the boolean/enum filters failed validation",
+            "description": "One of the boolean/enum filters or customer_id failed validation",
             "content": {
               "application/json": {
                 "schema": {
@@ -9968,13 +10029,38 @@
                 }
               }
             }
+          },
+          "404": {
+            "description": "customer_id does not match a customer in this integration",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/ApiErrorEnvelope"
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string",
+                          "enum": [
+                            "not_found"
+                          ]
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
           }
         },
         "summary": "List currencies",
         "tags": [
           "Supported Currencies"
         ],
-        "description": "List supported currencies with networks, directional transaction limits\n(inbound / outbound), capability flags (`can_onramp`, `can_offramp`,\n`can_deposit`, `can_convert`), and current conversion fees (`fees`) keyed by\nsettlement network. Flag meaning depends on `type` — see the API overview.\n\nEach `fees.payment_methods` entry describes the tiered fee ladder and\nper-chain network fees for its settlement network, split by `offramp` /\n`onramp` when both directions are supported. `fees` is `null` for crypto\ncurrencies and when fee data is unavailable.\n\nEach row is unique by `code` plus `country_code` (for example every WAEMU\ncountry has its own `XOF` entry with its own networks and limits). Use filters\nto find currencies that support a given operation or network, then paginate\nwith `page` and `per_page`.\n\nFor which countries and networks we cover, start with `GET /v1/countries`. For\nbanks and mobile money operators (`provider_id` on fiat beneficiaries), use\n`GET /v1/countries/{country_code}/providers` — not this resource.\n\n### Filter behavior\n\n- `code` — filter by ISO currency code (e.g. `XOF` returns all WAEMU country\n  rows).\n- `type` — `fiat` or `crypto`.\n- `country_code` — filter by ISO 3166-1 alpha-2 country code.\n- `can_onramp` — boolean. Currencies that can participate in onramps. For\n  fiat, usable as onramp source; for crypto, as onramp destination.\n- `can_offramp` — boolean. Currencies that can participate in offramps. For\n  fiat, usable as offramp destination; for crypto, as offramp source.\n- `can_deposit` — boolean. Currencies that can participate in deposits\n  (typically crypto only).\n- `can_convert` — boolean. Currencies that participate in wallet-to-wallet\n  conversions.\n- `network` — only currencies that include this network in their `networks`\n  array.\n- `min_inbound_amount` — decimal string. Only currencies where at least one\n  network has inbound min less than or equal to this value.\n- `max_inbound_amount` — decimal string. Only currencies where at least one\n  network has inbound max greater than or equal to this value.\n- `min_outbound_amount` — decimal string. Only currencies where at least one\n  network has outbound min less than or equal to this value.\n- `max_outbound_amount` — decimal string. Only currencies where at least one\n  network has outbound max greater than or equal to this value.\n- `page` — integer, 1-indexed page number.\n- `per_page` — integer page size (max 200).\n\n### Example\n\n```\nGET /v1/currencies?type=fiat&can_offramp=true\n```\n"
+        "description": "List supported currencies with networks, directional transaction limits\n(inbound / outbound), capability flags (`can_onramp`, `can_offramp`,\n`can_deposit`, `can_convert`), and current conversion fees (`fees`) keyed by\nsettlement network. Flag meaning depends on `type` — see the API overview.\n\nEach `fees.payment_methods` entry describes the tiered fee ladder and\nper-chain network fees for its settlement network, split by `offramp` /\n`onramp` when both directions are supported. `fees` is `null` for crypto\ncurrencies and when fee data is unavailable.\n\nEach row is unique by `code` plus `country_code` (for example every WAEMU\ncountry has its own `XOF` entry with its own networks and limits). Use filters\nto find currencies that support a given operation or network, then paginate\nwith `page` and `per_page`.\n\nFor which countries and networks we cover, start with `GET /v1/countries`. For\nbanks and mobile money operators (`provider_id` on fiat beneficiaries), use\n`GET /v1/countries/{country_code}/providers` — not this resource.\n\n### Platform view vs customer view\n\nWithout `customer_id`, the capability flags answer \"can this be done on the\nplatform\" — they are the same for every caller.\n\nPass the optional `customer_id` query parameter (a customer id, `cust_…`) and\nthe same flags answer a narrower question: can **this customer** do this right\nnow? Capabilities that depend on the customer's state are downgraded — today,\nfiat `can_deposit` reads `false` when the customer's KYC is not approved. The\ncapability filters (`can_deposit=true`, …) are then evaluated against the\ncustomer's view too, so a filtered listing never advertises an operation the\ncustomer would be blocked from.\n\nEvery downgraded row carries a `customer_restrictions` array explaining the\ndowngrade. Each entry has:\n\n- `capability` — the capability that was removed (e.g. `deposit`).\n- `reason` — a stable machine code (e.g. `customer_kyc_not_approved`).\n- `next_steps` — `{ action, docs_url }` with what to do about it.\n\n`customer_restrictions` entries are the exact diff between the platform view\nand the customer view: they appear **only** for capabilities the platform\nsupports (`true` at platform level) that the customer's state removes. A\ncapability that is `false` at platform level is never annotated, and the field\nis omitted entirely on rows with no downgrade and in the platform view.\n\nAn unknown `customer_id`, or one belonging to another integration, returns\n404 `not_found`; a malformed one returns 400 `invalid_input`. See the full\n[customer restrictions reference](https://docs.globalstack.io/api-reference/customer-restrictions)\nfor all restriction reasons.\n\n### Filter behavior\n\n- `code` — filter by ISO currency code (e.g. `XOF` returns all WAEMU country\n  rows).\n- `type` — `fiat` or `crypto`.\n- `country_code` — filter by ISO 3166-1 alpha-2 country code.\n- `customer_id` — customer id (`cust_…`). Switches the listing to that\n  customer's view (see above).\n- `can_onramp` — boolean. Currencies that can participate in onramps. For\n  fiat, usable as onramp source; for crypto, as onramp destination.\n- `can_offramp` — boolean. Currencies that can participate in offramps. For\n  fiat, usable as offramp destination; for crypto, as offramp source.\n- `can_deposit` — boolean. Currencies that can participate in deposits\n  (typically crypto only).\n- `can_convert` — boolean. Currencies that participate in wallet-to-wallet\n  conversions.\n- `network` — only currencies that include this network in their `networks`\n  array.\n- `min_inbound_amount` — decimal string. Only currencies where at least one\n  network has inbound min less than or equal to this value.\n- `max_inbound_amount` — decimal string. Only currencies where at least one\n  network has inbound max greater than or equal to this value.\n- `min_outbound_amount` — decimal string. Only currencies where at least one\n  network has outbound min less than or equal to this value.\n- `max_outbound_amount` — decimal string. Only currencies where at least one\n  network has outbound max greater than or equal to this value.\n- `page` — integer, 1-indexed page number.\n- `per_page` — integer page size (max 200).\n\n### Example\n\n```\nGET /v1/currencies?type=fiat&can_offramp=true\n```\n"
       }
     },
     "/v1/currencies/{code}/rates": {
