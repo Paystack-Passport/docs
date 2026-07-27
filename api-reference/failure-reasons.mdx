@@ -47,6 +47,7 @@ These apply to a failed `onramp`, `offramp`, `conversion`, or `transfer`.
 | `failure_reason` | `failure_reason_message` |
 | --- | --- |
 | `insufficient_funds` | There were not enough funds to complete this transaction. |
+| `funding_failed` | This transaction failed before any funds moved: its funding transfer could not be completed. |
 | `temporarily_unavailable` | This transaction could not be completed right now. Please try again later. |
 | `cancelled` | The transaction was cancelled. |
 | `reversed` | The transaction was reversed. |
@@ -55,6 +56,10 @@ These apply to a failed `onramp`, `offramp`, `conversion`, or `transfer`.
 `temporarily_unavailable` is the retryable one — retry the request with backoff. `failed` is
 deliberately generic: a provider decline, invalid upstream input, a released hold, and anything
 otherwise unrecognised all collapse to it.
+
+`funding_failed` is reported on an offramp whose funding transfer could not be completed. The
+offramp fails immediately rather than sitting in `processing` until its quote expires, and no funds
+moved — create a new quote and retry.
 
 ## Verification (KYC) codes
 
