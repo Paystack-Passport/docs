@@ -940,7 +940,7 @@
           },
           "deposit_instruction": {
             "type": "object",
-            "description": "Deposit instruction populated when the onramp is executed. Discriminated on `type`: `fiat` (bank onramps — the payer funds the returned bank account) or `mobile_money` (MoMo onramps — the payer authorizes the debit on their phone; the payload echoes the phone/provider and a human-readable prompt).",
+            "description": "Deposit instruction populated when the onramp is executed. Discriminated on `type`: `fiat` (bank onramps — the payer funds the returned bank account) or `mobile_money` (MoMo onramps — the payer authorizes the debit on their phone; the payload echoes the phone/provider and a human-readable prompt). For `fiat`, when FX Engine returns a rail-specific `depositReference`, the payer MUST include it in the transfer narration/reference to ensure funds are allocated to this onramp; `message` echoes a human-readable prompt to that effect. Both `depositReference` and `message` are omitted when the rail does not require a reference.",
             "example": {
               "version": 1,
               "type": "fiat",
@@ -948,7 +948,9 @@
               "accountNumber": "0123456789",
               "bankName": "Access Bank",
               "bankCode": "000014",
-              "expiresAt": "2026-06-03T16:14:08.000Z"
+              "expiresAt": "2026-06-03T16:14:08.000Z",
+              "depositReference": "GSVRYTZ496CM",
+              "message": "Include the deposit_reference in the transfer narration/reference so funds are correctly allocated to this deposit."
             }
           },
           "failure_reason": {
