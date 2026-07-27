@@ -54,6 +54,17 @@ A field passed schema validation but failed a semantic check the API applies bef
 
 **What to do** — Inspect the request payload for missing or malformed fields and retry.
 
+## Invalid amount precision {#invalid_amount_precision}
+
+**HTTP 400** · `invalid_amount_precision`
+
+The amount carries more decimal places than the currency can settle. USDC settles in whole US cents, so USDC amounts support at most **2 significant decimal places**. Trailing zeros are fine — `2.980000` is accepted, `2.980228` is rejected.
+
+**Common causes**
+- A high-precision USDC `source_amount` or `amount` on an offramp quote, conversion quote, or transfer — for example a 6-decimal value taken directly from a balance or a destination-anchored price calculation.
+
+**What to do** — The amount has more decimal places than the currency can settle. Reduce it to the stated maximum (e.g. 2 decimal places for USDC — trailing zeros are fine) and retry.
+
 ## Prohibited country {#prohibited_country}
 
 **HTTP 400** · `prohibited_country`
