@@ -269,3 +269,14 @@ An unexpected server error occurred.
 - An unhandled condition on the server.
 
 **What to do** — Retry the request after a short delay. If the failure persists, contact support.
+
+## Upstream service unavailable {#external_service_unavailable}
+
+**HTTP 500** · `external_service_unavailable`
+
+An upstream service required to complete the request was unavailable or rejected the request. The failure detail is recorded on our side and never returned in the response.
+
+**Common causes**
+- A transient upstream outage, timeout, or rejection while fulfilling the request (for example, while creating a deposit credential).
+
+**What to do** — The request was not completed. Retry after a short delay; if the failure persists, contact support.
