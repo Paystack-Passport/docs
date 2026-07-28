@@ -280,3 +280,14 @@ An upstream service required to complete the request was unavailable or rejected
 - A transient upstream outage, timeout, or rejection while fulfilling the request (for example, while creating a deposit credential).
 
 **What to do** — The request was not completed. Retry after a short delay; if the failure persists, contact support.
+
+## Configuration error {#configuration_error}
+
+**HTTP 500** · `configuration_error`
+
+The service is misconfigured for the requested operation. This is a deploy-time issue on our side, not something the caller can fix.
+
+**Common causes**
+- A required server-side configuration value is missing or invalid in the current environment.
+
+**What to do** — Nothing on your end resolves this. Contact support with the `request_id` if it persists.
