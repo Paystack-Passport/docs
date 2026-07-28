@@ -4398,7 +4398,7 @@
             "description": "Transfer executed successfully"
           },
           "400": {
-            "description": "Request body failed validation, the wallet_id/beneficiary_id is not a valid wal_…/ben_… id, the beneficiary is not crypto, the wallet and beneficiary currencies differ, a supplied source_currency/destination_currency does not match, the currency is not crypto / not transfer-enabled, the network is not supported, the amount is outside the network range, or the Idempotency-Key header is malformed",
+            "description": "Request body failed validation, the wallet_id/beneficiary_id is not a valid wal_…/ben_… id, the beneficiary is not crypto, the wallet and beneficiary currencies differ, a supplied source_currency/destination_currency does not match, the currency is not crypto / not transfer-enabled, the network is not supported, the amount is outside the network range or has more decimal places than the currency settles (`invalid_amount_precision` — USDC supports at most 2, trailing zeros allowed), or the Idempotency-Key header is malformed",
             "content": {
               "application/json": {
                 "schema": {
@@ -4412,7 +4412,8 @@
                         "code": {
                           "type": "string",
                           "enum": [
-                            "invalid_input"
+                            "invalid_input",
+                            "invalid_amount_precision"
                           ]
                         }
                       }
@@ -4555,7 +4556,7 @@
         "tags": [
           "Transfers"
         ],
-        "description": "Execute a **crypto transfer**: pay out crypto from one of your wallets to a crypto\nbeneficiary on the wallet's currency and network. This is the crypto outbound equivalent of an offramp.\n\n`amount` is\na decimal string within the currency network's outbound range. `source_currency` and\n`destination_currency` are optional; when supplied they must match the wallet and\nbeneficiary currencies respectively, otherwise the request is rejected with\n`400 invalid_input`. `reference` is your idempotency reference and must be unique\nwithin your integration; a reused reference returns `409 duplicate_resource`.\n\nThe transfer is created in the `processing` state and advances asynchronously\n(`processing` → `success`/`failed`). Send an `Idempotency-Key` header to make\nretries safe.\n",
+        "description": "Execute a **crypto transfer**: pay out crypto from one of your wallets to a crypto\nbeneficiary on the wallet's currency and network. This is the crypto outbound equivalent of an offramp.\n\n`amount` is\na decimal string within the currency network's outbound range. `source_currency` and\n`destination_currency` are optional; when supplied they must match the wallet and\nbeneficiary currencies respectively, otherwise the request is rejected with\n`400 invalid_input`. `reference` is your idempotency reference and must be unique\nwithin your integration; a reused reference returns `409 duplicate_resource`.\n\nThe transfer is created in the `processing` state and advances asynchronously\n(`processing` → `success`/`failed`). Send an `Idempotency-Key` header to make\nretries safe.\n\nUSDC amounts settle in whole US cents: `amount` may carry at most **2 significant\ndecimal places**. Trailing zeros are fine — `2.980000` is accepted, `2.980228` is rejected\nwith `400 invalid_amount_precision`.\n",
         "parameters": [
           {
             "in": "header",
@@ -5409,7 +5410,7 @@
             "description": "Quote created successfully"
           },
           "400": {
-            "description": "Request body failed validation (wallet_id / beneficiary_id / source_amount), the wallet_id/beneficiary_id is not a valid wal_…/ben_… id, source_amount is not a positive decimal, the wallet has no credential to derive source_network from, or the Idempotency-Key header is malformed",
+            "description": "Request body failed validation (wallet_id / beneficiary_id / source_amount), the wallet_id/beneficiary_id is not a valid wal_…/ben_… id, source_amount is not a positive decimal, source_amount has more decimal places than the source currency settles (`invalid_amount_precision` — USDC supports at most 2, trailing zeros allowed), the wallet has no credential to derive source_network from, or the Idempotency-Key header is malformed",
             "content": {
               "application/json": {
                 "schema": {
@@ -5423,7 +5424,8 @@
                         "code": {
                           "type": "string",
                           "enum": [
-                            "invalid_input"
+                            "invalid_input",
+                            "invalid_amount_precision"
                           ]
                         }
                       }
@@ -5514,7 +5516,7 @@
         "tags": [
           "Quotes"
         ],
-        "description": "Creates an **offramp quote** — a short-lived, priced offer to convert the crypto\nheld by the wallet identified by `wallet_id` into fiat paid out to `beneficiary_id`.\n\nThe wallet's own currency (e.g. `USDC`) is the source; the beneficiary's currency\n(e.g. `NGN`) is the destination. `source_network` is derived from a credential on\nthe wallet; `destination_network` is the beneficiary's payout rail. The beneficiary\nmust belong to the same customer as the wallet. `narration` is optional and echoed\nback as the quote `reference`.\n\nThe quote is created with `status: active` and an `expires_at` in the near future.\n\nYou can optionally pass `source_currency` and `destination_currency` as consistency checks — if they do not match the wallet or beneficiary, we reject the request immediately.\n",
+        "description": "Creates an **offramp quote** — a short-lived, priced offer to convert the crypto\nheld by the wallet identified by `wallet_id` into fiat paid out to `beneficiary_id`.\n\nThe wallet's own currency (e.g. `USDC`) is the source; the beneficiary's currency\n(e.g. `NGN`) is the destination. `source_network` is derived from a credential on\nthe wallet; `destination_network` is the beneficiary's payout rail. The beneficiary\nmust belong to the same customer as the wallet. `narration` is optional and echoed\nback as the quote `reference`.\n\nThe quote is created with `status: active` and an `expires_at` in the near future.\n\nYou can optionally pass `source_currency` and `destination_currency` as consistency checks — if they do not match the wallet or beneficiary, we reject the request immediately.\n\nUSDC amounts settle in whole US cents: `source_amount` may carry at most **2 significant\ndecimal places**. Trailing zeros are fine — `2.980000` is accepted, `2.980228` is rejected\nwith `400 invalid_amount_precision`.\n",
         "parameters": [
           {
             "in": "header",
@@ -5578,7 +5580,7 @@
             "description": "Quote created successfully"
           },
           "400": {
-            "description": "Request body failed validation (source_wallet_id / destination_wallet_id / source_amount), a wallet id is not a valid wal_… id, source_amount is not a positive decimal, the source and destination currencies are the same, a fiat wallet has no active credential to derive its network from, or the Idempotency-Key header is malformed",
+            "description": "Request body failed validation (source_wallet_id / destination_wallet_id / source_amount), a wallet id is not a valid wal_… id, source_amount is not a positive decimal, source_amount has more decimal places than the source currency settles (`invalid_amount_precision` — USDC supports at most 2, trailing zeros allowed), the source and destination currencies are the same, a fiat wallet has no active credential to derive its network from, or the Idempotency-Key header is malformed",
             "content": {
               "application/json": {
                 "schema": {
@@ -5592,7 +5594,8 @@
                         "code": {
                           "type": "string",
                           "enum": [
-                            "invalid_input"
+                            "invalid_input",
+                            "invalid_amount_precision"
                           ]
                         }
                       }
@@ -5683,7 +5686,7 @@
         "tags": [
           "Quotes"
         ],
-        "description": "Creates a **conversion quote** — a short-lived, priced offer to convert the balance\nof one wallet (`source_wallet_id`) into another wallet (`destination_wallet_id`).\n\nThe source wallet's currency (e.g. `USDC`) is the source; the destination wallet's\ncurrency (e.g. `NGN`) is the destination — the two currencies must differ. `source_network` and `destination_network` are each derived from the\nrespective wallet's newest active credential, defaulting to `solana` when a crypto wallet has no active credential (a fiat wallet with no active credential is\nrejected). `reference` is optional and echoed back as the quote `reference`. The\nresponse carries the source wallet in `wallet_id` and the destination wallet in\n`destination_wallet_id`.\n\nThe quote is created with `status: active` and an `expires_at` in the near future.\n",
+        "description": "Creates a **conversion quote** — a short-lived, priced offer to convert the balance\nof one wallet (`source_wallet_id`) into another wallet (`destination_wallet_id`).\n\nThe source wallet's currency (e.g. `USDC`) is the source; the destination wallet's\ncurrency (e.g. `NGN`) is the destination — the two currencies must differ. `source_network` and `destination_network` are each derived from the\nrespective wallet's newest active credential, defaulting to `solana` when a crypto wallet has no active credential (a fiat wallet with no active credential is\nrejected). `reference` is optional and echoed back as the quote `reference`. The\nresponse carries the source wallet in `wallet_id` and the destination wallet in\n`destination_wallet_id`.\n\nThe quote is created with `status: active` and an `expires_at` in the near future.\n\nUSDC amounts settle in whole US cents: `source_amount` may carry at most **2 significant\ndecimal places**. Trailing zeros are fine — `2.980000` is accepted, `2.980228` is rejected\nwith `400 invalid_amount_precision`.\n",
         "parameters": [
           {
             "in": "header",
