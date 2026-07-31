@@ -1,0 +1,144 @@
+---
+title: "KYC reliance"
+description: "Skip the hosted verification flow when your merchant account has been granted reliance — customers are auto-approved at tier_1 from the profile you supply."
+---
+
+By default every customer you create must run through GlobalStack's hosted KYC flow
+(Sumsub) before their `kyc_status` reaches `approved` and they can transact. Merchants
+that have already performed KYC/B on their own end customers can be granted a **reliance
+posture** — a per-account flag, set by GlobalStack ops during onboarding — that lets
+them skip the hosted flow and provision customers directly.
+
+<Note>
+  Reliance is granted by GlobalStack after a compliance review. Contact your account
+  manager if you would like it evaluated for your account.
+</Note>
+
+## Discovering your posture
+
+Fetch `GET /v1/me` and read `current.kyc_reliance_enabled`:
+
+```json
+{
+  "current": {
+    "integration_id": "int_01HXYZ…",
+    "membership_id": "mem_01HXYZ…",
+    "role": "consumer_admin",
+    "kyc_reliance_enabled": true
+  }
+}
+```
+
+The flag is stable — it changes only when GlobalStack ops flip it. It's safe to cache
+per-integration and re-check on session refresh.
+
+## Creating a customer under reliance
+
+When your account has `kyc_reliance_enabled: true`, `POST /v1/customers` behaves
+differently:
+
+- The `profile` object becomes **required**. The type-specific slot set is the same as
+  the default (unrelied) path — individual customers must supply `phone`, `address`,
+  `date_of_birth`, `id_number`, and `id_type`; business customers must supply `phone`
+  and `business_licence`.
+- The response returns a customer with `kyc_status: approved` and `tier: tier_1`
+  immediately — no hosted verification link is minted and no Sumsub session is created.
+- A `kyc.approved` webhook fires just as it would after a successful Sumsub verdict,
+  so downstream provisioning off the webhook works uniformly.
+
+### Example request
+
+```bash
+curl https://api.globalstack.io/v1/customers \
+  -H "Authorization: Bearer YOUR_SECRET_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "type": "individual",
+    "name": "Alice Doe",
+    "email": "alice@example.com",
+    "country_code": "NG",
+    "profile": {
+      "phone": "+2348012345678",
+      "address": "1 Broad Street, Lagos",
+      "date_of_birth": "01/15/1990",
+      "id_number": "A12345678",
+      "id_type": "passport"
+    }
+  }'
+```
+
+### Missing profile
+
+Omitting the `profile` block on a reliance-enabled account returns `400` with:
+
+```json
+{
+  "status": false,
+  "code": "invalid_input",
+  "message": "profile is required for merchants with KYC reliance enabled"
+}
+```
+
+If your account is **not** reliance-enabled, the `profile` block remains optional and the
+customer is created at `kyc_status: not_started`, `tier: tier_0` — you then drive them
+through the hosted verification flow.
+
+## Verifications on a relied customer
+
+Reliance covers `tier_1` only. If you need a customer to reach `tier_2`, run the
+existing Sumsub flow.
+
+### `POST /v1/customers/{customer_id}/verifications`
+
+- `tier: "tier_1"` (or the default) on a reliance-approved customer returns **400**:
+
+  ```json
+  {
+    "status": false,
+    "code": "invalid_input",
+    "message": "Customer is already verified via merchant reliance at tier_1; only tier_2 upgrades are permitted."
+  }
+  ```
+
+- `tier: "tier_2"` runs the standard Sumsub flow unchanged — the response includes the
+  hosted verification link the customer must open, and the tier is promoted on the
+  terminal GREEN verdict just as it would from `tier_0`.
+
+### `GET /v1/customers/{customer_id}/verifications`
+
+Returns a synthetic session representing the reliance record:
+
+```json
+{
+  "id": "kyc_01HXYZ…",
+  "customer_id": "cust_01HXYZ…",
+  "status": "completed",
+  "tier_requested": "tier_1",
+  "tier_current": "tier_1",
+  "redirect_url": null,
+  "failure_reason": null,
+  "failure_reason_message": null,
+  "created_at": "2026-07-29T12:00:00.000Z",
+  "updated_at": "2026-07-29T12:00:00.000Z"
+}
+```
+
+`hosted_url` and `hosted_url_expires_at` are **omitted** (not `null`) because no hosted
+verification link exists for a reliance-approved customer. Once you request a `tier_2`
+upgrade and the Sumsub session is minted, subsequent `GET` calls return that Sumsub
+session — with `hosted_url` populated — as today.
+
+<Note>
+  The reliance record persists even if your account's `kyc_reliance_enabled` posture is
+  later turned off — customers already approved through reliance stay approved. The
+  synthetic session is the audit trail for how the approval happened.
+</Note>
+
+## Field summary
+
+| Field | Applies to | Meaning |
+| --- | --- | --- |
+| `current.kyc_reliance_enabled` on `GET /v1/me` | Your integration | `true` when your account can create pre-approved customers with a supplied `profile`. |
+| `profile` on `POST /v1/customers` | Customer create | Required when `kyc_reliance_enabled` is true; optional otherwise. |
+| `kyc_status: approved` + `tier: tier_1` on the create response | Customer create | Only appears under reliance — the default path returns `not_started` / `tier_0`. |
+| `provider: merchant_reliance` on `GET /v1/customers/{id}/verifications` | Verifications read | Marks a synthetic reliance session. `hosted_url` is omitted. |

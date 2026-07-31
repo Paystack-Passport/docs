@@ -6,6 +6,26 @@ description: "Notable changes to the GlobalStack API — new endpoints, behavior
 Changes that affect how you integrate: new endpoints and fields, behavior changes, and new error
 or failure codes. Breaking changes are called out explicitly.
 
+<Update label="2026-07-30" tags={["New feature", "Behavior change"]}>
+  ## KYC reliance for merchant-vouched customers
+
+  Merchants that have already performed KYC/B on their own end customers can now be granted a
+  **reliance posture** that lets them skip the hosted verification flow. When
+  `current.kyc_reliance_enabled` on [`GET /v1/me`](/api-reference/kyc-reliance#discovering-your-posture)
+  is `true`, `POST /v1/customers` requires the `profile` object and returns the customer
+  pre-approved at `kyc_status: approved`, `tier: tier_1` — no Sumsub session is minted.
+
+  See [KYC reliance](/api-reference/kyc-reliance) for the full contract, the new
+  `profile is required for merchants with KYC reliance enabled` 400 case, and the tier_1/tier_2
+  behaviour of the verifications endpoints on a relied customer.
+
+  ## `GET /v1/me` includes `kyc_reliance_enabled`
+
+  The `current` block on `GET /v1/me` gains `kyc_reliance_enabled: boolean` so integrations can
+  programmatically discover their posture and decide whether to send the `profile` block on
+  customer create.
+</Update>
+
 <Update label="2026-07-27" tags={["Behavior change"]}>
   ## USDC amounts are limited to 2 decimal places
 
