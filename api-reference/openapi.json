@@ -1739,7 +1739,7 @@
           },
           "hosted_url": {
             "type": "string",
-            "description": "Hosted WebSDK URL the customer must open to complete verification.",
+            "description": "Hosted WebSDK URL the customer must open to complete verification. Omitted for reliance-approved sessions (provider=merchant_reliance) — those complete without a hosted link.",
             "example": "http://localhost:3000/_mock/verify/kyc_01HXYZABC1234567890ABCDEFG"
           },
           "hosted_url_expires_at": {
@@ -1765,8 +1765,6 @@
           "status",
           "tier_requested",
           "tier_current",
-          "hosted_url",
-          "hosted_url_expires_at",
           "created_at",
           "updated_at"
         ]
@@ -3253,13 +3251,19 @@
             ],
             "type": "string",
             "example": "consumer_admin"
+          },
+          "kyc_reliance_enabled": {
+            "type": "boolean",
+            "description": "True when the merchant owning this integration has KYC reliance enabled — customer creation requires the profile object and auto-approves at tier_1.",
+            "example": false
           }
         },
         "type": "object",
         "required": [
           "integration_id",
           "membership_id",
-          "role"
+          "role",
+          "kyc_reliance_enabled"
         ]
       },
       "DepositAddressWalletRef": {
