@@ -587,6 +587,24 @@
             "description": "Merchant metadata bag.",
             "example": {}
           },
+          "fee": {
+            "$ref": "#/components/schemas/TransactionFeeResponse",
+            "description": "Fee breakdown copied from the associated quote. Present only when the transaction carries at least one fee component; omitted when the transaction is not derived from a quote (e.g. transfers, deposits) or the quote carried no fee (e.g. a conversion for which FX Engine returned no transaction_fee).",
+            "example": {
+              "line_items": [
+                {
+                  "name": "gateway",
+                  "amount": "100",
+                  "currency": "NGN"
+                },
+                {
+                  "name": "network",
+                  "amount": "0.5",
+                  "currency": "USDC"
+                }
+              ]
+            }
+          },
           "created_at": {
             "type": "string",
             "format": "date-time",
@@ -2910,6 +2928,21 @@
           "currency"
         ]
       },
+      "TransactionFeeResponse": {
+        "properties": {
+          "line_items": {
+            "items": {
+              "$ref": "#/components/schemas/TransactionFeeLineItemResponse"
+            },
+            "type": "array",
+            "description": "Per-component fee breakdown copied from the quote. Empty when the quote carried no fee components."
+          }
+        },
+        "type": "object",
+        "required": [
+          "line_items"
+        ]
+      },
       "OnrampCustomerResponse": {
         "properties": {
           "id": {
@@ -3533,6 +3566,31 @@
         "required": [
           "action",
           "docs_url"
+        ]
+      },
+      "TransactionFeeLineItemResponse": {
+        "properties": {
+          "name": {
+            "type": "string",
+            "description": "Fee component name (e.g. gateway, network).",
+            "example": "gateway"
+          },
+          "amount": {
+            "type": "string",
+            "description": "Fee amount, as a decimal string, in `currency`.",
+            "example": "100"
+          },
+          "currency": {
+            "type": "string",
+            "description": "Currency of this fee component. Components may differ (e.g. a gateway fee in the source currency and a network fee in the destination currency).",
+            "example": "NGN"
+          }
+        },
+        "type": "object",
+        "required": [
+          "name",
+          "amount",
+          "currency"
         ]
       },
       "PaymentInstrumentProviderResponse": {
