@@ -6,6 +6,32 @@ description: "Notable changes to the GlobalStack API — new endpoints, behavior
 Changes that affect how you integrate: new endpoints and fields, behavior changes, and new error
 or failure codes. Breaking changes are called out explicitly.
 
+<Update label="2026-08-25" tags={["New feature"]}>
+  ## Quote by the amount the recipient receives with `target_amount`
+
+  Onramp, offramp, and conversion quotes now accept `target_amount` as an alternative to
+  `source_amount`. `target_amount` is the amount the recipient receives — the crypto credited to
+  the wallet on an onramp, the fiat paid to the beneficiary on an offramp, or the amount credited
+  to the destination wallet on a conversion.
+
+  Provide **exactly one** of `source_amount` or `target_amount`. Sending both, or neither, is
+  rejected with [`400 invalid_input`](/errors#invalid_input) before anything is created. When you
+  send `target_amount`, we compute the required `source_amount` and return it on the quote, so the
+  response always carries both `source_amount` and `destination_amount`.
+
+  The USDC 2-decimal-place settlement limit applies only when you supply `source_amount`. A
+  `target_amount`-driven quote is not constrained this way — we derive a settleable source amount
+  for you.
+
+  ## Quotes now return their fee breakdown
+
+  Quote responses now include an optional `fee` object with a per-component `line_items` breakdown
+  (`name`, `amount`, `currency`), matching the `fee` already returned on transactions. Each
+  component keeps its own currency — for example a gateway fee in the source currency and a network
+  fee in the destination currency. The `fee` field is omitted when a quote carries no fee
+  components.
+</Update>
+
 <Update label="2026-07-27" tags={["Behavior change"]}>
   ## USDC amounts are limited to 2 decimal places
 
