@@ -588,7 +588,7 @@
             "example": {}
           },
           "fee": {
-            "$ref": "#/components/schemas/TransactionFeeResponse",
+            "$ref": "#/components/schemas/FeeResponse",
             "description": "Fee breakdown copied from the associated quote. Present only when the transaction carries at least one fee component; omitted when the transaction is not derived from a quote (e.g. transfers, deposits) or the quote carried no fee (e.g. a conversion for which FX Engine returned no transaction_fee).",
             "example": {
               "line_items": [
@@ -662,6 +662,12 @@
             "pattern": "^\\d+(\\.\\d+)?$",
             "type": "string"
           },
+          "target_amount": {
+            "pattern": "^\\d+(\\.\\d+)?$",
+            "type": "string",
+            "description": "Destination amount the recipient receives, as a decimal string. Provide exactly one of source_amount or target_amount.",
+            "example": "6.05"
+          },
           "source_network": {
             "type": "string",
             "enum": [
@@ -704,7 +710,6 @@
         "required": [
           "wallet_id",
           "source_currency",
-          "source_amount",
           "source_network"
         ]
       },
@@ -772,6 +777,24 @@
             "description": "Exchange rate (destination units per 1 source unit), 6 dp.",
             "example": "0.000605"
           },
+          "fee": {
+            "$ref": "#/components/schemas/FeeResponse",
+            "description": "Per-component fee breakdown persisted on the quote. Present only when the quote carries at least one fee component; omitted when FX Engine returned no transaction_fee.",
+            "example": {
+              "line_items": [
+                {
+                  "name": "gateway",
+                  "amount": "100",
+                  "currency": "NGN"
+                },
+                {
+                  "name": "network",
+                  "amount": "0.5",
+                  "currency": "USDC"
+                }
+              ]
+            }
+          },
           "expires_at": {
             "type": "string",
             "format": "date-time",
@@ -819,6 +842,12 @@
             "pattern": "^\\d+(\\.\\d+)?$",
             "type": "string"
           },
+          "target_amount": {
+            "pattern": "^\\d+(\\.\\d+)?$",
+            "type": "string",
+            "description": "Destination amount the recipient receives, as a decimal string. Provide exactly one of source_amount or target_amount.",
+            "example": "6.05"
+          },
           "narration": {
             "maxLength": 128,
             "type": "string"
@@ -827,8 +856,7 @@
         "type": "object",
         "required": [
           "wallet_id",
-          "beneficiary_id",
-          "source_amount"
+          "beneficiary_id"
         ]
       },
       "CreateConversionQuoteDto": {
@@ -845,6 +873,12 @@
             "pattern": "^\\d+(\\.\\d+)?$",
             "type": "string"
           },
+          "target_amount": {
+            "pattern": "^\\d+(\\.\\d+)?$",
+            "type": "string",
+            "description": "Destination amount the recipient receives, as a decimal string. Provide exactly one of source_amount or target_amount.",
+            "example": "6.05"
+          },
           "reference": {
             "maxLength": 128,
             "type": "string"
@@ -853,8 +887,7 @@
         "type": "object",
         "required": [
           "source_wallet_id",
-          "destination_wallet_id",
-          "source_amount"
+          "destination_wallet_id"
         ]
       },
       "ExecuteOnrampDto": {
@@ -2928,11 +2961,11 @@
           "currency"
         ]
       },
-      "TransactionFeeResponse": {
+      "FeeResponse": {
         "properties": {
           "line_items": {
             "items": {
-              "$ref": "#/components/schemas/TransactionFeeLineItemResponse"
+              "$ref": "#/components/schemas/FeeLineItemResponse"
             },
             "type": "array",
             "description": "Per-component fee breakdown copied from the quote. Empty when the quote carried no fee components."
@@ -3568,7 +3601,7 @@
           "docs_url"
         ]
       },
-      "TransactionFeeLineItemResponse": {
+      "FeeLineItemResponse": {
         "properties": {
           "name": {
             "type": "string",
@@ -5278,7 +5311,7 @@
             "description": "Quote created successfully"
           },
           "400": {
-            "description": "Request body failed validation (wallet_id / source_currency / country_code / source_amount / source_network / destination_network / phone_number / provider_id / full_name), the wallet_id is not a valid wal_… id, provider_id is not a valid prov_… id, source_amount is not a positive decimal, source_currency is not supported (globally, or not supported in the supplied country_code), source_currency exists in multiple countries and country_code is required to disambiguate, destination_network is not supported by the wallet currency, source_network is mobile_money but no payer phone is resolvable or provider_id is missing, full_name was supplied on a non-mobile-money onramp, full_name is required for mobile_money onramps when phone_number is supplied or the customer is a business, the customer profile is missing a KYC field required by FX Engine (phone, address, date of birth, id document, or business registration number), FX Engine rejected the conversion request, or the Idempotency-Key header is malformed",
+            "description": "Request body failed validation (wallet_id / source_currency / country_code / source_amount / target_amount / source_network / destination_network / phone_number / provider_id / full_name), the wallet_id is not a valid wal_… id, provider_id is not a valid prov_… id, source_amount or target_amount is not a positive decimal, neither or both of source_amount and target_amount were provided (exactly one is required), source_currency is not supported (globally, or not supported in the supplied country_code), source_currency exists in multiple countries and country_code is required to disambiguate, destination_network is not supported by the wallet currency, source_network is mobile_money but no payer phone is resolvable or provider_id is missing, full_name was supplied on a non-mobile-money onramp, full_name is required for mobile_money onramps when phone_number is supplied or the customer is a business, the customer profile is missing a KYC field required by FX Engine (phone, address, date of birth, id document, or business registration number), FX Engine rejected the conversion request, or the Idempotency-Key header is malformed",
             "content": {
               "application/json": {
                 "schema": {
@@ -5408,7 +5441,7 @@
         "tags": [
           "Quotes"
         ],
-        "description": "Creates an **onramp quote** — a short-lived, priced offer to convert fiat into the\ncrypto held by the wallet identified by `wallet_id`.\n\n`source_currency` is the fiat being paid in (e.g. `NGN`); the wallet's own currency\n(e.g. `USDC`) is the destination. `source_network` is the fiat rail (e.g. `bank`,\n`mobile_money`). `destination_network` is optional — when omitted it is derived from\nthe wallet's newest active credential, defaulting to `solana` when the wallet has no\nactive credential; when supplied it must be a network the wallet currency supports.\n\n`country_code` (optional, ISO 3166-1 alpha-2, e.g. `NG`) disambiguates\n`source_currency` when the same code is supported in multiple countries. If the code\nis only supported in one country, `country_code` can be omitted. If the code is\nsupported in two or more countries and `country_code` is omitted, the request is\nrejected with a 400 listing the available countries. `country_code` no longer needs\nto match the customer's registered country — the payer may transact from a country\nother than their KYC country.\n\n`phone_number` (optional, international/E.164 format) and `provider_id` (optional,\na `prov_…` id) are accepted. When `source_network` is `mobile_money`, a payer phone\nmust be resolvable — either `phone_number` is supplied or the customer has a phone on\ntheir profile — and `provider_id` is required.\n\n`full_name` (optional, 2–128 characters) is the full name of the phone owner. It is\nrequired when `source_network` is `mobile_money` **and** either `phone_number` is\nsupplied on the request (the phone owner may differ from the customer) **or** the\ncustomer is a business (whose sender payload otherwise carries no individual name).\n`full_name` is stored on the quote's metadata under `fullName` and forwarded to the\npayout rail as the sender name. Supplying `full_name` on a non-mobile-money onramp\nis rejected with a 400.\n\n`reference` is optional and echoed back as the quote `reference`.\n\nThe quote is created with `status: active` and an `expires_at` in the near future.\n",
+        "description": "Creates an **onramp quote** — a short-lived, priced offer to convert fiat into the\ncrypto held by the wallet identified by `wallet_id`.\n\n`source_currency` is the fiat being paid in (e.g. `NGN`); the wallet's own currency\n(e.g. `USDC`) is the destination. `source_network` is the fiat rail (e.g. `bank`,\n`mobile_money`). `destination_network` is optional — when omitted it is derived from\nthe wallet's newest active credential, defaulting to `solana` when the wallet has no\nactive credential; when supplied it must be a network the wallet currency supports.\n\n`country_code` (optional, ISO 3166-1 alpha-2, e.g. `NG`) disambiguates\n`source_currency` when the same code is supported in multiple countries. If the code\nis only supported in one country, `country_code` can be omitted. If the code is\nsupported in two or more countries and `country_code` is omitted, the request is\nrejected with a 400 listing the available countries. `country_code` no longer needs\nto match the customer's registered country — the payer may transact from a country\nother than their KYC country.\n\n`phone_number` (optional, international/E.164 format) and `provider_id` (optional,\na `prov_…` id) are accepted. When `source_network` is `mobile_money`, a payer phone\nmust be resolvable — either `phone_number` is supplied or the customer has a phone on\ntheir profile — and `provider_id` is required.\n\n`full_name` (optional, 2–128 characters) is the full name of the phone owner. It is\nrequired when `source_network` is `mobile_money` **and** either `phone_number` is\nsupplied on the request (the phone owner may differ from the customer) **or** the\ncustomer is a business (whose sender payload otherwise carries no individual name).\n`full_name` is stored on the quote's metadata under `fullName` and forwarded to the\npayout rail as the sender name. Supplying `full_name` on a non-mobile-money onramp\nis rejected with a 400.\n\n`reference` is optional and echoed back as the quote `reference`.\n\nSpecify **either** `source_amount` (the fiat amount paid in) **or** `target_amount`\n(the crypto amount the recipient receives) — exactly one, each a positive decimal\nstring. Providing both, or neither, is rejected with a 400. When `target_amount` is\nsupplied, we compute and return the required `source_amount` on the quote.\n\nThe quote is created with `status: active` and an `expires_at` in the near future.\n",
         "parameters": [
           {
             "in": "header",
@@ -5472,7 +5505,7 @@
             "description": "Quote created successfully"
           },
           "400": {
-            "description": "Request body failed validation (wallet_id / beneficiary_id / source_amount), the wallet_id/beneficiary_id is not a valid wal_…/ben_… id, source_amount is not a positive decimal, source_amount has more decimal places than the source currency settles (`invalid_amount_precision` — USDC supports at most 2, trailing zeros allowed), the wallet has no credential to derive source_network from, or the Idempotency-Key header is malformed",
+            "description": "Request body failed validation (wallet_id / beneficiary_id / source_amount / target_amount), the wallet_id/beneficiary_id is not a valid wal_…/ben_… id, source_amount or target_amount is not a positive decimal, neither or both of source_amount and target_amount were provided (exactly one is required), source_amount has more decimal places than the source currency settles (`invalid_amount_precision` — USDC supports at most 2, trailing zeros allowed; not enforced when target_amount drives the quote), the wallet has no credential to derive source_network from, or the Idempotency-Key header is malformed",
             "content": {
               "application/json": {
                 "schema": {
@@ -5578,7 +5611,7 @@
         "tags": [
           "Quotes"
         ],
-        "description": "Creates an **offramp quote** — a short-lived, priced offer to convert the crypto\nheld by the wallet identified by `wallet_id` into fiat paid out to `beneficiary_id`.\n\nThe wallet's own currency (e.g. `USDC`) is the source; the beneficiary's currency\n(e.g. `NGN`) is the destination. `source_network` is derived from a credential on\nthe wallet; `destination_network` is the beneficiary's payout rail. The beneficiary\nmust belong to the same customer as the wallet. `narration` is optional and echoed\nback as the quote `reference`.\n\nThe quote is created with `status: active` and an `expires_at` in the near future.\n\nYou can optionally pass `source_currency` and `destination_currency` as consistency checks — if they do not match the wallet or beneficiary, we reject the request immediately.\n\nUSDC amounts settle in whole US cents: `source_amount` may carry at most **2 significant\ndecimal places**. Trailing zeros are fine — `2.980000` is accepted, `2.980228` is rejected\nwith `400 invalid_amount_precision`.\n",
+        "description": "Creates an **offramp quote** — a short-lived, priced offer to convert the crypto\nheld by the wallet identified by `wallet_id` into fiat paid out to `beneficiary_id`.\n\nThe wallet's own currency (e.g. `USDC`) is the source; the beneficiary's currency\n(e.g. `NGN`) is the destination. `source_network` is derived from a credential on\nthe wallet; `destination_network` is the beneficiary's payout rail. The beneficiary\nmust belong to the same customer as the wallet. `narration` is optional and echoed\nback as the quote `reference`.\n\nThe quote is created with `status: active` and an `expires_at` in the near future.\n\nYou can optionally pass `source_currency` and `destination_currency` as consistency checks — if they do not match the wallet or beneficiary, we reject the request immediately.\n\nSpecify **either** `source_amount` (the crypto amount converted) **or** `target_amount`\n(the fiat amount the beneficiary receives) — exactly one, each a positive decimal string.\nProviding both, or neither, is rejected with a 400. When `target_amount` is supplied, we\ncompute and return the required `source_amount` on the quote.\n\nUSDC amounts settle in whole US cents: `source_amount` may carry at most **2 significant\ndecimal places**. Trailing zeros are fine — `2.980000` is accepted, `2.980228` is rejected\nwith `400 invalid_amount_precision`. This precision check applies only when you supply\n`source_amount`; a `target_amount`-driven quote is not constrained this way.\n",
         "parameters": [
           {
             "in": "header",
@@ -5642,7 +5675,7 @@
             "description": "Quote created successfully"
           },
           "400": {
-            "description": "Request body failed validation (source_wallet_id / destination_wallet_id / source_amount), a wallet id is not a valid wal_… id, source_amount is not a positive decimal, source_amount has more decimal places than the source currency settles (`invalid_amount_precision` — USDC supports at most 2, trailing zeros allowed), the source and destination currencies are the same, a fiat wallet has no active credential to derive its network from, or the Idempotency-Key header is malformed",
+            "description": "Request body failed validation (source_wallet_id / destination_wallet_id / source_amount / target_amount), a wallet id is not a valid wal_… id, source_amount or target_amount is not a positive decimal, neither or both of source_amount and target_amount were provided (exactly one is required), source_amount has more decimal places than the source currency settles (`invalid_amount_precision` — USDC supports at most 2, trailing zeros allowed; not enforced when target_amount drives the quote), the source and destination currencies are the same, a fiat wallet has no active credential to derive its network from, or the Idempotency-Key header is malformed",
             "content": {
               "application/json": {
                 "schema": {
@@ -5748,7 +5781,7 @@
         "tags": [
           "Quotes"
         ],
-        "description": "Creates a **conversion quote** — a short-lived, priced offer to convert the balance\nof one wallet (`source_wallet_id`) into another wallet (`destination_wallet_id`).\n\nThe source wallet's currency (e.g. `USDC`) is the source; the destination wallet's\ncurrency (e.g. `NGN`) is the destination — the two currencies must differ. `source_network` and `destination_network` are each derived from the\nrespective wallet's newest active credential, defaulting to `solana` when a crypto wallet has no active credential (a fiat wallet with no active credential is\nrejected). `reference` is optional and echoed back as the quote `reference`. The\nresponse carries the source wallet in `wallet_id` and the destination wallet in\n`destination_wallet_id`.\n\nThe quote is created with `status: active` and an `expires_at` in the near future.\n\nUSDC amounts settle in whole US cents: `source_amount` may carry at most **2 significant\ndecimal places**. Trailing zeros are fine — `2.980000` is accepted, `2.980228` is rejected\nwith `400 invalid_amount_precision`.\n",
+        "description": "Creates a **conversion quote** — a short-lived, priced offer to convert the balance\nof one wallet (`source_wallet_id`) into another wallet (`destination_wallet_id`).\n\nThe source wallet's currency (e.g. `USDC`) is the source; the destination wallet's\ncurrency (e.g. `NGN`) is the destination — the two currencies must differ. `source_network` and `destination_network` are each derived from the\nrespective wallet's newest active credential, defaulting to `solana` when a crypto wallet has no active credential (a fiat wallet with no active credential is\nrejected). `reference` is optional and echoed back as the quote `reference`. The\nresponse carries the source wallet in `wallet_id` and the destination wallet in\n`destination_wallet_id`.\n\nThe quote is created with `status: active` and an `expires_at` in the near future.\n\nSpecify **either** `source_amount` (the source-wallet amount converted) **or**\n`target_amount` (the amount credited to the destination wallet) — exactly one, each a\npositive decimal string. Providing both, or neither, is rejected with a 400. When\n`target_amount` is supplied, we compute and return the required `source_amount` on the quote.\n\nUSDC amounts settle in whole US cents: `source_amount` may carry at most **2 significant\ndecimal places**. Trailing zeros are fine — `2.980000` is accepted, `2.980228` is rejected\nwith `400 invalid_amount_precision`. This precision check applies only when you supply\n`source_amount`; a `target_amount`-driven quote is not constrained this way.\n",
         "parameters": [
           {
             "in": "header",
