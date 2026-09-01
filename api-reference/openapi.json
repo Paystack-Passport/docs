@@ -1943,6 +1943,11 @@
             "description": "pending on create",
             "example": "pending"
           },
+          "provider_resource_id": {
+            "type": "string",
+            "description": "Opaque reference to the underlying provider/custody resource backing this deposit address, for reconciliation against provider-side deposit events. Stable for the life of the address; treat as an opaque token (do not parse).",
+            "example": "cdw_01HXYZABC1234567890ABCDEFG"
+          },
           "created_at": {
             "type": "string",
             "format": "date-time",
@@ -1963,6 +1968,7 @@
           "metadata",
           "details",
           "status",
+          "provider_resource_id",
           "created_at",
           "updated_at"
         ]
@@ -2339,6 +2345,11 @@
             "description": "pending on create",
             "example": "pending"
           },
+          "provider_resource_id": {
+            "type": "string",
+            "description": "Opaque reference to the underlying provider/custody resource backing this credential, for reconciliation against provider-side events. Stable for the life of the credential; treat as an opaque token (do not parse).",
+            "example": "cdw_01HXYZABC1234567890ABCDEFG"
+          },
           "created_at": {
             "type": "string",
             "format": "date-time",
@@ -2360,6 +2371,7 @@
           "metadata",
           "details",
           "status",
+          "provider_resource_id",
           "created_at",
           "updated_at"
         ]
