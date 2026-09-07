@@ -6,6 +6,52 @@ description: "Notable changes to the GlobalStack API — new endpoints, behavior
 Changes that affect how you integrate: new endpoints and fields, behavior changes, and new error
 or failure codes. Breaking changes are called out explicitly.
 
+<Update label="2026-09-07" tags={["New feature"]}>
+  ## Pay South African beneficiaries over PayShap
+
+  Offramp beneficiaries in `ZAR` can now be paid over **PayShap**, South Africa's instant-payment
+  scheme, instead of to a bank account. Create one with `network: "payshap"` and put the
+  recipient's PayShap proxy — their mobile number in E.164 form — in `account_number`:
+
+  ```json
+  {
+    "type": "fiat",
+    "name": "J Doe",
+    "currency": "ZAR",
+    "country_code": "ZA",
+    "network": "payshap",
+    "account_number": "+27821234567",
+    "provider_id": "prov_01JBQR7K3M9XZVTNA4H5C2PDES"
+  }
+  ```
+
+  Get the `provider_id` from `GET /v1/countries/ZA/providers?network=payshap`, the same place you
+  get a bank's id today.
+
+  **`account_name` is not required.** A PayShap proxy is resolved to its registered holder before
+  the beneficiary is created, and that resolved name is what we store — so anything you send in
+  `account_name` is replaced. This is the same rule as `bank`, and the reason to prefer a proxy
+  over a raw account number: a bank account number cannot be verified before you pay it, and a
+  proxy can.
+
+  If the number is not registered for PayShap, or the recipient's bank does not answer in time,
+  the request is rejected with [`400 invalid_input`](/errors#invalid_input) and no beneficiary is
+  created. The two cases are not distinguishable from the outside, so retry once before treating
+  a number as invalid.
+
+  PayShap is **`ZAR` and South Africa only** — `network: "payshap"` on any other currency is
+  rejected with [`400 invalid_input`](/errors#invalid_input). It is also a **payout-only** rail:
+  you cannot fund an onramp or create a deposit credential with it, so `payshap` is not accepted
+  as a `source_network`, a `destination_network`, or a credential `network`.
+
+  Offramps paid this way report `payment_instrument.type` as `"payshap"` rather than
+  `"bank_account"` or `"mobile_money"`. If you branch on that field, add the new value before
+  creating PayShap beneficiaries.
+
+  PayShap must be enabled on your account. Until it is, creating a PayShap beneficiary is
+  rejected with [`403 forbidden`](/errors#forbidden) — contact us to be enabled.
+</Update>
+
 <Update label="2026-08-25" tags={["New feature"]}>
   ## Quote by the amount the recipient receives with `target_amount`
 
