@@ -767,6 +767,12 @@
             "description": "Destination amount, formatted to the destination currency precision.",
             "example": "6.046600"
           },
+          "received_amount": {
+            "type": "string",
+            "nullable": true,
+            "description": "Amount the recipient actually receives, formatted to the destination currency precision. `destination_amount` is the amount quoted, which on corridors that surface a transaction fee is the amount before it. Null when no delivered amount is known yet.",
+            "example": "6.046600"
+          },
           "destination_currency": {
             "type": "string",
             "description": "Destination currency code.",
@@ -972,6 +978,12 @@
             "description": "Destination amount; placeholder until FX economics land.",
             "example": "0.000000"
           },
+          "received_amount": {
+            "type": "string",
+            "nullable": true,
+            "description": "Amount the recipient actually received, formatted to the destination currency precision. `destination_amount` is the amount quoted, which on corridors that surface a transaction fee is the amount before it. Null until the payout reaches a terminal success, and on conversions that did not pay out.",
+            "example": "100.00"
+          },
           "destination_currency": {
             "type": "string",
             "description": "Destination currency code.",
@@ -1150,6 +1162,12 @@
             "nullable": true,
             "description": "Destination amount, formatted to the destination currency precision. Null on rows where FX Engine has not yet supplied final economics.",
             "example": "0.00"
+          },
+          "received_amount": {
+            "type": "string",
+            "nullable": true,
+            "description": "Amount the recipient actually received, formatted to the destination currency precision. `destination_amount` is the amount quoted, which on corridors that surface a transaction fee is the amount before it. Null until the payout reaches a terminal success, and on conversions that did not pay out.",
+            "example": "100.00"
           },
           "destination_currency": {
             "type": "string",
@@ -2577,6 +2595,12 @@
             "nullable": true,
             "description": "Destination amount; placeholder until FX economics land.",
             "example": "0.00"
+          },
+          "received_amount": {
+            "type": "string",
+            "nullable": true,
+            "description": "Amount the recipient actually received, formatted to the destination currency precision. `destination_amount` is the amount quoted, which on corridors that surface a transaction fee is the amount before it. Null until the payout reaches a terminal success, and on conversions that did not pay out.",
+            "example": "100.00"
           },
           "destination_currency": {
             "type": "string",
