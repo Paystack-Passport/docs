@@ -585,6 +585,12 @@
             "description": "Destination currency code.",
             "example": "USDC"
           },
+          "received_amount": {
+            "type": "string",
+            "nullable": true,
+            "description": "Amount the recipient actually received, formatted to the destination currency precision. `destination_amount` is the amount quoted, which on corridors that surface a transaction fee is the amount before it. Set once the transaction reaches a terminal success, and retained thereafter (a payout later returned keeps the figure it delivered). Null on transactions that never succeeded, and on transfers and deposits.",
+            "example": "100.00"
+          },
           "confirmed_at": {
             "type": "string",
             "nullable": true,
