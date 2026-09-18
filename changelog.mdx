@@ -21,10 +21,11 @@ or failure codes. Breaking changes are called out explicitly.
   returned on quote, onramp, offramp, and conversion responses.
 
   `received_amount` is `null` until a transaction reaches a terminal success, and stays `null` on
-  transactions that never paid out, on transfers, and on deposits. **Treat `null` as "not known
+  transactions that never succeeded, on transfers, and on deposits. **Treat `null` as "not known
   yet", never as zero** — for an in-flight transaction, `destination_amount` remains your best
-  estimate of what will be delivered. Existing transactions were backfilled, so transactions that
-  settled before this change return the field too.
+  estimate of what will be delivered. Once set, the figure is retained: a payout that is later
+  returned keeps the amount it originally delivered. Existing transactions were backfilled, so
+  transactions that settled before this change return the field too.
 
   The field also appears on each entry in `related_transactions`. `destination_amount` is unchanged
   and still returned, so nothing you already key off has moved.
