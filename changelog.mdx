@@ -6,6 +6,46 @@ description: "Notable changes to the GlobalStack API — new endpoints, behavior
 Changes that affect how you integrate: new endpoints and fields, behavior changes, and new error
 or failure codes. Breaking changes are called out explicitly.
 
+<Update label="2026-09-18" tags={["Behavior change"]}>
+  ## Ledger contention now returns a retryable 503 instead of a 400
+
+  When you create a transfer, conversion, or offramp, we place a hold on the source wallet's
+  ledger balance. If another operation is writing to that same balance at that moment — a deposit
+  landing, a settlement completing, or a second request of your own — the write briefly contends.
+
+  We now retry that internally, so almost all contention is invisible to you. When it outlasts the
+  retry, the request fails with **`503`** and the code **`ledger_lock_contention`**:
+
+  ```json
+  {
+    "status": false,
+    "message": "Ledger lock contention; retry advised",
+    "code": "ledger_lock_contention",
+    "data": null
+  }
+  ```
+
+  **This is safe to retry after a short delay.** The hold was never placed and no funds moved.
+
+  **The record was still created, though.** We create the transfer, conversion, or offramp before
+  attempting the hold, so a `503` leaves one behind — conversions and offramps are marked failed;
+  a transfer is left in a non-terminal state. Retrying creates a **new** record rather than
+  resuming the old one, and that is true even if you reuse the same `Idempotency-Key`: we discard
+  a key's record when the request fails, so a replay is a genuine retry rather than a cached
+  response. If you reconcile by counting records, expect one per attempt.
+
+  Previously this condition surfaced as a `400` with the code `ledger_validation`, which suggested
+  the request itself was malformed and should not be retried. That was wrong: the request was fine,
+  and retrying would have worked. If you branch on status codes or error codes, treat
+  `ledger_lock_contention` as transient — the same way you would a timeout — rather than as a
+  validation failure.
+
+  One related change: when our ledger rejects a request for a reason we do not have a specific code
+  for, the `message` is now a generic `"The ledger rejected the request."` rather than the ledger's
+  own internal text. The detail is retained in our logs. If you were parsing that `message` string,
+  branch on `code` instead.
+</Update>
+
 <Update label="2026-09-18" tags={["New feature"]}>
   ## Wallets now tell you which customer owns them
 
