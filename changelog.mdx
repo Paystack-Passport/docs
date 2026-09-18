@@ -7,6 +7,35 @@ Changes that affect how you integrate: new endpoints and fields, behavior change
 or failure codes. Breaking changes are called out explicitly.
 
 <Update label="2026-09-18" tags={["New feature"]}>
+  ## Transactions now return the amount the recipient received
+
+  `GET /v1/transactions` and `GET /v1/transactions/{transactionId}` now return `received_amount`:
+  the amount that actually reached the recipient, formatted to the destination currency's
+  precision.
+
+  This is not the same figure as `destination_amount`. `destination_amount` is the amount you were
+  quoted, and on corridors that surface a transaction fee separately it is the amount *before* that
+  fee — an off-ramp quoted at 110 ZAR credits the beneficiary's bank 100. If you have been showing
+  `destination_amount` as the payout figure, or subtracting fee line items from it yourself,
+  `received_amount` is the number you want. It is the same field, with the same meaning, already
+  returned on quote, onramp, offramp, and conversion responses.
+
+  `received_amount` is `null` until a transaction reaches a terminal success, and stays `null` on
+  transactions that never paid out, on transfers, and on deposits. **Treat `null` as "not known
+  yet", never as zero** — for an in-flight transaction, `destination_amount` remains your best
+  estimate of what will be delivered. Existing transactions were backfilled, so transactions that
+  settled before this change return the field too.
+
+  The field also appears on each entry in `related_transactions`. `destination_amount` is unchanged
+  and still returned, so nothing you already key off has moved.
+
+  <Note>
+    `deposit.*` webhook payloads now include `received_amount` as well. Deposits have no payout leg,
+    so it is always `null` there.
+  </Note>
+</Update>
+
+<Update label="2026-09-18" tags={["New feature"]}>
   ## Wallets now tell you which customer owns them
 
   Wallet responses now include a `customer` object alongside the existing `customer_id`, so you no
