@@ -26,8 +26,13 @@ or failure codes. Breaking changes are called out explicitly.
   ```
 
   **This is safe to retry after a short delay.** The hold was never placed and no funds moved.
-  Retry with the same `Idempotency-Key`: when a request fails we discard that key's record, so a
-  replay is a genuine retry rather than a cached failure.
+
+  **The record was still created, though.** We create the transfer, conversion, or offramp before
+  attempting the hold, so a `503` leaves one behind — conversions and offramps are marked failed;
+  a transfer is left in a non-terminal state. Retrying creates a **new** record rather than
+  resuming the old one, and that is true even if you reuse the same `Idempotency-Key`: we discard
+  a key's record when the request fails, so a replay is a genuine retry rather than a cached
+  response. If you reconcile by counting records, expect one per attempt.
 
   Previously this condition surfaced as a `400` with the code `ledger_validation`, which suggested
   the request itself was malformed and should not be retried. That was wrong: the request was fine,
