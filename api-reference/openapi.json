@@ -4747,6 +4747,31 @@
                 }
               }
             }
+          },
+          "503": {
+            "description": "The ledger is processing another operation on the source balance and the retry budget was exhausted. The transfer was not created — retry the request after a short delay.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/ApiErrorEnvelope"
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string",
+                          "enum": [
+                            "ledger_lock_contention"
+                          ]
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
           }
         },
         "summary": "Execute a transfer",
@@ -6619,6 +6644,31 @@
                             "duplicate_resource",
                             "idempotency_conflict",
                             "idempotency_in_progress"
+                          ]
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "The ledger is processing another operation on the source balance and the retry budget was exhausted. The offramp was not created — retry the request after a short delay.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/ApiErrorEnvelope"
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string",
+                          "enum": [
+                            "ledger_lock_contention"
                           ]
                         }
                       }
@@ -11733,6 +11783,31 @@
                             "idempotency_in_progress",
                             "invalid_status",
                             "duplicate_resource"
+                          ]
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "The ledger is processing another operation on the source balance and the retry budget was exhausted. The conversion was not created — retry the request after a short delay.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/ApiErrorEnvelope"
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string",
+                          "enum": [
+                            "ledger_lock_contention"
                           ]
                         }
                       }
