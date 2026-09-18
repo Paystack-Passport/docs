@@ -68,6 +68,10 @@
             "description": "External id of the customer this wallet belongs to.",
             "example": "cust_01HXYZABC1234567890ABCDEFG"
           },
+          "customer": {
+            "$ref": "#/components/schemas/WalletCustomerResponse",
+            "description": "The customer that owns this wallet. Always present, including for the integration's default customer."
+          },
           "currency": {
             "type": "string",
             "description": "Uppercase currency code",
@@ -127,6 +131,7 @@
         "required": [
           "id",
           "customer_id",
+          "customer",
           "currency",
           "available_balance",
           "pending_balance",
@@ -273,6 +278,10 @@
             "description": "External id of the customer this wallet belongs to.",
             "example": "cust_01HXYZABC1234567890ABCDEFG"
           },
+          "customer": {
+            "$ref": "#/components/schemas/WalletCustomerResponse",
+            "description": "The customer that owns this wallet. Always present, including for the integration's default customer."
+          },
           "currency": {
             "type": "string",
             "description": "Uppercase currency code",
@@ -339,6 +348,7 @@
         "required": [
           "id",
           "customer_id",
+          "customer",
           "currency",
           "available_balance",
           "pending_balance",
@@ -2891,6 +2901,62 @@
           "success"
         ]
       },
+      "WalletCustomerResponse": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "description": "GlobalStack customer external id (prefixed cust_).",
+            "example": "cust_01HXYZABC1234567890ABCDEFG"
+          },
+          "type": {
+            "type": "string",
+            "enum": [
+              "individual",
+              "business"
+            ],
+            "example": "individual"
+          },
+          "name": {
+            "type": "string",
+            "description": "Customer full or business name.",
+            "example": "Alice Johnson"
+          },
+          "email": {
+            "type": "string",
+            "format": "email",
+            "example": "alice@example.com"
+          },
+          "tier": {
+            "type": "string",
+            "enum": [
+              "tier_0",
+              "tier_1",
+              "tier_2"
+            ],
+            "example": "tier_2"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time",
+            "example": "2026-04-16T16:14:08.000Z"
+          },
+          "updated_at": {
+            "type": "string",
+            "format": "date-time",
+            "example": "2026-04-16T16:14:08.000Z"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "type",
+          "name",
+          "email",
+          "tier",
+          "created_at",
+          "updated_at"
+        ]
+      },
       "ApiErrorMetaSchema": {
         "properties": {
           "next_steps": {
@@ -4024,7 +4090,7 @@
         "tags": [
           "Wallets"
         ],
-        "description": "Create a wallet — a ledger balance in a single currency for a customer.\n\nThis does not create a credential. Add funding rails later with `POST /v1/wallets/:id/credentials` when you need a persistent receive identity. You can still onramp into a wallet with zero credentials.\n\nIf `customer_id` is omitted, the wallet is created for the merchant.\nThe currency must support deposit (`can_deposit = true`).\n\n`country_code` (optional, ISO 3166-1 alpha-2, e.g. `NG`) pins the wallet to a country\nat creation. It is required only when the same `currency` code is supported in more than\none country; a single-country currency code (like `KES` in `KE`) resolves without it. CRYPTO\ncurrencies (like `USDC`) always resolve to `null` — supplying `country_code` for a crypto\ncode has no effect. The pinned country is persisted on the wallet, echoed on every wallet\nresponse as `country_code`, and used by downstream flows (quotes, deposit-addresses) instead\nof the customer's registered country — so a wallet can serve payers who transact from a\ncountry other than the customer's KYC country.\n\nBalances start at zero, formatted to the currency's precision. A customer may\nhold multiple wallets in the same crypto currency, but only one wallet per fiat\ncurrency; each create returns a new wallet with its own `wal_…` id. Use the\noptional `label` to tell them apart.\n\n### Body\n\n- `currency` — required. 2-8 uppercase alphanumerics (e.g. `USDC`, `NGN`).\n- `country_code` — optional. 2-letter uppercase ISO 3166-1 alpha-2 (e.g. `NG`).\n- `customer_id` — Owner customer ID. If omitted, defaults to your account's default customer — created automatically when you signed up.\n- `label` — optional. Max 255 chars.\n- `metadata` — optional. Free-form `Record<string, string>`.\n\n### Errors\n\n- `400 invalid_input` (was `404 not_found` before XB-1154) — `currency 'X' is not\n  supported`. The code isn't in the supported currency table at all.\n- `400 invalid_input` — `currency 'X' is not supported in country 'Y'`. The code\n  exists but the supplied `country_code` doesn't match any row.\n- `400 invalid_input` — `currency 'X' is available in multiple countries (A, B);\n  country_code is required`. Supply the pin to disambiguate.\n\n### Example\n\n```\nPOST /v1/wallets\n{\n  \"currency\": \"USDC\"\n}\n```\n\n```\nPOST /v1/wallets\n{\n  \"currency\": \"NGN\",\n  \"country_code\": \"NG\"\n}\n```\n",
+        "description": "Create a wallet — a ledger balance in a single currency for a customer.\n\nThis does not create a credential. Add funding rails later with `POST /v1/wallets/:id/credentials` when you need a persistent receive identity. You can still onramp into a wallet with zero credentials.\n\nIf `customer_id` is omitted, the wallet is created for the merchant.\nThe currency must support deposit (`can_deposit = true`).\n\n`country_code` (optional, ISO 3166-1 alpha-2, e.g. `NG`) pins the wallet to a country\nat creation. It is required only when the same `currency` code is supported in more than\none country; a single-country currency code (like `KES` in `KE`) resolves without it. CRYPTO\ncurrencies (like `USDC`) always resolve to `null` — supplying `country_code` for a crypto\ncode has no effect. The pinned country is persisted on the wallet, echoed on every wallet\nresponse as `country_code`, and used by downstream flows (quotes, deposit-addresses) instead\nof the customer's registered country — so a wallet can serve payers who transact from a\ncountry other than the customer's KYC country.\n\nBalances start at zero, formatted to the currency's precision. A customer may\nhold multiple wallets in the same crypto currency, but only one wallet per fiat\ncurrency; each create returns a new wallet with its own `wal_…` id. Use the\noptional `label` to tell them apart.\n\n### Body\n\n- `currency` — required. 2-8 uppercase alphanumerics (e.g. `USDC`, `NGN`).\n- `country_code` — optional. 2-letter uppercase ISO 3166-1 alpha-2 (e.g. `NG`).\n- `customer_id` — Owner customer ID. If omitted, defaults to your account's default customer — created automatically when you signed up.\n- `label` — optional. Max 255 chars.\n- `metadata` — optional. Free-form `Record<string, string>`.\n\n### Owner\n\n`data.customer` is the customer that owns the wallet, returned on every wallet payload:\n\n| Field | Description |\n| ----- | ----------- |\n| `id` | Customer external id (`cust_…`), identical to `customer_id`. |\n| `type` | `individual` or `business`. |\n| `name` | Customer full or business name. |\n| `email` | Customer email address. |\n| `tier` | KYC tier — `tier_0`, `tier_1` or `tier_2`. |\n| `created_at` / `updated_at` | ISO-8601 timestamps. |\n\n`customer_id` is unchanged and still present. For KYC status, metadata or the customer profile,\ncall `GET /v1/customers/{customerId}`.\n\n### Errors\n\n- `400 invalid_input` (was `404 not_found` before XB-1154) — `currency 'X' is not\n  supported`. The code isn't in the supported currency table at all.\n- `400 invalid_input` — `currency 'X' is not supported in country 'Y'`. The code\n  exists but the supplied `country_code` doesn't match any row.\n- `400 invalid_input` — `currency 'X' is available in multiple countries (A, B);\n  country_code is required`. Supply the pin to disambiguate.\n\n### Example\n\n```\nPOST /v1/wallets\n{\n  \"currency\": \"USDC\"\n}\n```\n\n```\nPOST /v1/wallets\n{\n  \"currency\": \"NGN\",\n  \"country_code\": \"NG\"\n}\n```\n",
         "parameters": [
           {
             "in": "header",
@@ -4205,7 +4271,7 @@
         "tags": [
           "Wallets"
         ],
-        "description": "Returns the calling merchant's wallets, newest first.\n\nAll filters are optional. When no filters are supplied all wallets are returned (paginated), across all customers.\n\n### Filter behavior\n\n- `customer_id` — restricts to a single customer's wallets. Must be a GlobalStack\n  `cust_…` id. \n- `currency` — restricts to one currency code (exact, uppercase, e.g. `USDC`).\n\n### Pagination\n\n- `page` — 1-indexed page number. Defaults to `1`. Must be between `1` and `1,000,000`.\n- `per_page` — page size. Defaults to `20`. Must be between `1` and `50`. Capped\n  tighter than other list endpoints because each wallet is composed with a live\n  ledger balance.\n\nThe response carries pagination metadata under `meta` (`page`, `per_page`,\n`total`, `has_more`). `has_more` is `true` when at least one more page is\navailable.\n\n### Balances\n\n`available_balance`, `pending_balance`, and `total_balance` are sourced from the\nledger and formatted to the currency's precision. Wallets that are not yet\nprovisioned (`provisioned: false`) report zero balances.\n\n### Ordering\n\nResults are sorted by `created_at DESC, id DESC` (newest first, deterministic on ties).\n\n### Example\n\n```\nGET /v1/wallets?customer_id=cust_01HXYZ…&currency=USDC&page=1&per_page=25\n```\n"
+        "description": "Returns the calling merchant's wallets, newest first.\n\nAll filters are optional. When no filters are supplied all wallets are returned (paginated), across all customers.\n\n### Filter behavior\n\n- `customer_id` — restricts to a single customer's wallets. Must be a GlobalStack\n  `cust_…` id. \n- `currency` — restricts to one currency code (exact, uppercase, e.g. `USDC`).\n\n### Pagination\n\n- `page` — 1-indexed page number. Defaults to `1`. Must be between `1` and `1,000,000`.\n- `per_page` — page size. Defaults to `20`. Must be between `1` and `50`. Capped\n  tighter than other list endpoints because each wallet is composed with a live\n  ledger balance.\n\nThe response carries pagination metadata under `meta` (`page`, `per_page`,\n`total`, `has_more`). `has_more` is `true` when at least one more page is\navailable.\n\n### Balances\n\n`available_balance`, `pending_balance`, and `total_balance` are sourced from the\nledger and formatted to the currency's precision. Wallets that are not yet\nprovisioned (`provisioned: false`) report zero balances.\n\n### Ordering\n\nResults are sorted by `created_at DESC, id DESC` (newest first, deterministic on ties).\n\n### Owner\n\n`data.customer` is the customer that owns the wallet, returned on every wallet payload:\n\n| Field | Description |\n| ----- | ----------- |\n| `id` | Customer external id (`cust_…`), identical to `customer_id`. |\n| `type` | `individual` or `business`. |\n| `name` | Customer full or business name. |\n| `email` | Customer email address. |\n| `tier` | KYC tier — `tier_0`, `tier_1` or `tier_2`. |\n| `created_at` / `updated_at` | ISO-8601 timestamps. |\n\n`customer_id` is unchanged and still present. For KYC status, metadata or the customer profile,\ncall `GET /v1/customers/{customerId}`.\n\n### Example\n\n```\nGET /v1/wallets?customer_id=cust_01HXYZ…&currency=USDC&page=1&per_page=25\n```\n"
       }
     },
     "/v1/wallets/{walletId}": {
@@ -4348,7 +4414,7 @@
         "tags": [
           "Wallets"
         ],
-        "description": "Partially updates an existing wallet. Returns the wallet in the same shape as\n`POST /v1/wallets`.\n\nThe path id is the GlobalStack external identifier (`wal_…`).\n\n### Mutable fields\n\n- `label` — non-empty string, max 255 chars.\n- `metadata` — free-form `Record<string, string>`.\n\n### Immutable fields\n\n`currency` and `customer_id` cannot be changed. Including either (or any unknown\nfield) in the request body fails validation with `400 bad_request`. To move a\nwallet to a different currency, create a new wallet.\n\n### Semantics\n\n- **`label`** is replace-only. Omitting it leaves the stored label unchanged.\n  Passing `null` (or an empty string) to clear it is rejected as `400 bad_request`.\n- **`metadata`** is replaced whole-cloth when present. No deep merge — the new\n  map fully replaces the stored map. `{}` clears it. Explicit `null` is rejected\n  as `400 bad_request`.\n- A body with neither `label` nor `metadata` is rejected as `400 invalid_input`\n  (nothing to update).\n\n### Errors\n\n- `400 bad_request` — class-validator failures: an immutable or unknown field\n  (`currency`, `customer_id`, …) rejected; `label` set to\n  null/empty; `metadata` set to `null` or a non-object.\n- `400 invalid_input` — malformed path id (`wal_…` prefix required); empty\n  patch body with neither `label` nor `metadata`.\n- `401 authentication_failed` — invalid or missing API key.\n- `404 not_found` — wallet does not exist.\n\n### Example\n\n```\nPATCH /v1/wallets/wal_01HXYZABC1234567890ABCDEFG\n{\n  \"label\": \"Treasury Wallet\"\n}\n```\n"
+        "description": "Partially updates an existing wallet. Returns the wallet in the same shape as\n`POST /v1/wallets`.\n\nThe path id is the GlobalStack external identifier (`wal_…`).\n\n### Mutable fields\n\n- `label` — non-empty string, max 255 chars.\n- `metadata` — free-form `Record<string, string>`.\n\n### Immutable fields\n\n`currency` and `customer_id` cannot be changed. Including either (or any unknown\nfield) in the request body fails validation with `400 bad_request`. To move a\nwallet to a different currency, create a new wallet.\n\n### Semantics\n\n- **`label`** is replace-only. Omitting it leaves the stored label unchanged.\n  Passing `null` (or an empty string) to clear it is rejected as `400 bad_request`.\n- **`metadata`** is replaced whole-cloth when present. No deep merge — the new\n  map fully replaces the stored map. `{}` clears it. Explicit `null` is rejected\n  as `400 bad_request`.\n- A body with neither `label` nor `metadata` is rejected as `400 invalid_input`\n  (nothing to update).\n\n### Owner\n\n`data.customer` is the customer that owns the wallet, returned on every wallet payload:\n\n| Field | Description |\n| ----- | ----------- |\n| `id` | Customer external id (`cust_…`), identical to `customer_id`. |\n| `type` | `individual` or `business`. |\n| `name` | Customer full or business name. |\n| `email` | Customer email address. |\n| `tier` | KYC tier — `tier_0`, `tier_1` or `tier_2`. |\n| `created_at` / `updated_at` | ISO-8601 timestamps. |\n\n`customer_id` is unchanged and still present. For KYC status, metadata or the customer profile,\ncall `GET /v1/customers/{customerId}`.\n\n### Errors\n\n- `400 bad_request` — class-validator failures: an immutable or unknown field\n  (`currency`, `customer_id`, …) rejected; `label` set to\n  null/empty; `metadata` set to `null` or a non-object.\n- `400 invalid_input` — malformed path id (`wal_…` prefix required); empty\n  patch body with neither `label` nor `metadata`.\n- `401 authentication_failed` — invalid or missing API key.\n- `404 not_found` — wallet does not exist.\n\n### Example\n\n```\nPATCH /v1/wallets/wal_01HXYZABC1234567890ABCDEFG\n{\n  \"label\": \"Treasury Wallet\"\n}\n```\n"
       },
       "get": {
         "operationId": "WalletController.get",
@@ -4477,7 +4543,7 @@
         "tags": [
           "Wallets"
         ],
-        "description": "Returns a single wallet, including its credentials.\n\nThe path id is the GlobalStack external identifier (`wal_…`) returned by\n`POST /v1/wallets` and `GET /v1/wallets`.\n\n### Credentials\n\n`data.credentials` lists the wallet's credentials, created via `POST /v1/wallets/{id}/credentials` — newest first. The array is empty when the wallet has no credentials.\n\n### Balances\n\n`available_balance`, `pending_balance`, and `total_balance` start at\n`0.00` (formatted to the currency precision).\n\n### Errors\n\n- `400 invalid_input` — `wallet_id` does not start with `wal_`. This catches\n  callers passing a non-GlobalStack id (e.g. a `cust_…` id).\n- `404 not_found` — returned for **all** lookup misses: the id does not\n  exist.\n\n### Example\n\n```\nGET /v1/wallets/wal_seed_alice_usdc\n```\n"
+        "description": "Returns a single wallet, including its credentials.\n\nThe path id is the GlobalStack external identifier (`wal_…`) returned by\n`POST /v1/wallets` and `GET /v1/wallets`.\n\n### Credentials\n\n`data.credentials` lists the wallet's credentials, created via `POST /v1/wallets/{id}/credentials` — newest first. The array is empty when the wallet has no credentials.\n\n### Balances\n\n`available_balance`, `pending_balance`, and `total_balance` start at\n`0.00` (formatted to the currency precision).\n\n### Owner\n\n`data.customer` is the customer that owns the wallet, returned on every wallet payload:\n\n| Field | Description |\n| ----- | ----------- |\n| `id` | Customer external id (`cust_…`), identical to `customer_id`. |\n| `type` | `individual` or `business`. |\n| `name` | Customer full or business name. |\n| `email` | Customer email address. |\n| `tier` | KYC tier — `tier_0`, `tier_1` or `tier_2`. |\n| `created_at` / `updated_at` | ISO-8601 timestamps. |\n\n`customer_id` is unchanged and still present. For KYC status, metadata or the customer profile,\ncall `GET /v1/customers/{customerId}`.\n\n### Errors\n\n- `400 invalid_input` — `wallet_id` does not start with `wal_`. This catches\n  callers passing a non-GlobalStack id (e.g. a `cust_…` id).\n- `404 not_found` — returned for **all** lookup misses: the id does not\n  exist.\n\n### Example\n\n```\nGET /v1/wallets/wal_seed_alice_usdc\n```\n"
       }
     },
     "/v1/transfers": {

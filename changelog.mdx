@@ -6,6 +6,24 @@ description: "Notable changes to the GlobalStack API — new endpoints, behavior
 Changes that affect how you integrate: new endpoints and fields, behavior changes, and new error
 or failure codes. Breaking changes are called out explicitly.
 
+<Update label="2026-09-18" tags={["New feature"]}>
+  ## Wallets now tell you which customer owns them
+
+  Wallet responses now include a `customer` object alongside the existing `customer_id`, so you no
+  longer need a second call to `/v1/customers` just to show an owner's name. It is returned by
+  `POST /v1/wallets`, `GET /v1/wallets`, `GET /v1/wallets/{walletId}` and
+  `PATCH /v1/wallets/{walletId}`.
+
+  The object carries `id`, `type`, `name`, `email`, `tier`, `created_at` and `updated_at` — the same
+  shape already nested on transfer, onramp, offramp, and conversion responses. For KYC status,
+  metadata, or the customer profile, keep using `GET /v1/customers/{customerId}`.
+
+  `customer_id` is unchanged and still present, so nothing you already key off has moved. Wallets
+  owned by your integration's default customer return a populated `customer` too — those are the
+  wallets you could not previously resolve a name for, since the default customer is not listed by
+  `GET /v1/customers`.
+</Update>
+
 <Update label="2026-08-25" tags={["New feature"]}>
   ## Quote by the amount the recipient receives with `target_amount`
 
