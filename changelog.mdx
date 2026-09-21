@@ -6,6 +6,46 @@ description: "Notable changes to the GlobalStack API — new endpoints, behavior
 Changes that affect how you integrate: new endpoints and fields, behavior changes, and new error
 or failure codes. Breaking changes are called out explicitly.
 
+<Update label="2026-09-21" tags={["New feature"]}>
+  ## Forwarding wallets send every deposit straight to your own address
+
+  `POST /v1/wallets` now accepts a `type`. The default, `custodial`, is every wallet you have
+  today: it holds a balance you can convert, offramp and transfer out of. Nothing about your
+  existing wallets changes, and omitting `type` keeps current behaviour.
+
+  The new `forwarding` type holds no balance. You give it an address you control at creation, and
+  every inflow is delivered there:
+
+  ```json
+  POST /v1/wallets
+  {
+    "currency": "USDC",
+    "type": "forwarding",
+    "destination_address": "0x1111111111111111111111111111111111111111",
+    "destination_chain": "base"
+  }
+  ```
+
+  `destination_address` and `destination_chain` are required for `forwarding` and rejected on a
+  `custodial` wallet. `destination_chain` is one of `solana`, `base` or `ethereum` and must be
+  supported by the wallet's currency; the address is validated against the chain you pick. A
+  forwarding wallet must use a crypto currency.
+
+  **Both fields are permanent.** They cannot be changed after creation — create a new wallet to
+  change where funds land. Please double-check the address: every future deposit to that wallet
+  goes to it, and we cannot recover funds sent to an address you do not control.
+
+  Two consequences worth knowing before you integrate:
+
+  - A forwarding wallet's `available_balance`, `pending_balance` and `total_balance` always read
+    zero, because it never holds funds.
+  - It cannot be the **source** of a transfer, offramp or conversion — those are rejected with
+    [`400 invalid_input`](/errors#invalid_input). It is a destination only.
+
+  All four wallet endpoints now return `type`, `destination_address` and `destination_chain`. On a
+  custodial wallet the two destination fields are `null`.
+</Update>
+
 <Update label="2026-09-18" tags={["New feature"]}>
   ## Wallets now tell you which customer owns them
 

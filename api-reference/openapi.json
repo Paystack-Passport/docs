@@ -14,6 +14,25 @@
           "customer_id": {
             "type": "string"
           },
+          "type": {
+            "enum": [
+              "custodial",
+              "forwarding"
+            ],
+            "type": "string"
+          },
+          "destination_address": {
+            "maxLength": 128,
+            "type": "string"
+          },
+          "destination_chain": {
+            "enum": [
+              "solana",
+              "base",
+              "ethereum"
+            ],
+            "type": "string"
+          },
           "label": {
             "maxLength": 255,
             "type": "string"
@@ -88,6 +107,32 @@
             "nullable": true,
             "example": "USDC Operating Wallet"
           },
+          "type": {
+            "type": "string",
+            "enum": [
+              "custodial",
+              "forwarding"
+            ],
+            "description": "Wallet shape, fixed at creation. `custodial` holds a balance you can convert and transfer from. `forwarding` holds no balance — every deposit is delivered to `destination_address`, its balances always read zero, and it cannot be the source of a transfer, offramp or conversion.",
+            "example": "custodial"
+          },
+          "destination_address": {
+            "type": "string",
+            "nullable": true,
+            "description": "Address every inflow is delivered to. Non-null only when `type` is `forwarding`.",
+            "example": null
+          },
+          "destination_chain": {
+            "type": "string",
+            "nullable": true,
+            "enum": [
+              "solana",
+              "base",
+              "ethereum"
+            ],
+            "description": "Chain `destination_address` is on. Non-null only when `type` is `forwarding`.",
+            "example": null
+          },
           "available_balance": {
             "type": "string",
             "description": "Available balance, formatted to the currency precision.",
@@ -133,6 +178,7 @@
           "customer_id",
           "customer",
           "currency",
+          "type",
           "available_balance",
           "pending_balance",
           "total_balance",
@@ -298,6 +344,32 @@
             "nullable": true,
             "example": "USDC Operating Wallet"
           },
+          "type": {
+            "type": "string",
+            "enum": [
+              "custodial",
+              "forwarding"
+            ],
+            "description": "Wallet shape, fixed at creation. `custodial` holds a balance you can convert and transfer from. `forwarding` holds no balance — every deposit is delivered to `destination_address`, its balances always read zero, and it cannot be the source of a transfer, offramp or conversion.",
+            "example": "custodial"
+          },
+          "destination_address": {
+            "type": "string",
+            "nullable": true,
+            "description": "Address every inflow is delivered to. Non-null only when `type` is `forwarding`.",
+            "example": null
+          },
+          "destination_chain": {
+            "type": "string",
+            "nullable": true,
+            "enum": [
+              "solana",
+              "base",
+              "ethereum"
+            ],
+            "description": "Chain `destination_address` is on. Non-null only when `type` is `forwarding`.",
+            "example": null
+          },
           "available_balance": {
             "type": "string",
             "description": "Available balance, formatted to the currency precision.",
@@ -350,6 +422,7 @@
           "customer_id",
           "customer",
           "currency",
+          "type",
           "available_balance",
           "pending_balance",
           "total_balance",
@@ -3984,7 +4057,7 @@
             "description": "Wallet created successfully"
           },
           "400": {
-            "description": "Bad request. `bad_request` covers class-validator failures on the body (missing/invalid `currency`, malformed `country_code`, `metadata` not an object, etc.). `invalid_input` covers domain-level rejections: malformed `customer_id` prefix, malformed `Idempotency-Key` header, currency not supported (unknown code), currency not supported in the supplied country, ambiguous currency with multiple countries + no `country_code`, or a known currency that does not support deposit.",
+            "description": "Bad request. `bad_request` covers class-validator failures on the body (missing/invalid `currency`, malformed `country_code`, `type` not one of `custodial`/`forwarding`, `destination_chain` not one of `solana`/`base`/`ethereum`, `destination_address` longer than 128 chars, `metadata` not an object, etc.). `invalid_input` covers domain-level rejections: malformed `customer_id` prefix, malformed `Idempotency-Key` header, currency not supported (unknown code), currency not supported in the supplied country, ambiguous currency with multiple countries + no `country_code`, a known currency that does not support deposit, `type: forwarding` on a non-crypto currency, `type: forwarding` missing `destination_address` or `destination_chain`, a destination supplied on a `custodial` wallet, a `destination_chain` the currency does not support, or a `destination_address` that is not valid for `destination_chain`.",
             "content": {
               "application/json": {
                 "schema": {
@@ -4090,7 +4163,7 @@
         "tags": [
           "Wallets"
         ],
-        "description": "Create a wallet — a ledger balance in a single currency for a customer.\n\nThis does not create a credential. Add funding rails later with `POST /v1/wallets/:id/credentials` when you need a persistent receive identity. You can still onramp into a wallet with zero credentials.\n\nIf `customer_id` is omitted, the wallet is created for the merchant.\nThe currency must support deposit (`can_deposit = true`).\n\n`country_code` (optional, ISO 3166-1 alpha-2, e.g. `NG`) pins the wallet to a country\nat creation. It is required only when the same `currency` code is supported in more than\none country; a single-country currency code (like `KES` in `KE`) resolves without it. CRYPTO\ncurrencies (like `USDC`) always resolve to `null` — supplying `country_code` for a crypto\ncode has no effect. The pinned country is persisted on the wallet, echoed on every wallet\nresponse as `country_code`, and used by downstream flows (quotes, deposit-addresses) instead\nof the customer's registered country — so a wallet can serve payers who transact from a\ncountry other than the customer's KYC country.\n\nBalances start at zero, formatted to the currency's precision. A customer may\nhold multiple wallets in the same crypto currency, but only one wallet per fiat\ncurrency; each create returns a new wallet with its own `wal_…` id. Use the\noptional `label` to tell them apart.\n\n### Body\n\n- `currency` — required. 2-8 uppercase alphanumerics (e.g. `USDC`, `NGN`).\n- `country_code` — optional. 2-letter uppercase ISO 3166-1 alpha-2 (e.g. `NG`).\n- `customer_id` — Owner customer ID. If omitted, defaults to your account's default customer — created automatically when you signed up.\n- `label` — optional. Max 255 chars.\n- `metadata` — optional. Free-form `Record<string, string>`.\n\n### Owner\n\n`data.customer` is the customer that owns the wallet, returned on every wallet payload:\n\n| Field | Description |\n| ----- | ----------- |\n| `id` | Customer external id (`cust_…`), identical to `customer_id`. |\n| `type` | `individual` or `business`. |\n| `name` | Customer full or business name. |\n| `email` | Customer email address. |\n| `tier` | KYC tier — `tier_0`, `tier_1` or `tier_2`. |\n| `created_at` / `updated_at` | ISO-8601 timestamps. |\n\n`customer_id` is unchanged and still present. For KYC status, metadata or the customer profile,\ncall `GET /v1/customers/{customerId}`.\n\n### Errors\n\n- `400 invalid_input` (was `404 not_found` before XB-1154) — `currency 'X' is not\n  supported`. The code isn't in the supported currency table at all.\n- `400 invalid_input` — `currency 'X' is not supported in country 'Y'`. The code\n  exists but the supplied `country_code` doesn't match any row.\n- `400 invalid_input` — `currency 'X' is available in multiple countries (A, B);\n  country_code is required`. Supply the pin to disambiguate.\n\n### Example\n\n```\nPOST /v1/wallets\n{\n  \"currency\": \"USDC\"\n}\n```\n\n```\nPOST /v1/wallets\n{\n  \"currency\": \"NGN\",\n  \"country_code\": \"NG\"\n}\n```\n",
+        "description": "Create a wallet — a ledger balance in a single currency for a customer.\n\nThis does not create a credential. Add funding rails later with `POST /v1/wallets/:id/credentials` when you need a persistent receive identity. You can still onramp into a wallet with zero credentials.\n\nIf `customer_id` is omitted, the wallet is created for the merchant.\nThe currency must support deposit (`can_deposit = true`).\n\n`country_code` (optional, ISO 3166-1 alpha-2, e.g. `NG`) pins the wallet to a country\nat creation. It is required only when the same `currency` code is supported in more than\none country; a single-country currency code (like `KES` in `KE`) resolves without it. CRYPTO\ncurrencies (like `USDC`) always resolve to `null` — supplying `country_code` for a crypto\ncode has no effect. The pinned country is persisted on the wallet, echoed on every wallet\nresponse as `country_code`, and used by downstream flows (quotes, deposit-addresses) instead\nof the customer's registered country — so a wallet can serve payers who transact from a\ncountry other than the customer's KYC country.\n\nBalances start at zero, formatted to the currency's precision. A customer may\nhold multiple wallets in the same crypto currency, but only one wallet per fiat\ncurrency; each create returns a new wallet with its own `wal_…` id. Use the\noptional `label` to tell them apart.\n\n### Wallet type\n\n`type` chooses the wallet's shape and is fixed at creation.\n\n- `custodial` (default) — the wallet holds a balance. Deposits credit it, and you convert,\n  offramp and transfer out of it. This is how every wallet behaved before `type` existed, so\n  omitting `type` keeps current behaviour.\n- `forwarding` — the wallet holds no balance. Every inflow is delivered straight to\n  `destination_address` on `destination_chain`, an address you control.\n\nA forwarding wallet requires a crypto currency and both destination fields. Its balances always\nread zero, and it cannot be the source of a transfer, offramp or conversion — those return\n`400 invalid_input`. Neither destination field can be changed afterwards: create a new wallet to\nchange where funds land.\n\n### Body\n\n- `currency` — required. 2-8 uppercase alphanumerics (e.g. `USDC`, `NGN`).\n- `country_code` — optional. 2-letter uppercase ISO 3166-1 alpha-2 (e.g. `NG`).\n- `customer_id` — Owner customer ID. If omitted, defaults to your account's default customer — created automatically when you signed up.\n- `type` — optional. `custodial` (default) or `forwarding`.\n- `destination_address` — required when `type` is `forwarding`, rejected otherwise. Max 128 chars,\n  validated against `destination_chain` (EVM chains expect `0x` + 40 hex; Solana expects a base58\n  address).\n- `destination_chain` — required when `type` is `forwarding`, rejected otherwise. One of `solana`,\n  `base`, `ethereum`, and must be supported by `currency`.\n- `label` — optional. Max 255 chars.\n- `metadata` — optional. Free-form `Record<string, string>`.\n\n### Owner\n\n`data.customer` is the customer that owns the wallet, returned on every wallet payload:\n\n| Field | Description |\n| ----- | ----------- |\n| `id` | Customer external id (`cust_…`), identical to `customer_id`. |\n| `type` | `individual` or `business`. |\n| `name` | Customer full or business name. |\n| `email` | Customer email address. |\n| `tier` | KYC tier — `tier_0`, `tier_1` or `tier_2`. |\n| `created_at` / `updated_at` | ISO-8601 timestamps. |\n\n`customer_id` is unchanged and still present. For KYC status, metadata or the customer profile,\ncall `GET /v1/customers/{customerId}`.\n\n### Errors\n\n- `400 invalid_input` (was `404 not_found` before XB-1154) — `currency 'X' is not\n  supported`. The code isn't in the supported currency table at all.\n- `400 invalid_input` — `currency 'X' is not supported in country 'Y'`. The code\n  exists but the supplied `country_code` doesn't match any row.\n- `400 invalid_input` — `currency 'X' is available in multiple countries (A, B);\n  country_code is required`. Supply the pin to disambiguate.\n\n### Example\n\n```\nPOST /v1/wallets\n{\n  \"currency\": \"USDC\"\n}\n```\n\n```\nPOST /v1/wallets\n{\n  \"currency\": \"NGN\",\n  \"country_code\": \"NG\"\n}\n```\n\nA forwarding wallet — every deposit is delivered to your own address on Base:\n\n```\nPOST /v1/wallets\n{\n  \"currency\": \"USDC\",\n  \"type\": \"forwarding\",\n  \"destination_address\": \"0x1111111111111111111111111111111111111111\",\n  \"destination_chain\": \"base\"\n}\n```\n",
         "parameters": [
           {
             "in": "header",
