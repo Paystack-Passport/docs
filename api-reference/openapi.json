@@ -649,7 +649,7 @@
           "destination_amount": {
             "type": "string",
             "nullable": true,
-            "description": "Destination amount; null for deposits and until economics land.",
+            "description": "Destination amount, formatted to the destination currency precision. Equals `source_amount` for a same-currency deposit; carries the converted amount for a cross-currency credential deposit; null until the economics land.",
             "example": "6.046600"
           },
           "destination_currency": {

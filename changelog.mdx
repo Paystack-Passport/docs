@@ -6,6 +6,65 @@ description: "Notable changes to the GlobalStack API — new endpoints, behavior
 Changes that affect how you integrate: new endpoints and fields, behavior changes, and new error
 or failure codes. Breaking changes are called out explicitly.
 
+<Update label="2026-09-24" tags={["New feature", "Fix"]}>
+  ## Cross-currency deposits now tell you when the money arrives
+
+  Deposits on a [cross-currency credential](/api-reference/auto-conversion) used to be silent
+  until the conversion started — your first webhook was `conversion.created`, and if the
+  conversion never started, you heard nothing at all.
+
+  They now emit `deposit.received` on arrival. The event waits for the FX quote, so it carries
+  what the deposit is worth in your wallet's currency rather than just the amount the payer sent:
+
+  ```json
+  {
+    "event_type": "deposit.received",
+    "event_object": {
+      "source_amount": "10000.00",
+      "source_currency": "NGN",
+      "destination_amount": "6.046600",
+      "destination_currency": "USDC",
+      "metadata": { "auto_conversion": "true", "quote_id": "qt_…", "rate": "0.000605" },
+      "wallet": { "id": "wal_…", "currency": "USDC", "label": "Treasury USDC" },
+      "customer": { "id": "cust_…", "type": "business", "name": "Acme Ltd" },
+      "credential": { "id": "wcr_…", "currency": "NGN", "details": { "accountNumber": "…" } }
+    }
+  }
+  ```
+
+  The `wallet`, `customer` and `credential` blocks are new, and appear **only** on cross-currency
+  deposit events. They tell you which credential was funded — including the payer-facing bank
+  details of the virtual account — without a second API call. Same-currency deposit payloads are
+  unchanged.
+
+  Two things to know before you switch on handling:
+
+  - `destination_amount` is the **quoted** amount, not the settled one. Reconcile against
+    `actual_destination_amount` on `conversion.success`.
+  - A cross-currency deposit **never reaches a terminal** `deposit.*` state. It stays at
+    `received`, and the `conversion.*` topics carry the outcome. Do not wait for
+    `deposit.confirmed` on this path.
+
+  A deposit that breaches your customer's rolling money-in limit now emits `deposit.held` with
+  `metadata.hold_reason` of `tier_limit` and a null `destination_amount` — no rate is quoted while
+  it is under review. On release you receive `deposit.received` with the amount quoted at the
+  then-current rate.
+
+  ### Fixed: credential `currency` on a cross-currency credential
+
+  `GET /v1/wallets/{id}/credentials` and `GET /v1/wallets/{id}/credentials/{credentialId}`
+  reported the **wallet's** currency for every credential. On a cross-currency credential that was
+  wrong — an NGN credential on a USDC wallet returned `"currency": "USDC"` alongside its NGN bank
+  details. Both endpoints now return the credential's own currency. The nested `wallet.currency`
+  still reports the wallet's, so you can read both. Same-currency credentials are unaffected,
+  since the two values are identical there.
+
+  <Warning>
+    If you read `currency` on a cross-currency credential and relied on it meaning "the wallet's
+    currency", update that code — it now means "the currency this credential accepts".
+  </Warning>
+</Update>
+
 <Update label="2026-09-21" tags={["New feature"]}>
   ## Forwarding wallets send every deposit straight to your own address
 
