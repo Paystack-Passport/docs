@@ -6,6 +6,37 @@ description: "Notable changes to the GlobalStack API — new endpoints, behavior
 Changes that affect how you integrate: new endpoints and fields, behavior changes, and new error
 or failure codes. Breaking changes are called out explicitly.
 
+<Update label="2026-09-30" tags={["Documentation", "Behavior change"]}>
+  ## Every webhook event is now documented, with payloads
+
+  [Webhook events](/webhooks/events) is a new reference covering all 27 events we emit: which
+  category each belongs to, exactly when it fires, and a complete example payload per family —
+  onramp, offramp, conversion, transfer, deposit and verification.
+
+  Nothing about the events themselves changed. If you have been reverse-engineering payloads from
+  deliveries, the page confirms the shape and the guarantees: `event_object` mirrors the matching
+  REST resource, plus event-only fields (`actual_source_amount`, `actual_destination_amount`,
+  `actual_rate`, `terminal_at`, `deposit_timestamp`) that the REST body does not carry. Reconcile
+  money against the `actual_*` values, not the quoted ones.
+
+  A few behaviours the page pins down that were easy to get wrong:
+
+  - A **held deposit sends two events** — `deposit.held`, then `deposit.confirmed` on release.
+  - A **cross-currency deposit never reaches a terminal `deposit.*` event**. It stays at
+    `received`; the `conversion.*` events carry the outcome.
+  - `funds_received` and `processing` are **separate** events on the FX families, and a resource
+    emits any given event **at most once** — so a cancelled-then-reversed transfer reaches you as a
+    single `transfer.failed`.
+
+  ### Removed: `kyc.expired`
+
+  The `kyc` category previously registered a `kyc.expired` topic that nothing ever emitted — no
+  endpoint has ever received one. It has been removed, so the subscribable list now matches what we
+  actually send. Verification events are `kyc.approved` and `kyc.rejected`; an expired verification
+  link is visible on `GET /v1/customers/{customerId}/verifications`, and the customer can request a
+  new one. No action needed unless you wrote a handler branch for an event you never received.
+</Update>
+
 <Update label="2026-09-24" tags={["New feature", "Fix"]}>
   ## Cross-currency deposits now tell you when the money arrives
 
