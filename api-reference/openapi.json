@@ -14,6 +14,25 @@
           "customer_id": {
             "type": "string"
           },
+          "type": {
+            "enum": [
+              "custodial",
+              "forwarding"
+            ],
+            "type": "string"
+          },
+          "destination_address": {
+            "maxLength": 128,
+            "type": "string"
+          },
+          "destination_chain": {
+            "enum": [
+              "solana",
+              "base",
+              "ethereum"
+            ],
+            "type": "string"
+          },
           "label": {
             "maxLength": 255,
             "type": "string"
@@ -68,6 +87,10 @@
             "description": "External id of the customer this wallet belongs to.",
             "example": "cust_01HXYZABC1234567890ABCDEFG"
           },
+          "customer": {
+            "$ref": "#/components/schemas/WalletCustomerResponse",
+            "description": "The customer that owns this wallet. Always present, including for the integration's default customer."
+          },
           "currency": {
             "type": "string",
             "description": "Uppercase currency code",
@@ -83,6 +106,32 @@
             "type": "string",
             "nullable": true,
             "example": "USDC Operating Wallet"
+          },
+          "type": {
+            "type": "string",
+            "enum": [
+              "custodial",
+              "forwarding"
+            ],
+            "description": "Wallet shape, fixed at creation. `custodial` holds a balance you can convert and transfer from. `forwarding` holds no balance — every deposit is delivered to `destination_address`, its balances always read zero, and it cannot be the source of a transfer, offramp or conversion.",
+            "example": "custodial"
+          },
+          "destination_address": {
+            "type": "string",
+            "nullable": true,
+            "description": "Address every inflow is delivered to. Non-null only when `type` is `forwarding`.",
+            "example": null
+          },
+          "destination_chain": {
+            "type": "string",
+            "nullable": true,
+            "enum": [
+              "solana",
+              "base",
+              "ethereum"
+            ],
+            "description": "Chain `destination_address` is on. Non-null only when `type` is `forwarding`.",
+            "example": null
           },
           "available_balance": {
             "type": "string",
@@ -127,7 +176,9 @@
         "required": [
           "id",
           "customer_id",
+          "customer",
           "currency",
+          "type",
           "available_balance",
           "pending_balance",
           "total_balance",
@@ -273,6 +324,10 @@
             "description": "External id of the customer this wallet belongs to.",
             "example": "cust_01HXYZABC1234567890ABCDEFG"
           },
+          "customer": {
+            "$ref": "#/components/schemas/WalletCustomerResponse",
+            "description": "The customer that owns this wallet. Always present, including for the integration's default customer."
+          },
           "currency": {
             "type": "string",
             "description": "Uppercase currency code",
@@ -288,6 +343,32 @@
             "type": "string",
             "nullable": true,
             "example": "USDC Operating Wallet"
+          },
+          "type": {
+            "type": "string",
+            "enum": [
+              "custodial",
+              "forwarding"
+            ],
+            "description": "Wallet shape, fixed at creation. `custodial` holds a balance you can convert and transfer from. `forwarding` holds no balance — every deposit is delivered to `destination_address`, its balances always read zero, and it cannot be the source of a transfer, offramp or conversion.",
+            "example": "custodial"
+          },
+          "destination_address": {
+            "type": "string",
+            "nullable": true,
+            "description": "Address every inflow is delivered to. Non-null only when `type` is `forwarding`.",
+            "example": null
+          },
+          "destination_chain": {
+            "type": "string",
+            "nullable": true,
+            "enum": [
+              "solana",
+              "base",
+              "ethereum"
+            ],
+            "description": "Chain `destination_address` is on. Non-null only when `type` is `forwarding`.",
+            "example": null
           },
           "available_balance": {
             "type": "string",
@@ -339,7 +420,9 @@
         "required": [
           "id",
           "customer_id",
+          "customer",
           "currency",
+          "type",
           "available_balance",
           "pending_balance",
           "total_balance",
@@ -510,7 +593,7 @@
           },
           "source_type": {
             "type": "string",
-            "description": "Granular origin: onramp | offramp | conversion | transfer | deposit_address | credential.",
+            "description": "Granular origin: onramp | offramp | conversion | transfer | deposit_address | credential | deposit_forward.",
             "example": "onramp"
           },
           "source_id": {
@@ -566,7 +649,7 @@
           "destination_amount": {
             "type": "string",
             "nullable": true,
-            "description": "Destination amount; null for deposits and until economics land.",
+            "description": "Destination amount, formatted to the destination currency precision. Equals `source_amount` for a same-currency deposit; carries the converted amount for a cross-currency credential deposit; null until the economics land.",
             "example": "6.046600"
           },
           "destination_currency": {
@@ -765,6 +848,12 @@
           "destination_amount": {
             "type": "string",
             "description": "Destination amount, formatted to the destination currency precision.",
+            "example": "6.046600"
+          },
+          "received_amount": {
+            "type": "string",
+            "nullable": true,
+            "description": "Amount the recipient actually receives, formatted to the destination currency precision. `destination_amount` is the amount quoted, which on corridors that surface a transaction fee is the amount before it. Null when no delivered amount is known yet.",
             "example": "6.046600"
           },
           "destination_currency": {
@@ -972,6 +1061,12 @@
             "description": "Destination amount; placeholder until FX economics land.",
             "example": "0.000000"
           },
+          "received_amount": {
+            "type": "string",
+            "nullable": true,
+            "description": "Amount the recipient actually received, formatted to the destination currency precision. `destination_amount` is the amount quoted, which on corridors that surface a transaction fee is the amount before it. Null until the payout reaches a terminal success, and on conversions that did not pay out.",
+            "example": "100.00"
+          },
           "destination_currency": {
             "type": "string",
             "description": "Destination currency code.",
@@ -1150,6 +1245,12 @@
             "nullable": true,
             "description": "Destination amount, formatted to the destination currency precision. Null on rows where FX Engine has not yet supplied final economics.",
             "example": "0.00"
+          },
+          "received_amount": {
+            "type": "string",
+            "nullable": true,
+            "description": "Amount the recipient actually received, formatted to the destination currency precision. `destination_amount` is the amount quoted, which on corridors that surface a transaction fee is the amount before it. Null until the payout reaches a terminal success, and on conversions that did not pay out.",
+            "example": "100.00"
           },
           "destination_currency": {
             "type": "string",
@@ -2578,6 +2679,12 @@
             "description": "Destination amount; placeholder until FX economics land.",
             "example": "0.00"
           },
+          "received_amount": {
+            "type": "string",
+            "nullable": true,
+            "description": "Amount the recipient actually received, formatted to the destination currency precision. `destination_amount` is the amount quoted, which on corridors that surface a transaction fee is the amount before it. Null until the payout reaches a terminal success, and on conversions that did not pay out.",
+            "example": "100.00"
+          },
           "destination_currency": {
             "type": "string",
             "description": "Destination currency code.",
@@ -2865,6 +2972,62 @@
         "required": [
           "id",
           "success"
+        ]
+      },
+      "WalletCustomerResponse": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "description": "GlobalStack customer external id (prefixed cust_).",
+            "example": "cust_01HXYZABC1234567890ABCDEFG"
+          },
+          "type": {
+            "type": "string",
+            "enum": [
+              "individual",
+              "business"
+            ],
+            "example": "individual"
+          },
+          "name": {
+            "type": "string",
+            "description": "Customer full or business name.",
+            "example": "Alice Johnson"
+          },
+          "email": {
+            "type": "string",
+            "format": "email",
+            "example": "alice@example.com"
+          },
+          "tier": {
+            "type": "string",
+            "enum": [
+              "tier_0",
+              "tier_1",
+              "tier_2"
+            ],
+            "example": "tier_2"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time",
+            "example": "2026-04-16T16:14:08.000Z"
+          },
+          "updated_at": {
+            "type": "string",
+            "format": "date-time",
+            "example": "2026-04-16T16:14:08.000Z"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "type",
+          "name",
+          "email",
+          "tier",
+          "created_at",
+          "updated_at"
         ]
       },
       "ApiErrorMetaSchema": {
@@ -3894,7 +4057,7 @@
             "description": "Wallet created successfully"
           },
           "400": {
-            "description": "Bad request. `bad_request` covers class-validator failures on the body (missing/invalid `currency`, malformed `country_code`, `metadata` not an object, etc.). `invalid_input` covers domain-level rejections: malformed `customer_id` prefix, malformed `Idempotency-Key` header, currency not supported (unknown code), currency not supported in the supplied country, ambiguous currency with multiple countries + no `country_code`, or a known currency that does not support deposit.",
+            "description": "Bad request. `bad_request` covers class-validator failures on the body (missing/invalid `currency`, malformed `country_code`, `type` not one of `custodial`/`forwarding`, `destination_chain` not one of `solana`/`base`/`ethereum`, `destination_address` longer than 128 chars, `metadata` not an object, etc.). `invalid_input` covers domain-level rejections: malformed `customer_id` prefix, malformed `Idempotency-Key` header, currency not supported (unknown code), currency not supported in the supplied country, ambiguous currency with multiple countries + no `country_code`, a known currency that does not support deposit, `type: forwarding` on a non-crypto currency, `type: forwarding` missing `destination_address` or `destination_chain`, a destination supplied on a `custodial` wallet, a `destination_chain` the currency does not support, or a `destination_address` that is not valid for `destination_chain`.",
             "content": {
               "application/json": {
                 "schema": {
@@ -4000,7 +4163,7 @@
         "tags": [
           "Wallets"
         ],
-        "description": "Create a wallet — a ledger balance in a single currency for a customer.\n\nThis does not create a credential. Add funding rails later with `POST /v1/wallets/:id/credentials` when you need a persistent receive identity. You can still onramp into a wallet with zero credentials.\n\nIf `customer_id` is omitted, the wallet is created for the merchant.\nThe currency must support deposit (`can_deposit = true`).\n\n`country_code` (optional, ISO 3166-1 alpha-2, e.g. `NG`) pins the wallet to a country\nat creation. It is required only when the same `currency` code is supported in more than\none country; a single-country currency code (like `KES` in `KE`) resolves without it. CRYPTO\ncurrencies (like `USDC`) always resolve to `null` — supplying `country_code` for a crypto\ncode has no effect. The pinned country is persisted on the wallet, echoed on every wallet\nresponse as `country_code`, and used by downstream flows (quotes, deposit-addresses) instead\nof the customer's registered country — so a wallet can serve payers who transact from a\ncountry other than the customer's KYC country.\n\nBalances start at zero, formatted to the currency's precision. A customer may\nhold multiple wallets in the same crypto currency, but only one wallet per fiat\ncurrency; each create returns a new wallet with its own `wal_…` id. Use the\noptional `label` to tell them apart.\n\n### Body\n\n- `currency` — required. 2-8 uppercase alphanumerics (e.g. `USDC`, `NGN`).\n- `country_code` — optional. 2-letter uppercase ISO 3166-1 alpha-2 (e.g. `NG`).\n- `customer_id` — Owner customer ID. If omitted, defaults to your account's default customer — created automatically when you signed up.\n- `label` — optional. Max 255 chars.\n- `metadata` — optional. Free-form `Record<string, string>`.\n\n### Errors\n\n- `400 invalid_input` (was `404 not_found` before XB-1154) — `currency 'X' is not\n  supported`. The code isn't in the supported currency table at all.\n- `400 invalid_input` — `currency 'X' is not supported in country 'Y'`. The code\n  exists but the supplied `country_code` doesn't match any row.\n- `400 invalid_input` — `currency 'X' is available in multiple countries (A, B);\n  country_code is required`. Supply the pin to disambiguate.\n\n### Example\n\n```\nPOST /v1/wallets\n{\n  \"currency\": \"USDC\"\n}\n```\n\n```\nPOST /v1/wallets\n{\n  \"currency\": \"NGN\",\n  \"country_code\": \"NG\"\n}\n```\n",
+        "description": "Create a wallet — a ledger balance in a single currency for a customer.\n\nThis does not create a credential. Add funding rails later with `POST /v1/wallets/:id/credentials` when you need a persistent receive identity. You can still onramp into a wallet with zero credentials.\n\nIf `customer_id` is omitted, the wallet is created for the merchant.\nThe currency must support deposit (`can_deposit = true`).\n\n`country_code` (optional, ISO 3166-1 alpha-2, e.g. `NG`) pins the wallet to a country\nat creation. It is required only when the same `currency` code is supported in more than\none country; a single-country currency code (like `KES` in `KE`) resolves without it. CRYPTO\ncurrencies (like `USDC`) always resolve to `null` — supplying `country_code` for a crypto\ncode has no effect. The pinned country is persisted on the wallet, echoed on every wallet\nresponse as `country_code`, and used by downstream flows (quotes, deposit-addresses) instead\nof the customer's registered country — so a wallet can serve payers who transact from a\ncountry other than the customer's KYC country.\n\nBalances start at zero, formatted to the currency's precision. A customer may\nhold multiple wallets in the same crypto currency, but only one wallet per fiat\ncurrency; each create returns a new wallet with its own `wal_…` id. Use the\noptional `label` to tell them apart.\n\n### Wallet type\n\n`type` chooses the wallet's shape and is fixed at creation.\n\n- `custodial` (default) — the wallet holds a balance. Deposits credit it, and you convert,\n  offramp and transfer out of it. This is how every wallet behaved before `type` existed, so\n  omitting `type` keeps current behaviour.\n- `forwarding` — the wallet holds no balance. Every inflow is delivered straight to\n  `destination_address` on `destination_chain`, an address you control.\n\nA forwarding wallet requires a crypto currency and both destination fields. Its balances always\nread zero, and it cannot be the source of a transfer, offramp or conversion — those return\n`400 invalid_input`. Neither destination field can be changed afterwards: create a new wallet to\nchange where funds land.\n\n### Body\n\n- `currency` — required. 2-8 uppercase alphanumerics (e.g. `USDC`, `NGN`).\n- `country_code` — optional. 2-letter uppercase ISO 3166-1 alpha-2 (e.g. `NG`).\n- `customer_id` — Owner customer ID. If omitted, defaults to your account's default customer — created automatically when you signed up.\n- `type` — optional. `custodial` (default) or `forwarding`.\n- `destination_address` — required when `type` is `forwarding`, rejected otherwise. Max 128 chars,\n  validated against `destination_chain` (EVM chains expect `0x` + 40 hex; Solana expects a base58\n  address).\n- `destination_chain` — required when `type` is `forwarding`, rejected otherwise. One of `solana`,\n  `base`, `ethereum`, and must be supported by `currency`.\n- `label` — optional. Max 255 chars.\n- `metadata` — optional. Free-form `Record<string, string>`.\n\n### Owner\n\n`data.customer` is the customer that owns the wallet, returned on every wallet payload:\n\n| Field | Description |\n| ----- | ----------- |\n| `id` | Customer external id (`cust_…`), identical to `customer_id`. |\n| `type` | `individual` or `business`. |\n| `name` | Customer full or business name. |\n| `email` | Customer email address. |\n| `tier` | KYC tier — `tier_0`, `tier_1` or `tier_2`. |\n| `created_at` / `updated_at` | ISO-8601 timestamps. |\n\n`customer_id` is unchanged and still present. For KYC status, metadata or the customer profile,\ncall `GET /v1/customers/{customerId}`.\n\n### Errors\n\n- `400 invalid_input` (was `404 not_found` before XB-1154) — `currency 'X' is not\n  supported`. The code isn't in the supported currency table at all.\n- `400 invalid_input` — `currency 'X' is not supported in country 'Y'`. The code\n  exists but the supplied `country_code` doesn't match any row.\n- `400 invalid_input` — `currency 'X' is available in multiple countries (A, B);\n  country_code is required`. Supply the pin to disambiguate.\n\n### Example\n\n```\nPOST /v1/wallets\n{\n  \"currency\": \"USDC\"\n}\n```\n\n```\nPOST /v1/wallets\n{\n  \"currency\": \"NGN\",\n  \"country_code\": \"NG\"\n}\n```\n\nA forwarding wallet — every deposit is delivered to your own address on Base:\n\n```\nPOST /v1/wallets\n{\n  \"currency\": \"USDC\",\n  \"type\": \"forwarding\",\n  \"destination_address\": \"0x1111111111111111111111111111111111111111\",\n  \"destination_chain\": \"base\"\n}\n```\n",
         "parameters": [
           {
             "in": "header",
@@ -4181,7 +4344,7 @@
         "tags": [
           "Wallets"
         ],
-        "description": "Returns the calling merchant's wallets, newest first.\n\nAll filters are optional. When no filters are supplied all wallets are returned (paginated), across all customers.\n\n### Filter behavior\n\n- `customer_id` — restricts to a single customer's wallets. Must be a GlobalStack\n  `cust_…` id. \n- `currency` — restricts to one currency code (exact, uppercase, e.g. `USDC`).\n\n### Pagination\n\n- `page` — 1-indexed page number. Defaults to `1`. Must be between `1` and `1,000,000`.\n- `per_page` — page size. Defaults to `20`. Must be between `1` and `50`. Capped\n  tighter than other list endpoints because each wallet is composed with a live\n  ledger balance.\n\nThe response carries pagination metadata under `meta` (`page`, `per_page`,\n`total`, `has_more`). `has_more` is `true` when at least one more page is\navailable.\n\n### Balances\n\n`available_balance`, `pending_balance`, and `total_balance` are sourced from the\nledger and formatted to the currency's precision. Wallets that are not yet\nprovisioned (`provisioned: false`) report zero balances.\n\n### Ordering\n\nResults are sorted by `created_at DESC, id DESC` (newest first, deterministic on ties).\n\n### Example\n\n```\nGET /v1/wallets?customer_id=cust_01HXYZ…&currency=USDC&page=1&per_page=25\n```\n"
+        "description": "Returns the calling merchant's wallets, newest first.\n\nAll filters are optional. When no filters are supplied all wallets are returned (paginated), across all customers.\n\n### Filter behavior\n\n- `customer_id` — restricts to a single customer's wallets. Must be a GlobalStack\n  `cust_…` id. \n- `currency` — restricts to one currency code (exact, uppercase, e.g. `USDC`).\n\n### Pagination\n\n- `page` — 1-indexed page number. Defaults to `1`. Must be between `1` and `1,000,000`.\n- `per_page` — page size. Defaults to `20`. Must be between `1` and `50`. Capped\n  tighter than other list endpoints because each wallet is composed with a live\n  ledger balance.\n\nThe response carries pagination metadata under `meta` (`page`, `per_page`,\n`total`, `has_more`). `has_more` is `true` when at least one more page is\navailable.\n\n### Balances\n\n`available_balance`, `pending_balance`, and `total_balance` are sourced from the\nledger and formatted to the currency's precision. Wallets that are not yet\nprovisioned (`provisioned: false`) report zero balances.\n\n### Ordering\n\nResults are sorted by `created_at DESC, id DESC` (newest first, deterministic on ties).\n\n### Owner\n\n`data.customer` is the customer that owns the wallet, returned on every wallet payload:\n\n| Field | Description |\n| ----- | ----------- |\n| `id` | Customer external id (`cust_…`), identical to `customer_id`. |\n| `type` | `individual` or `business`. |\n| `name` | Customer full or business name. |\n| `email` | Customer email address. |\n| `tier` | KYC tier — `tier_0`, `tier_1` or `tier_2`. |\n| `created_at` / `updated_at` | ISO-8601 timestamps. |\n\n`customer_id` is unchanged and still present. For KYC status, metadata or the customer profile,\ncall `GET /v1/customers/{customerId}`.\n\n### Example\n\n```\nGET /v1/wallets?customer_id=cust_01HXYZ…&currency=USDC&page=1&per_page=25\n```\n"
       }
     },
     "/v1/wallets/{walletId}": {
@@ -4324,7 +4487,7 @@
         "tags": [
           "Wallets"
         ],
-        "description": "Partially updates an existing wallet. Returns the wallet in the same shape as\n`POST /v1/wallets`.\n\nThe path id is the GlobalStack external identifier (`wal_…`).\n\n### Mutable fields\n\n- `label` — non-empty string, max 255 chars.\n- `metadata` — free-form `Record<string, string>`.\n\n### Immutable fields\n\n`currency` and `customer_id` cannot be changed. Including either (or any unknown\nfield) in the request body fails validation with `400 bad_request`. To move a\nwallet to a different currency, create a new wallet.\n\n### Semantics\n\n- **`label`** is replace-only. Omitting it leaves the stored label unchanged.\n  Passing `null` (or an empty string) to clear it is rejected as `400 bad_request`.\n- **`metadata`** is replaced whole-cloth when present. No deep merge — the new\n  map fully replaces the stored map. `{}` clears it. Explicit `null` is rejected\n  as `400 bad_request`.\n- A body with neither `label` nor `metadata` is rejected as `400 invalid_input`\n  (nothing to update).\n\n### Errors\n\n- `400 bad_request` — class-validator failures: an immutable or unknown field\n  (`currency`, `customer_id`, …) rejected; `label` set to\n  null/empty; `metadata` set to `null` or a non-object.\n- `400 invalid_input` — malformed path id (`wal_…` prefix required); empty\n  patch body with neither `label` nor `metadata`.\n- `401 authentication_failed` — invalid or missing API key.\n- `404 not_found` — wallet does not exist.\n\n### Example\n\n```\nPATCH /v1/wallets/wal_01HXYZABC1234567890ABCDEFG\n{\n  \"label\": \"Treasury Wallet\"\n}\n```\n"
+        "description": "Partially updates an existing wallet. Returns the wallet in the same shape as\n`POST /v1/wallets`.\n\nThe path id is the GlobalStack external identifier (`wal_…`).\n\n### Mutable fields\n\n- `label` — non-empty string, max 255 chars.\n- `metadata` — free-form `Record<string, string>`.\n\n### Immutable fields\n\n`currency` and `customer_id` cannot be changed. Including either (or any unknown\nfield) in the request body fails validation with `400 bad_request`. To move a\nwallet to a different currency, create a new wallet.\n\n### Semantics\n\n- **`label`** is replace-only. Omitting it leaves the stored label unchanged.\n  Passing `null` (or an empty string) to clear it is rejected as `400 bad_request`.\n- **`metadata`** is replaced whole-cloth when present. No deep merge — the new\n  map fully replaces the stored map. `{}` clears it. Explicit `null` is rejected\n  as `400 bad_request`.\n- A body with neither `label` nor `metadata` is rejected as `400 invalid_input`\n  (nothing to update).\n\n### Owner\n\n`data.customer` is the customer that owns the wallet, returned on every wallet payload:\n\n| Field | Description |\n| ----- | ----------- |\n| `id` | Customer external id (`cust_…`), identical to `customer_id`. |\n| `type` | `individual` or `business`. |\n| `name` | Customer full or business name. |\n| `email` | Customer email address. |\n| `tier` | KYC tier — `tier_0`, `tier_1` or `tier_2`. |\n| `created_at` / `updated_at` | ISO-8601 timestamps. |\n\n`customer_id` is unchanged and still present. For KYC status, metadata or the customer profile,\ncall `GET /v1/customers/{customerId}`.\n\n### Errors\n\n- `400 bad_request` — class-validator failures: an immutable or unknown field\n  (`currency`, `customer_id`, …) rejected; `label` set to\n  null/empty; `metadata` set to `null` or a non-object.\n- `400 invalid_input` — malformed path id (`wal_…` prefix required); empty\n  patch body with neither `label` nor `metadata`.\n- `401 authentication_failed` — invalid or missing API key.\n- `404 not_found` — wallet does not exist.\n\n### Example\n\n```\nPATCH /v1/wallets/wal_01HXYZABC1234567890ABCDEFG\n{\n  \"label\": \"Treasury Wallet\"\n}\n```\n"
       },
       "get": {
         "operationId": "WalletController.get",
@@ -4453,7 +4616,7 @@
         "tags": [
           "Wallets"
         ],
-        "description": "Returns a single wallet, including its credentials.\n\nThe path id is the GlobalStack external identifier (`wal_…`) returned by\n`POST /v1/wallets` and `GET /v1/wallets`.\n\n### Credentials\n\n`data.credentials` lists the wallet's credentials, created via `POST /v1/wallets/{id}/credentials` — newest first. The array is empty when the wallet has no credentials.\n\n### Balances\n\n`available_balance`, `pending_balance`, and `total_balance` start at\n`0.00` (formatted to the currency precision).\n\n### Errors\n\n- `400 invalid_input` — `wallet_id` does not start with `wal_`. This catches\n  callers passing a non-GlobalStack id (e.g. a `cust_…` id).\n- `404 not_found` — returned for **all** lookup misses: the id does not\n  exist.\n\n### Example\n\n```\nGET /v1/wallets/wal_seed_alice_usdc\n```\n"
+        "description": "Returns a single wallet, including its credentials.\n\nThe path id is the GlobalStack external identifier (`wal_…`) returned by\n`POST /v1/wallets` and `GET /v1/wallets`.\n\n### Credentials\n\n`data.credentials` lists the wallet's credentials, created via `POST /v1/wallets/{id}/credentials` — newest first. The array is empty when the wallet has no credentials.\n\n### Balances\n\n`available_balance`, `pending_balance`, and `total_balance` start at\n`0.00` (formatted to the currency precision).\n\n### Owner\n\n`data.customer` is the customer that owns the wallet, returned on every wallet payload:\n\n| Field | Description |\n| ----- | ----------- |\n| `id` | Customer external id (`cust_…`), identical to `customer_id`. |\n| `type` | `individual` or `business`. |\n| `name` | Customer full or business name. |\n| `email` | Customer email address. |\n| `tier` | KYC tier — `tier_0`, `tier_1` or `tier_2`. |\n| `created_at` / `updated_at` | ISO-8601 timestamps. |\n\n`customer_id` is unchanged and still present. For KYC status, metadata or the customer profile,\ncall `GET /v1/customers/{customerId}`.\n\n### Errors\n\n- `400 invalid_input` — `wallet_id` does not start with `wal_`. This catches\n  callers passing a non-GlobalStack id (e.g. a `cust_…` id).\n- `404 not_found` — returned for **all** lookup misses: the id does not\n  exist.\n\n### Example\n\n```\nGET /v1/wallets/wal_seed_alice_usdc\n```\n"
       }
     },
     "/v1/transfers": {
@@ -5140,7 +5303,7 @@
         "tags": [
           "Transactions"
         ],
-        "description": "Unified view across `onramps`, `offramps`, `conversions`, `deposits`, and `transfers` for reconciliation and history.\n\nFilter by `type`, `source_type` (for deposits), `customer_id`, `wallet_id`, `status`, `source_currency`, and `created_after` / `created_before`. Results are paginated with page and per_page (max 200).\n\n### Filter behavior\n\n- `type` — coarse category. One of `onramp`, `offramp`, `conversion`,\n  `transfer`, `deposit`.\n- `source_type` — granular origin. One of  `deposit_address`, `credential`.\n- `customer_id` — restricts to a single customer. Must be a valid `cust_…` id.\n  An unknown id returns an empty page (`200`, `data: []`),\n  not `404`.\n- `wallet_id` — matches transactions where the wallet is either the source\n  (`from_wallet_id`) or the destination (`to_wallet_id`). Must be a valid\n  `wal_…` id. Unknown returns an empty page.\n- `status` — one of `created`, `awaiting_deposit`, `processing`,\n  `temporary_failure`, `success`, `failed`, `returned`, `received`, `confirmed`.\n- `source_currency` — exact currency-code match (e.g. `NGN`, `USDC`).\n- `created_after` / `created_before` — either a `YYYY-MM-DD` calendar date (UTC,\n  inclusive: `created_after` matches at or after `00:00:00`, `created_before` at\n  or before `23:59:59.999`) or a full ISO 8601 UTC timestamp ending in `Z`\n  (e.g. `2026-04-16T16:16:03Z`), used as the exact instant.\n\n### Pagination\n\n- `page` — 1-indexed page number. Defaults to `1`. Between `1` and `1,000,000`.\n- `per_page` — page size. Defaults to `50`. Between `1` and `200`.\n"
+        "description": "Unified view across `onramps`, `offramps`, `conversions`, `deposits`, and `transfers` for reconciliation and history.\n\nFilter by `type`, `source_type` (for deposits), `customer_id`, `wallet_id`, `status`, `source_currency`, and `created_after` / `created_before`. Results are paginated with page and per_page (max 200).\n\n### Filter behavior\n\n- `type` — coarse category. One of `onramp`, `offramp`, `conversion`,\n  `transfer`, `deposit`.\n- `source_type` — granular origin. One of  `deposit_address`, `credential`,\n  `deposit_forward`.\n- `customer_id` — restricts to a single customer. Must be a valid `cust_…` id.\n  An unknown id returns an empty page (`200`, `data: []`),\n  not `404`.\n- `wallet_id` — matches transactions where the wallet is either the source\n  (`from_wallet_id`) or the destination (`to_wallet_id`). Must be a valid\n  `wal_…` id. Unknown returns an empty page.\n- `status` — one of `created`, `awaiting_deposit`, `processing`,\n  `temporary_failure`, `success`, `failed`, `returned`, `received`, `confirmed`.\n- `source_currency` — exact currency-code match (e.g. `NGN`, `USDC`).\n- `created_after` / `created_before` — either a `YYYY-MM-DD` calendar date (UTC,\n  inclusive: `created_after` matches at or after `00:00:00`, `created_before` at\n  or before `23:59:59.999`) or a full ISO 8601 UTC timestamp ending in `Z`\n  (e.g. `2026-04-16T16:16:03Z`), used as the exact instant.\n\n### Pagination\n\n- `page` — 1-indexed page number. Defaults to `1`. Between `1` and `1,000,000`.\n- `per_page` — page size. Defaults to `50`. Between `1` and `200`.\n"
       }
     },
     "/v1/transactions/{transactionId}": {
@@ -6990,7 +7153,7 @@
         "tags": [
           "Notification Webhooks"
         ],
-        "description": "Register an HTTPS endpoint to receive webhook events for your integration.\n\nSubscribe to one or more **event categories** — coarse families of events rather than\nindividual topics. The available categories are: `onramp`, `offramp`, `conversion`,\n`transfer`, `deposit`, `kyc`.\n\nThe response includes a **`signing_secret`** (prefixed `whsec_`) returned **in plaintext\nexactly once** — on create and on rotate-secret only. Store it securely; you cannot retrieve\nit again. Use it to verify the signature on every delivered event.\n\nNew endpoints are created **inactive** (`active: false`). Activate the endpoint with a\n`PATCH` once you have stored the signing secret and are ready to receive deliveries.\n\n### Body\n\n- `url` — required. Must be a valid **HTTPS** URL.\n- `event_categories` — required. Non-empty array of event categories (see above). Unknown\n  values are rejected with `400`.\n\n### Example\n\n```\nPOST /v1/notifications/webhooks\n{\n  \"url\": \"https://merchant.example.com/webhooks\",\n  \"event_categories\": [\"onramp\", \"conversion\"]\n}\n```\n",
+        "description": "Register an HTTPS endpoint to receive webhook events for your integration.\n\nSubscribe to one or more **event categories** — coarse families of events rather than\nindividual topics. The available categories are: `onramp`, `offramp`, `conversion`,\n`transfer`, `deposit`, `kyc`.\n\nEvery event in a subscribed category is delivered. For the events each category contains,\nwhen each one fires, and the payload it carries, see\n[Webhook events](https://docs.globalstack.io/webhooks/events).\n\nThe response includes a **`signing_secret`** (prefixed `whsec_`) returned **in plaintext\nexactly once** — on create and on rotate-secret only. Store it securely; you cannot retrieve\nit again. Use it to verify the signature on every delivered event.\n\nNew endpoints are created **inactive** (`active: false`). Activate the endpoint with a\n`PATCH` once you have stored the signing secret and are ready to receive deliveries.\n\n### Body\n\n- `url` — required. Must be a valid **HTTPS** URL.\n- `event_categories` — required. Non-empty array of event categories (see above). Unknown\n  values are rejected with `400`.\n\n### Example\n\n```\nPOST /v1/notifications/webhooks\n{\n  \"url\": \"https://merchant.example.com/webhooks\",\n  \"event_categories\": [\"onramp\", \"conversion\"]\n}\n```\n",
         "parameters": [
           {
             "in": "header",

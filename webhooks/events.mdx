@@ -1,0 +1,648 @@
+---
+title: "Webhook events"
+description: "Every event GlobalStack emits, when it fires, and the exact payload you receive."
+---
+
+Webhooks tell you when something happens on your integration — a deposit arrives, a conversion
+settles, a verification is approved — without polling for it.
+
+Every delivery uses the same envelope. The interesting part is `event_object`: it carries the **same
+body as the matching REST resource**, plus a few fields that only make sense on an event. So if you
+already handle `GET /v1/conversions/{id}`, you already know how to read a `conversion.success`
+payload.
+
+## Subscribe by category
+
+You don't subscribe to individual events. You subscribe to **categories** — families of related
+events — when you [create a webhook endpoint](/api-reference/openapi#tag/notification-webhooks/POST/v1/notifications/webhooks),
+and receive every event in the family.
+
+| Category | Events you receive |
+| --- | --- |
+| `onramp` | `onramp.awaiting_deposit`, `onramp.funds_received`, `onramp.processing`, `onramp.success`, `onramp.failed`, `onramp.returned` |
+| `offramp` | `offramp.created`, `offramp.funds_received`, `offramp.processing`, `offramp.success`, `offramp.failed`, `offramp.returned` |
+| `conversion` | `conversion.created`, `conversion.funds_received`, `conversion.processing`, `conversion.success`, `conversion.failed`, `conversion.returned` |
+| `transfer` | `transfer.processing`, `transfer.success`, `transfer.failed` |
+| `deposit` | `deposit.received`, `deposit.held`, `deposit.confirmed`, `deposit.failed` |
+| `kyc` | `kyc.approved`, `kyc.rejected` |
+
+<Note>
+  New endpoints are created **inactive**. Store the `signing_secret` from the create response — it is
+  shown once — then activate the endpoint with `PATCH /v1/notifications/webhooks/{id}`
+  `{ "active": true }`. Nothing is delivered until it is active.
+</Note>
+
+## The envelope
+
+Every event, in every category, arrives in this shape:
+
+```json
+{
+  "event_id": "evt_1b8dbe64-1f4e-5a2c-9c31-6d9a51a0f0c2",
+  "event_type": "conversion.success",
+  "event_category": "conversion",
+  "event_developer_id": "int_01HXYZABC1234567890ABCDEFG",
+  "api_version": "v1",
+  "event_created_at": "2026-09-30T09:12:44.000Z",
+  "event_object_id": "con_01KPBH8MD6R7YDJ82T4D6M3V1T",
+  "event_object_status": "success",
+  "event_object_changes": { "status": ["processing", "success"] },
+  "event_object": { }
+}
+```
+
+| Field | What it is |
+| --- | --- |
+| `event_id` | Unique id for this event, `evt_` prefixed. Stable across retries — use it to deduplicate. |
+| `event_type` | The event, e.g. `conversion.success`. Branch on this. |
+| `event_category` | The family the event belongs to. |
+| `event_developer_id` | Your integration's public id. Useful if one receiver serves several integrations. |
+| `api_version` | Envelope version. `v1` today; a breaking change to the shape bumps it. |
+| `event_created_at` | When the event **happened** — not when it was delivered. A retry keeps the original time. |
+| `event_object_id` | The id of the resource the event is about (`con_…`, `txn_…`, `tfr_…`). |
+| `event_object_status` | The resource's status at the moment of the event. |
+| `event_object_changes` | `{ "status": [previous, new] }` on a real status change; `null` when nothing changed (a replay, or an event that doesn't move the status). `previous` is `null` on a first transition. |
+| `event_object` | The resource itself. Shapes below. |
+
+Signature headers and how to verify them are covered in
+[Verify webhook signatures](/webhooks/verify-signatures).
+
+## When each event fires
+
+### Onramps, offramps and conversions
+
+These three run the same lifecycle, so they emit the same six events.
+
+| Event | Fires when |
+| --- | --- |
+| `onramp.awaiting_deposit` | The onramp is created and waiting for the payer's deposit. Show them `deposit_instruction`. |
+| `offramp.created` / `conversion.created` | The resource is created and accepted. |
+| `*.funds_received` | Your funds arrived and were recognised. Work has not finished. |
+| `*.processing` | The conversion or payout is in flight. |
+| `*.success` | Done. The destination has been credited. **Terminal.** |
+| `*.failed` | Could not complete. Read [`failure_reason`](/api-reference/failure-reasons). **Terminal.** |
+| `*.returned` | Funds were sent back to their origin. **Terminal.** |
+
+<Tip>
+  `funds_received` and `processing` are separate events on purpose — `funds_received` is your cue
+  that the money is in, which is usually what you tell a customer about. Don't treat either as
+  final; wait for `success`, `failed` or `returned`.
+</Tip>
+
+### Transfers
+
+| Event | Fires when |
+| --- | --- |
+| `transfer.processing` | The payout has been submitted. |
+| `transfer.success` | The payout completed. **Terminal.** |
+| `transfer.failed` | The payout failed, was cancelled, or was reversed. **Terminal.** |
+
+A cancelled or reversed transfer arrives as `transfer.failed` — `failure_reason` tells you which
+(`cancelled`, `reversed`, or another code).
+
+### Deposits
+
+| Event | Fires when |
+| --- | --- |
+| `deposit.received` | Funds detected but not yet final — a crypto deposit seen on-chain before confirmation, or a cross-currency deposit that has just been priced. |
+| `deposit.held` | Credited but withheld pending review. `metadata.hold_reason` is `tier_limit`, `payin_frozen` or `payin_disabled`. |
+| `deposit.confirmed` | Settled and spendable from the wallet balance. **Terminal.** |
+| `deposit.failed` | The deposit could not be credited. **Terminal.** |
+
+Two paths are worth planning for:
+
+- **A held deposit sends two events.** `deposit.held` first, then `deposit.confirmed` when the hold
+  is released. Don't treat `held` as final, and don't expect it on every deposit.
+- **A [cross-currency deposit](/api-reference/auto-conversion) never reaches a terminal
+  `deposit.*` event.** It stays at `received`, and the `conversion.*` events carry the outcome.
+  Waiting for `deposit.confirmed` on that path waits forever.
+
+### Verifications
+
+| Event | Fires when |
+| --- | --- |
+| `kyc.approved` | The verification passed. `customer.tier` is the customer's **new** tier. |
+| `kyc.rejected` | The verification was declined. Read [`failure_reason`](/api-reference/failure-reasons#verification-kyc-codes). |
+
+Only final outcomes are sent. Intermediate progress — a customer opening the link, submitting
+documents, or being asked to resubmit — is visible on
+`GET /v1/customers/{customerId}/verifications` and does not emit a webhook.
+
+## Payloads
+
+`event_object` is the REST resource body **plus** event-only fields. Two groups of extras:
+
+| Extra field | On | Why it's there |
+| --- | --- | --- |
+| `actual_source_amount`, `actual_destination_amount`, `actual_rate` | onramp, offramp, conversion | What actually settled, versus the quoted `rate` and amounts. Reconcile against these. |
+| `terminal_at` | onramp, offramp, conversion, transfer | When the resource reached its terminal state. `null` before then. |
+| `deposit_timestamp` | deposit | When the deposit was observed (on-chain time or the payer's transfer time), which differs from the row's `created_at`. |
+| `wallet`, `customer`, `credential` | cross-currency deposits only | Which wallet the money lands in, whose it is, and which credential was funded — no second API call. |
+
+<Warning>
+  Reconcile money against `actual_*`, not against `rate`/`destination_amount`. The quoted values are
+  what you were promised; the `actual_*` values are what settled. They are `null` until the
+  economics are known.
+</Warning>
+
+### Onramp
+
+A completed NGN → USDC onramp. Same body as `GET /v1/onramps/{id}`, plus the four event fields.
+
+```json
+{
+  "event_id": "evt_4d5e0a27-7a63-51a1-8c0b-2f8d43f7d901",
+  "event_type": "onramp.success",
+  "event_category": "onramp",
+  "event_developer_id": "int_01HXYZABC1234567890ABCDEFG",
+  "api_version": "v1",
+  "event_created_at": "2026-09-30T09:12:44.000Z",
+  "event_object_id": "onr_01KPBH802PXQQXT8ASJGE0QX2K",
+  "event_object_status": "success",
+  "event_object_changes": { "status": ["processing", "success"] },
+  "event_object": {
+    "id": "onr_01KPBH802PXQQXT8ASJGE0QX2K",
+    "reference": "INV-2026-001",
+    "status": "success",
+    "quote_id": "quo_01KPBK123456789ABCDEFG",
+    "rate_source": "quoted",
+    "customer": {
+      "id": "cust_01HXYZABC1234567890ABCDEFG",
+      "type": "individual",
+      "name": "Alice Johnson",
+      "email": "alice@example.com",
+      "tier": "tier_2",
+      "created_at": "2026-09-01T10:00:00.000Z",
+      "updated_at": "2026-09-01T10:00:00.000Z"
+    },
+    "wallet": { "id": "wal_01HXYZABC1234567890ABCDEFG", "currency": "USDC", "label": "Treasury USDC" },
+    "payment_instrument": null,
+    "source_amount": "10000.00",
+    "source_currency": "NGN",
+    "destination_amount": "6.046600",
+    "received_amount": "6.044100",
+    "destination_currency": "USDC",
+    "rate": "0.000605",
+    "rate_locked_until": "2026-09-30T09:42:00.000Z",
+    "deposit_instruction": {
+      "version": 1,
+      "type": "fiat",
+      "accountName": "GLOBALSTACK / FX ENGINE",
+      "accountNumber": "0123456789",
+      "bankName": "Access Bank",
+      "bankCode": "000014",
+      "expiresAt": "2026-09-30T09:42:00.000Z",
+      "depositReference": "GSVRYTZ496CM",
+      "message": "Include the deposit_reference in the transfer narration/reference so funds are correctly allocated to this deposit."
+    },
+    "failure_reason": null,
+    "failure_reason_message": null,
+    "metadata": { "order_id": "ord_demo_001" },
+    "created_at": "2026-09-30T09:10:03.000Z",
+    "updated_at": "2026-09-30T09:12:44.000Z",
+    "actual_source_amount": "10000.00",
+    "actual_destination_amount": "6.044100",
+    "actual_rate": "0.000604",
+    "terminal_at": "2026-09-30T09:12:44.000Z"
+  }
+}
+```
+
+### Offramp
+
+A failed USDC → NGN offramp. Note `failure_reason`, the `null` `actual_*` values (nothing settled),
+and that `terminal_at` is set because `failed` is terminal.
+
+```json
+{
+  "event_id": "evt_8c1a0f93-4b77-5de0-9a24-7c5f1b3ea882",
+  "event_type": "offramp.failed",
+  "event_category": "offramp",
+  "event_developer_id": "int_01HXYZABC1234567890ABCDEFG",
+  "api_version": "v1",
+  "event_created_at": "2026-09-30T11:04:19.000Z",
+  "event_object_id": "ofr_01KPBH887CCT3A53EW3F8R0VQG",
+  "event_object_status": "failed",
+  "event_object_changes": { "status": ["processing", "failed"] },
+  "event_object": {
+    "id": "ofr_01KPBH887CCT3A53EW3F8R0VQG",
+    "reference": "PAYOUT-4471",
+    "status": "failed",
+    "retry_on_failure": false,
+    "quote_id": "quo_01KPBK123456789ABCDEFG",
+    "rate_source": "quoted",
+    "customer": {
+      "id": "cust_01HXYZABC1234567890ABCDEFG",
+      "type": "individual",
+      "name": "Alice Johnson",
+      "email": "alice@example.com",
+      "tier": "tier_2",
+      "created_at": "2026-09-01T10:00:00.000Z",
+      "updated_at": "2026-09-01T10:00:00.000Z"
+    },
+    "wallet": { "id": "wal_01HXYZABC1234567890ABCDEFG", "currency": "USDC", "label": "Treasury USDC" },
+    "beneficiary": {
+      "id": "ben_01KPBAP7WTDKQKW5B3R31VPNX4",
+      "customer_id": "cust_01HXYZABC1234567890ABCDEFG",
+      "name": "Alice Bank Beneficiary",
+      "label": "Alice's salary account",
+      "type": "fiat",
+      "currency": "NGN",
+      "merchant_reference": "ref_01HXYZ4K5ABCDEFGHJKLMNPQRS",
+      "details": { "accountNumber": "0039415616", "bankCode": "000014" },
+      "metadata": {},
+      "status": "active",
+      "created_at": "2026-09-01T10:05:00.000Z",
+      "updated_at": "2026-09-01T10:05:00.000Z"
+    },
+    "narration": "Payment for Invoice INV-2026-001",
+    "payment_instrument": {
+      "id": "pay_01KPBH895W6PH3WY1D9KZH3M5D",
+      "beneficiary_id": "ben_01KPBAP7WTDKQKW5B3R31VPNX4",
+      "type": "bank_account",
+      "country_code": "NG",
+      "provider": { "id": "prov_01KPBAP7WTDKQKW5B3R31VPNX4", "name": "Access Bank", "code": "000014" },
+      "account_name": "ALICE JOHNSON",
+      "account_number": "0039415616"
+    },
+    "source_amount": "100.000000",
+    "source_currency": "USDC",
+    "destination_amount": "165000.00",
+    "received_amount": null,
+    "destination_currency": "NGN",
+    "rate": "1650.000000",
+    "rate_locked_until": "2026-09-30T11:34:00.000Z",
+    "failure_reason": "temporarily_unavailable",
+    "failure_reason_message": "This transaction could not be completed right now. Please try again later.",
+    "metadata": {},
+    "created_at": "2026-09-30T11:02:12.000Z",
+    "updated_at": "2026-09-30T11:04:19.000Z",
+    "actual_source_amount": null,
+    "actual_destination_amount": null,
+    "actual_rate": null,
+    "terminal_at": "2026-09-30T11:04:19.000Z"
+  }
+}
+```
+
+### Conversion
+
+A wallet-to-wallet conversion that has just been created. `actual_*` and `terminal_at` are `null`
+because nothing has settled yet.
+
+```json
+{
+  "event_id": "evt_1b8dbe64-1f4e-5a2c-9c31-6d9a51a0f0c2",
+  "event_type": "conversion.created",
+  "event_category": "conversion",
+  "event_developer_id": "int_01HXYZABC1234567890ABCDEFG",
+  "api_version": "v1",
+  "event_created_at": "2026-09-30T14:20:01.000Z",
+  "event_object_id": "con_01KPBH8MD6R7YDJ82T4D6M3V1T",
+  "event_object_status": "created",
+  "event_object_changes": { "status": [null, "created"] },
+  "event_object": {
+    "id": "con_01KPBH8MD6R7YDJ82T4D6M3V1T",
+    "reference": "TREASURY-0031",
+    "status": "created",
+    "quote_id": "quo_01KPBK123456789ABCDEFG",
+    "rate_source": "quoted",
+    "customer": {
+      "id": "cust_01HXYZABC1234567890ABCDEFG",
+      "type": "business",
+      "name": "Acme Ltd",
+      "email": "ops@acme.example",
+      "tier": "tier_2",
+      "created_at": "2026-09-01T10:00:00.000Z",
+      "updated_at": "2026-09-01T10:00:00.000Z"
+    },
+    "source_wallet": { "id": "wal_01HXYZABC1234567890ABCDEFG", "currency": "USDC", "label": "Treasury USDC" },
+    "destination_wallet": { "id": "wal_01HABCXYZ9876543210ZYXWVU", "currency": "NGN", "label": "NGN Payouts" },
+    "source_amount": "500.000000",
+    "source_currency": "USDC",
+    "destination_amount": "825000.00",
+    "received_amount": null,
+    "destination_currency": "NGN",
+    "rate": "1650.000000",
+    "failure_reason": null,
+    "failure_reason_message": null,
+    "metadata": { "payout_batch": "batch_001" },
+    "created_at": "2026-09-30T14:20:01.000Z",
+    "updated_at": "2026-09-30T14:20:01.000Z",
+    "actual_source_amount": null,
+    "actual_destination_amount": null,
+    "actual_rate": null,
+    "terminal_at": null
+  }
+}
+```
+
+### Transfer
+
+A completed crypto payout. Transfers have no FX leg, so there are **no `actual_*` fields** — only
+`terminal_at`.
+
+```json
+{
+  "event_id": "evt_6a2f7c15-9d34-5b88-a0e7-1f2b6c84d3aa",
+  "event_type": "transfer.success",
+  "event_category": "transfer",
+  "event_developer_id": "int_01HXYZABC1234567890ABCDEFG",
+  "api_version": "v1",
+  "event_created_at": "2026-09-30T16:41:07.000Z",
+  "event_object_id": "tfr_01KPBJ4M8QZC1T7Y3E6R9V2XKD",
+  "event_object_status": "success",
+  "event_object_changes": { "status": ["processing", "success"] },
+  "event_object": {
+    "id": "tfr_01KPBJ4M8QZC1T7Y3E6R9V2XKD",
+    "reference": "SUPPLIER-889",
+    "status": "success",
+    "retry_on_failure": true,
+    "customer": {
+      "id": "cust_01HXYZABC1234567890ABCDEFG",
+      "type": "business",
+      "name": "Acme Ltd",
+      "email": "ops@acme.example",
+      "tier": "tier_2",
+      "created_at": "2026-09-01T10:00:00.000Z",
+      "updated_at": "2026-09-01T10:00:00.000Z"
+    },
+    "wallet": { "id": "wal_01HXYZABC1234567890ABCDEFG", "currency": "USDC", "label": "Treasury USDC" },
+    "beneficiary": {
+      "id": "ben_01KPBAP7WTDKQKW5B3R31VPNX4",
+      "customer_id": "cust_01HXYZABC1234567890ABCDEFG",
+      "name": "Supplier Wallet",
+      "label": "Supplier USDC",
+      "type": "crypto",
+      "currency": "USDC",
+      "merchant_reference": "sup_889",
+      "details": { "address": "0x1111111111111111111111111111111111111111", "network": "base" },
+      "metadata": {},
+      "status": "active",
+      "created_at": "2026-09-02T08:00:00.000Z",
+      "updated_at": "2026-09-02T08:00:00.000Z"
+    },
+    "amount": "250.000000",
+    "currency": "USDC",
+    "network": "base",
+    "transaction_hash": "0x9f2c4b7e1a3d5f6089bc2e4a7d1f3b5c8e0a2d4f6b8c1e3a5d7f9b0c2e4a6d80",
+    "failure_reason": null,
+    "failure_reason_message": null,
+    "metadata": { "payout_batch": "batch_001" },
+    "created_at": "2026-09-30T16:39:55.000Z",
+    "updated_at": "2026-09-30T16:41:07.000Z",
+    "terminal_at": "2026-09-30T16:41:07.000Z"
+  }
+}
+```
+
+### Deposit
+
+A confirmed same-currency crypto deposit. `event_object` is the transaction record, so it carries
+`transaction_hash`, the wallet it credited, and the on-chain addresses in `metadata`.
+
+```json
+{
+  "event_id": "evt_c0d9e5b2-7f18-5a46-b3c9-8e1d0a7f2b64",
+  "event_type": "deposit.confirmed",
+  "event_category": "deposit",
+  "event_developer_id": "int_01HXYZABC1234567890ABCDEFG",
+  "api_version": "v1",
+  "event_created_at": "2026-09-30T07:55:12.000Z",
+  "event_object_id": "txn_01KPBG1Q3Z8X1Q6VJRE5R8ZFBG",
+  "event_object_status": "confirmed",
+  "event_object_changes": null,
+  "event_object": {
+    "id": "txn_01KPBG1Q3Z8X1Q6VJRE5R8ZFBG",
+    "reference": "dep-01KPBFZ9M4T2V6X8Z0B2D4F6H8",
+    "source_type": "credential",
+    "source_id": "wcr_01HXYZABC1234567890ABCDEFG",
+    "transaction_hash": "0x9f2c4b7e1a3d5f6089bc2e4a7d1f3b5c8e0a2d4f6b8c1e3a5d7f9b0c2e4a6d80",
+    "customer_id": "cust_01HXYZABC1234567890ABCDEFG",
+    "from_wallet_id": null,
+    "to_wallet_id": "wal_01HXYZABC1234567890ABCDEFG",
+    "type": "deposit",
+    "status": "success",
+    "source_amount": "1000.000000",
+    "source_currency": "USDC",
+    "destination_amount": "1000.000000",
+    "destination_currency": "USDC",
+    "confirmed_at": "2026-09-30T07:55:12.000Z",
+    "metadata": {
+      "to_address": "0x2222222222222222222222222222222222222222",
+      "from_address": "0x3333333333333333333333333333333333333333"
+    },
+    "created_at": "2026-09-30T07:54:40.000Z",
+    "updated_at": "2026-09-30T07:55:12.000Z",
+    "parent_transaction_id": null,
+    "root_transaction_id": "txn_01KPBG1Q3Z8X1Q6VJRE5R8ZFBG",
+    "deposit_timestamp": "2026-09-30T07:55:09.000Z"
+  }
+}
+```
+
+<Note>
+  `event_object_status` reports the deposit event (`received` / `held` / `confirmed` / `failed`),
+  while `event_object.status` reports the underlying transaction status (`processing` / `received` /
+  `success` / `failed`). They describe the same thing at different resolutions — branch on
+  `event_type`.
+</Note>
+
+#### Cross-currency deposit
+
+A deposit into a [cross-currency credential](/api-reference/auto-conversion) adds three blocks —
+`wallet`, `customer` and `credential` — so you can see which credential was funded, including the
+payer-facing bank details, without another call. `destination_amount` is the **quoted** value in the
+wallet's currency.
+
+```json
+{
+  "event_id": "evt_2e7b1d40-5c92-5f03-8a16-4b9c3e0d7f58",
+  "event_type": "deposit.received",
+  "event_category": "deposit",
+  "event_developer_id": "int_01HXYZABC1234567890ABCDEFG",
+  "api_version": "v1",
+  "event_created_at": "2026-09-30T08:30:00.000Z",
+  "event_object_id": "txn_01KPBG7YH2N4P8Q1R3S5T7V9WX",
+  "event_object_status": "received",
+  "event_object_changes": null,
+  "event_object": {
+    "id": "txn_01KPBG7YH2N4P8Q1R3S5T7V9WX",
+    "reference": "dep-01KPBG5XW1R3T5V7Y9A1C3E5G7_credential_credit",
+    "source_type": "credential",
+    "source_id": "wcr_01HXYZABC1234567890ABCDEFG",
+    "transaction_hash": null,
+    "customer_id": "cust_01HXYZABC1234567890ABCDEFG",
+    "from_wallet_id": null,
+    "to_wallet_id": "wal_01HXYZABC1234567890ABCDEFG",
+    "type": "deposit",
+    "status": "received",
+    "source_amount": "10000.00",
+    "source_currency": "NGN",
+    "destination_amount": "6.046600",
+    "destination_currency": "USDC",
+    "confirmed_at": null,
+    "metadata": {
+      "auto_conversion": "true",
+      "quote_id": "quo_01KPBK123456789ABCDEFG",
+      "rate": "0.000605"
+    },
+    "created_at": "2026-09-30T08:29:44.000Z",
+    "updated_at": "2026-09-30T08:30:00.000Z",
+    "parent_transaction_id": null,
+    "root_transaction_id": "txn_01KPBG7YH2N4P8Q1R3S5T7V9WX",
+    "deposit_timestamp": "2026-09-30T08:29:44.000Z",
+    "wallet": { "id": "wal_01HXYZABC1234567890ABCDEFG", "currency": "USDC", "label": "Treasury USDC" },
+    "customer": {
+      "id": "cust_01HXYZABC1234567890ABCDEFG",
+      "type": "business",
+      "name": "Acme Ltd",
+      "email": "ops@acme.example",
+      "tier": "tier_2",
+      "created_at": "2026-09-01T10:00:00.000Z",
+      "updated_at": "2026-09-01T10:00:00.000Z"
+    },
+    "credential": {
+      "id": "wcr_01HXYZABC1234567890ABCDEFG",
+      "type": "fiat",
+      "currency": "NGN",
+      "network": "bank",
+      "label": "NGN collections",
+      "metadata": { "team": "ops" },
+      "details": {
+        "accountName": "ACME LTD",
+        "accountNumber": "1234567890",
+        "bankName": "Wema Bank",
+        "bankCode": "035",
+        "currency": "NGN",
+        "reference": "GSVRYTZ496CM"
+      },
+      "status": "active",
+      "provider_resource_id": "cdw_01HXYZABC1234567890ABCDEFG",
+      "created_at": "2026-09-10T12:00:00.000Z",
+      "updated_at": "2026-09-10T12:00:00.000Z"
+    }
+  }
+}
+```
+
+A held cross-currency deposit arrives as `deposit.held` with `metadata.hold_reason` and a `null`
+`destination_amount` — no rate is quoted while it is under review. On release you receive
+`deposit.received` priced at the then-current rate.
+
+### Verification
+
+`kyc.approved` carries the verified `profile`. Identity-document numbers are **masked to their last
+four digits** — we never send the full number.
+
+```json
+{
+  "event_id": "evt_7d3a9f61-2b48-5c07-9e15-3a8d6b2f4c90",
+  "event_type": "kyc.approved",
+  "event_category": "kyc",
+  "event_developer_id": "int_01HXYZABC1234567890ABCDEFG",
+  "api_version": "v1",
+  "event_created_at": "2026-09-30T13:07:22.000Z",
+  "event_object_id": "kyc_01KPBJZ8T4W6Y0A2C4E6G8J1LN",
+  "event_object_status": "approved",
+  "event_object_changes": { "status": ["not_started", "approved"] },
+  "event_object": {
+    "event_outcome": "approved",
+    "session_id": "kyc_01KPBJZ8T4W6Y0A2C4E6G8J1LN",
+    "customer": {
+      "id": "cust_01HXYZABC1234567890ABCDEFG",
+      "merchant_reference": "user_4471",
+      "type": "individual",
+      "name": "Alice Johnson",
+      "email": "alice@example.com",
+      "country_code": "NG",
+      "tier": "tier_2",
+      "tier_upgraded_from": "tier_1",
+      "kyc_status": "approved"
+    },
+    "verification": {
+      "tier_requested": "tier_2",
+      "provider": "sumsub",
+      "profile": {
+        "type": "individual",
+        "first_name": "Alice",
+        "last_name": "Johnson",
+        "dob": "1992-04-17",
+        "country": "NGA",
+        "nationality": "NGA",
+        "id_docs": [
+          { "id_doc_type": "PASSPORT", "country": "NGA", "number_last4": "8821", "valid_until": "2031-06-30" }
+        ],
+        "fetched_at": "2026-09-30T13:07:20.000Z"
+      }
+    },
+    "merchant_activation_triggered": false
+  }
+}
+```
+
+`kyc.rejected` replaces `profile` with the reason:
+
+```json
+{
+  "event_type": "kyc.rejected",
+  "event_object_status": "rejected",
+  "event_object": {
+    "event_outcome": "rejected",
+    "session_id": "kyc_01KPBJZ8T4W6Y0A2C4E6G8J1LN",
+    "customer": {
+      "id": "cust_01HXYZABC1234567890ABCDEFG",
+      "type": "individual",
+      "name": "Alice Johnson",
+      "country_code": "NG",
+      "tier": "tier_1",
+      "kyc_status": "rejected"
+    },
+    "verification": {
+      "tier_requested": "tier_2",
+      "provider": "sumsub",
+      "failure_reason": "document_quality",
+      "failure_reason_message": "The submitted document could not be read clearly. Please upload a clearer copy."
+    },
+    "merchant_activation_triggered": false
+  }
+}
+```
+
+`tier_upgraded_from` appears only when the approval actually promoted the customer. Fields with no
+value are omitted rather than sent as `null`.
+
+## Delivery
+
+<Steps>
+  <Step title="Return 2xx quickly">
+    Acknowledge with any `2xx` as soon as you have stored the event. Do the work afterwards — a slow
+    handler looks like a failure and gets retried.
+  </Step>
+  <Step title="Expect at-least-once, not exactly-once">
+    A delivery can arrive more than once. `event_id` is stable across every retry of the same event,
+    so record the ids you have processed and ignore repeats.
+  </Step>
+  <Step title="Don't rely on order">
+    Events are not guaranteed to arrive in lifecycle order. Use `event_object_status` and
+    `event_object_changes` rather than assuming the previous event already landed, and ignore an
+    event that would move a resource backwards from a terminal state.
+  </Step>
+</Steps>
+
+A given resource emits a given event **at most once** — so two upstream changes that map to the same
+event (a cancelled transfer and then a reversed one, both `transfer.failed`) reach you once, not
+twice.
+
+### Debugging a delivery
+
+| You want to | Use |
+| --- | --- |
+| See why deliveries are failing | [`GET /v1/notifications/webhooks/{id}/logs`](/api-reference/openapi#tag/notification-webhooks/GET/v1/notifications/webhooks/{id}/logs) — attempt history with the HTTP status you returned, error, and latency |
+| See what is queued | [`GET /v1/notifications/webhooks/{id}/events`](/api-reference/openapi#tag/notification-webhooks/GET/v1/notifications/webhooks/{id}/events) — pending events, oldest first, with the payload that will be sent |
+| Replay one you missed | [`POST /v1/notifications/webhooks/{id}/send`](/api-reference/openapi#tag/notification-webhooks/POST/v1/notifications/webhooks/{id}/send) with the event's `event_id` as `event_idempotency_key` |
+
+<Note>
+  Replay only delivers to an **active** endpoint — an inactive one returns `409 invalid_status`.
+  Activate it first, then resend.
+</Note>

@@ -6,12 +6,16 @@ description: "Notable changes to the GlobalStack API — new endpoints, behavior
 Changes that affect how you integrate: new endpoints and fields, behavior changes, and new error
 or failure codes. Breaking changes are called out explicitly.
 
-<Update label="2026-09-07" tags={["New feature"]}>
+<Update label="2026-09-30" tags={["New feature"]}>
   ## Pay South African beneficiaries over PayShap
 
   Offramp beneficiaries in `ZAR` can now be paid over **PayShap**, South Africa's instant-payment
-  scheme, instead of to a bank account. Create one with `network: "payshap"` and put the
-  recipient's PayShap proxy — their mobile number in E.164 form — in `account_number`:
+  scheme. A beneficiary has a new optional field, `rail`, which says **how** money reaches the
+  account. `network` still says **what** the account is. A PayShap beneficiary is a bank account
+  (`network: "bank"`) that you pay with `rail: "payshap"`.
+
+  You address a PayShap beneficiary by its **proxy**, the recipient's mobile number in E.164 form.
+  Put the proxy in `account_number`:
 
   ```json
   {
@@ -19,37 +23,218 @@ or failure codes. Breaking changes are called out explicitly.
     "name": "J Doe",
     "currency": "ZAR",
     "country_code": "ZA",
-    "network": "payshap",
-    "account_number": "+27821234567",
-    "provider_id": "prov_01JBQR7K3M9XZVTNA4H5C2PDES"
+    "network": "bank",
+    "rail": "payshap",
+    "account_number": "+27821234567"
   }
   ```
 
-  Get the `provider_id` from `GET /v1/countries/ZA/providers?network=payshap`, the same place you
-  get a bank's id today.
+  **Do not send `provider_id`.** A proxy resolves to the bank that holds it, so you do not choose a
+  provider. If you send one, we ignore it. PayShap beneficiaries return `provider: null`.
 
-  **`account_name` is not required.** A PayShap proxy is resolved to its registered holder before
-  the beneficiary is created, and that resolved name is what we store — so anything you send in
-  `account_name` is replaced. This is the same rule as `bank`, and the reason to prefer a proxy
-  over a raw account number: a bank account number cannot be verified before you pay it, and a
-  proxy can.
+  **Do not send `account_name`.** We resolve the proxy to its registered holder before we create
+  the beneficiary, and we store that name. Any name you send is replaced. This is the reason to
+  prefer a proxy to a raw account number: we can verify who holds a proxy before you pay it.
 
-  If the number is not registered for PayShap, or the recipient's bank does not answer in time,
-  the request is rejected with [`400 invalid_input`](/errors#invalid_input) and no beneficiary is
-  created. The two cases are not distinguishable from the outside, so retry once before treating
-  a number as invalid.
+  If we cannot verify the proxy, we reject the request with
+  [`400 invalid_input`](/errors#invalid_input) and create no beneficiary. This happens when the
+  number is not registered for PayShap, and also when the recipient's bank does not answer in time.
+  You cannot tell the two cases apart, so retry once before you treat a number as invalid. If
+  PayShap itself is unavailable, you get
+  [`500 external_service_unavailable`](/errors#external_service_unavailable); retry later.
 
-  PayShap is **`ZAR` and South Africa only** — `network: "payshap"` on any other currency is
-  rejected with [`400 invalid_input`](/errors#invalid_input). It is also a **payout-only** rail:
-  you cannot fund an onramp or create a deposit credential with it, so `payshap` is not accepted
-  as a `source_network`, a `destination_network`, or a credential `network`.
+  `rail: "payshap"` is valid only with `network: "bank"`, currency `ZAR` and country `ZA`. Any
+  other combination returns [`400 invalid_input`](/errors#invalid_input). If PayShap is switched
+  off, creating a PayShap beneficiary returns [`403 forbidden`](/errors#forbidden).
 
-  Offramps paid this way report `payment_instrument.type` as `"payshap"` rather than
-  `"bank_account"` or `"mobile_money"`. If you branch on that field, add the new value before
-  creating PayShap beneficiaries.
+  ### What changes in responses
 
-  PayShap must be enabled on your account. Until it is, creating a PayShap beneficiary is
-  rejected with [`403 forbidden`](/errors#forbidden) — contact us to be enabled.
+  - **Beneficiaries** echo `details.rail` when it is set. Beneficiaries without a rail do not get
+    the field.
+  - **Offramps** paid over PayShap report `payment_instrument.type` as `"bank_account"`, the same
+    value as any bank payout, with `payment_instrument.rail: "payshap"` beside it. If you branch
+    on `type`, you do not need to change anything.
+  - **`provider` can be `null`** on a fiat beneficiary's `details` and on `payment_instrument`,
+    but only when `rail` is `"payshap"`. If you read `provider.id` or `provider.name`, handle
+    `null` before you create PayShap beneficiaries.
+</Update>
+
+<Update label="2026-09-30" tags={["Documentation", "Behavior change"]}>
+  ## Every webhook event is now documented, with payloads
+
+  [Webhook events](/webhooks/events) is a new reference covering all 27 events we emit: which
+  category each belongs to, exactly when it fires, and a complete example payload per family —
+  onramp, offramp, conversion, transfer, deposit and verification.
+
+  Nothing about the events themselves changed. If you have been reverse-engineering payloads from
+  deliveries, the page confirms the shape and the guarantees: `event_object` mirrors the matching
+  REST resource, plus event-only fields (`actual_source_amount`, `actual_destination_amount`,
+  `actual_rate`, `terminal_at`, `deposit_timestamp`) that the REST body does not carry. Reconcile
+  money against the `actual_*` values, not the quoted ones.
+
+  A few behaviours the page pins down that were easy to get wrong:
+
+  - A **held deposit sends two events** — `deposit.held`, then `deposit.confirmed` on release.
+  - A **cross-currency deposit never reaches a terminal `deposit.*` event**. It stays at
+    `received`; the `conversion.*` events carry the outcome.
+  - `funds_received` and `processing` are **separate** events on the FX families, and a resource
+    emits any given event **at most once** — so a cancelled-then-reversed transfer reaches you as a
+    single `transfer.failed`.
+
+  ### Removed: `kyc.expired`
+
+  The `kyc` category previously registered a `kyc.expired` topic that nothing ever emitted — no
+  endpoint has ever received one. It has been removed, so the subscribable list now matches what we
+  actually send. Verification events are `kyc.approved` and `kyc.rejected`; an expired verification
+  link is visible on `GET /v1/customers/{customerId}/verifications`, and the customer can request a
+  new one. No action needed unless you wrote a handler branch for an event you never received.
+</Update>
+
+<Update label="2026-09-24" tags={["New feature", "Fix"]}>
+  ## Cross-currency deposits now tell you when the money arrives
+
+  Deposits on a [cross-currency credential](/api-reference/auto-conversion) used to be silent
+  until the conversion started — your first webhook was `conversion.created`, and if the
+  conversion never started, you heard nothing at all.
+
+  They now emit `deposit.received` on arrival. The event waits for the FX quote, so it carries
+  what the deposit is worth in your wallet's currency rather than just the amount the payer sent:
+
+  ```json
+  {
+    "event_type": "deposit.received",
+    "event_object": {
+      "source_amount": "10000.00",
+      "source_currency": "NGN",
+      "destination_amount": "6.046600",
+      "destination_currency": "USDC",
+      "metadata": { "auto_conversion": "true", "quote_id": "qt_…", "rate": "0.000605" },
+      "wallet": { "id": "wal_…", "currency": "USDC", "label": "Treasury USDC" },
+      "customer": { "id": "cust_…", "type": "business", "name": "Acme Ltd" },
+      "credential": { "id": "wcr_…", "currency": "NGN", "details": { "accountNumber": "…" } }
+    }
+  }
+  ```
+
+  The `wallet`, `customer` and `credential` blocks are new, and appear **only** on cross-currency
+  deposit events. They tell you which credential was funded — including the payer-facing bank
+  details of the virtual account — without a second API call. Same-currency deposit payloads are
+  unchanged.
+
+  Two things to know before you switch on handling:
+
+  - `destination_amount` is the **quoted** amount, not the settled one. Reconcile against
+    `actual_destination_amount` on `conversion.success`.
+  - A cross-currency deposit **never reaches a terminal** `deposit.*` state. It stays at
+    `received`, and the `conversion.*` topics carry the outcome. Do not wait for
+    `deposit.confirmed` on this path.
+
+  A deposit that breaches your customer's rolling money-in limit now emits `deposit.held` with
+  `metadata.hold_reason` of `tier_limit` and a null `destination_amount` — no rate is quoted while
+  it is under review. On release you receive `deposit.received` with the amount quoted at the
+  then-current rate.
+
+  ### Fixed: credential `currency` on a cross-currency credential
+
+  `GET /v1/wallets/{id}/credentials` and `GET /v1/wallets/{id}/credentials/{credentialId}`
+  reported the **wallet's** currency for every credential. On a cross-currency credential that was
+  wrong — an NGN credential on a USDC wallet returned `"currency": "USDC"` alongside its NGN bank
+  details. Both endpoints now return the credential's own currency. The nested `wallet.currency`
+  still reports the wallet's, so you can read both. Same-currency credentials are unaffected,
+  since the two values are identical there.
+
+  <Warning>
+    If you read `currency` on a cross-currency credential and relied on it meaning "the wallet's
+    currency", update that code — it now means "the currency this credential accepts".
+  </Warning>
+</Update>
+
+<Update label="2026-09-21" tags={["New feature"]}>
+  ## Forwarding wallets send every deposit straight to your own address
+
+  `POST /v1/wallets` now accepts a `type`. The default, `custodial`, is every wallet you have
+  today: it holds a balance you can convert, offramp and transfer out of. Nothing about your
+  existing wallets changes, and omitting `type` keeps current behaviour.
+
+  The new `forwarding` type holds no balance. You give it an address you control at creation, and
+  every inflow is delivered there:
+
+  ```json
+  POST /v1/wallets
+  {
+    "currency": "USDC",
+    "type": "forwarding",
+    "destination_address": "0x1111111111111111111111111111111111111111",
+    "destination_chain": "base"
+  }
+  ```
+
+  `destination_address` and `destination_chain` are required for `forwarding` and rejected on a
+  `custodial` wallet. `destination_chain` is one of `solana`, `base` or `ethereum` and must be
+  supported by the wallet's currency; the address is validated against the chain you pick. A
+  forwarding wallet must use a crypto currency.
+
+  **Both fields are permanent.** They cannot be changed after creation — create a new wallet to
+  change where funds land. Please double-check the address: every future deposit to that wallet
+  goes to it, and we cannot recover funds sent to an address you do not control.
+
+  Two consequences worth knowing before you integrate:
+
+  - A forwarding wallet's `available_balance`, `pending_balance` and `total_balance` always read
+    zero, because it never holds funds.
+  - It cannot be the **source** of a transfer, offramp or conversion — those are rejected with
+    [`400 invalid_input`](/errors#invalid_input). It is a destination only.
+
+  All four wallet endpoints now return `type`, `destination_address` and `destination_chain`. On a
+  custodial wallet the two destination fields are `null`.
+</Update>
+
+<Update label="2026-09-18" tags={["New feature"]}>
+  ## Transactions now return the amount the recipient received
+
+  `GET /v1/transactions` and `GET /v1/transactions/{transactionId}` now return `received_amount`:
+  the amount that actually reached the recipient, formatted to the destination currency's
+  precision.
+
+  This is not the same figure as `destination_amount`. `destination_amount` is the amount you were
+  quoted, and on corridors that surface a transaction fee separately it is the amount *before* that
+  fee — an off-ramp quoted at 110 ZAR credits the beneficiary's bank 100. If you have been showing
+  `destination_amount` as the payout figure, or subtracting fee line items from it yourself,
+  `received_amount` is the number you want. It is the same field, with the same meaning, already
+  returned on quote, onramp, offramp, and conversion responses.
+
+  `received_amount` is `null` until a transaction reaches a terminal success, and stays `null` on
+  transactions that never succeeded, on transfers, and on deposits. **Treat `null` as "not known
+  yet", never as zero** — for an in-flight transaction, `destination_amount` remains your best
+  estimate of what will be delivered. Once set, the figure is retained: a payout that is later
+  returned keeps the amount it originally delivered. Existing transactions were backfilled, so
+  transactions that settled before this change return the field too.
+
+  The field also appears on each entry in `related_transactions`. `destination_amount` is unchanged
+  and still returned, so nothing you already key off has moved.
+
+  <Note>
+    `deposit.*` webhook payloads now include `received_amount` as well. Deposits have no payout leg,
+    so it is always `null` there.
+  </Note>
+</Update>
+
+<Update label="2026-09-18" tags={["New feature"]}>
+  ## Wallets now tell you which customer owns them
+
+  Wallet responses now include a `customer` object alongside the existing `customer_id`, so you no
+  longer need a second call to `/v1/customers` just to show an owner's name. It is returned by
+  `POST /v1/wallets`, `GET /v1/wallets`, `GET /v1/wallets/{walletId}` and
+  `PATCH /v1/wallets/{walletId}`.
+
+  The object carries `id`, `type`, `name`, `email`, `tier`, `created_at` and `updated_at` — the same
+  shape already nested on transfer, onramp, offramp, and conversion responses. For KYC status,
+  metadata, or the customer profile, keep using `GET /v1/customers/{customerId}`.
+
+  `customer_id` is unchanged and still present, so nothing you already key off has moved. Wallets
+  owned by your integration's default customer return a populated `customer` too — those are the
+  wallets you could not previously resolve a name for, since the default customer is not listed by
+  `GET /v1/customers`.
 </Update>
 
 <Update label="2026-08-25" tags={["New feature"]}>

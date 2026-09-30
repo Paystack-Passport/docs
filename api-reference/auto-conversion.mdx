@@ -54,22 +54,93 @@ Cross-currency is admitted only when **every** condition below holds. Any failur
 
 ## Deposit lifecycle
 
-Cross-currency deposits skip the `deposit.*` topics entirely. The first webhook you receive is `conversion.created` (or `conversion.funds_received` — whichever the FX pipeline emits first for the run); the deposit terminals via the `conversion.*` topics:
+A cross-currency deposit tells you twice: once when the money arrives, and again as the conversion
+moves. The arrival event waits for the FX quote, so it can tell you what the deposit is worth in
+your wallet's currency — the number you actually care about.
 
 | Event | When it fires | Meaning |
 | --- | --- | --- |
-| `conversion.created` | Conversion quote issued | The FX conversion is registered against the deposit; rate is locked. |
+| `deposit.received` | Payer's funds arrived and the rate is quoted | The deposit is recorded, with `destination_amount` in your wallet's currency. |
+| `deposit.held` | Arrival breached your customer's money-in limit | The deposit is parked pending review. No conversion is quoted yet, so there is no `destination_amount`. |
+| `conversion.created` | Conversion registered against the deposit | Rate is locked. |
 | `conversion.funds_received` | FX Engine has custody of the source funds | The FX-side settlement leg is queued. |
 | `conversion.processing` | Conversion is executing | Money is moving through the FX rails. |
 | `conversion.success` | Conversion settled | The **wallet balance** has been credited in the wallet's currency. |
 | `conversion.failed` | Conversion did not settle | Funds are parked on the credential balance until GlobalStack drains it (see [Recovery on failure](#recovery-on-failure)). |
 | `conversion.returned` | Conversion reversed after success | Same "funds parked, contact support" recovery as `conversion.failed`. |
 
-Same-currency credentials keep the original lifecycle across the `deposit.*` topics — `deposit.received` on arrival, then `deposit.held` if a tier gate applies, then `deposit.confirmed` when the credit settles (or `deposit.failed` if it doesn't). Cross-currency credentials **never** fire any `deposit.*` topic.
+### What `deposit.received` carries
 
-<Info>
-  Rate is locked at deposit time. The `destination_amount` you see on `conversion.success` reflects the rate as of the deposit's arrival, not the rate as of the auto-conversion attempt.
-</Info>
+The event body is the transaction resource — the same shape as
+[`GET /v1/transactions/{transactionId}`](/api-reference/openapi#tag/transactions/GET/v1/transactions/{transactionId}) — with `source_*` in the
+credential's currency and `destination_*` in your wallet's currency:
+
+```json
+{
+  "event_type": "deposit.received",
+  "event_object": {
+    "id": "txn_01KPBG1Q3Z8X1Q6VJRE5R8ZFBG",
+    "type": "deposit",
+    "status": "received",
+    "source_amount": "10000.00",
+    "source_currency": "NGN",
+    "destination_amount": "6.046600",
+    "destination_currency": "USDC",
+    "metadata": {
+      "auto_conversion": "true",
+      "quote_id": "qt_01HXYZABC1234567890ABCDEFG",
+      "rate": "0.000605"
+    },
+    "deposit_timestamp": "2026-04-22T02:01:29.000Z",
+    "wallet": { "id": "wal_…", "currency": "USDC", "label": "Treasury USDC" },
+    "customer": { "id": "cust_…", "type": "business", "name": "Acme Ltd" },
+    "credential": {
+      "id": "wcr_…",
+      "currency": "NGN",
+      "network": "bank",
+      "details": {
+        "accountName": "Acme Ltd",
+        "accountNumber": "1234567890",
+        "bankName": "Wema Bank",
+        "bankCode": "035"
+      }
+    }
+  }
+}
+```
+
+The `wallet`, `customer` and `credential` blocks tell you which credential was funded without a
+second API call — useful when you hand out one virtual account per customer. They appear only on
+cross-currency deposit events.
+
+<Warning>
+  `destination_amount` is the **quoted** amount, not the settled one. It reflects the rate at
+  deposit time; the amount that actually lands is `actual_destination_amount` on
+  `conversion.success`. Reconcile against the conversion, not the deposit.
+</Warning>
+
+<Note>
+  A cross-currency deposit never reaches a terminal `deposit.*` state. It stays at `received` for
+  its whole life, and the `conversion.*` topics carry the outcome — do not wait for
+  `deposit.confirmed` or `deposit.failed` on this path. Subscribe to both the `deposit` and
+  `conversion` categories to see the full lifecycle.
+</Note>
+
+### Held deposits
+
+If an arriving deposit breaches the customer's rolling money-in limit, you get `deposit.held`
+instead, with `metadata.hold_reason` set to `tier_limit` and a null `destination_amount` — no
+conversion is quoted while the deposit is under review. When GlobalStack releases it, the
+conversion runs at the **then-current rate** and you receive `deposit.received` carrying the
+quoted amount, followed by the usual `conversion.*` sequence.
+
+### Same-currency credentials
+
+Same-currency credentials keep the original lifecycle: `deposit.received` on arrival,
+`deposit.held` if a tier gate applies, then `deposit.confirmed` when the credit settles (or
+`deposit.failed` if it does not). Their payloads do not carry the `wallet`, `customer` and
+`credential` blocks, and their `destination_amount` equals `source_amount` — there is no
+conversion.
 
 ## Fees
 
