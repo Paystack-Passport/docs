@@ -6,6 +6,59 @@ description: "Notable changes to the GlobalStack API — new endpoints, behavior
 Changes that affect how you integrate: new endpoints and fields, behavior changes, and new error
 or failure codes. Breaking changes are called out explicitly.
 
+<Update label="2026-09-30" tags={["New feature"]}>
+  ## Pay South African beneficiaries over PayShap
+
+  Offramp beneficiaries in `ZAR` can now be paid over **PayShap**, South Africa's instant-payment
+  scheme. A beneficiary has a new optional field, `rail`, which says **how** money reaches the
+  account. `network` still says **what** the account is. A PayShap beneficiary is a bank account
+  (`network: "bank"`) that you pay with `rail: "payshap"`.
+
+  You address a PayShap beneficiary by its **proxy**, the recipient's mobile number in E.164 form.
+  Put the proxy in `account_number`:
+
+  ```json
+  {
+    "type": "fiat",
+    "name": "J Doe",
+    "currency": "ZAR",
+    "country_code": "ZA",
+    "network": "bank",
+    "rail": "payshap",
+    "account_number": "+27821234567"
+  }
+  ```
+
+  **Do not send `provider_id`.** A proxy resolves to the bank that holds it, so you do not choose a
+  provider. If you send one, we ignore it. PayShap beneficiaries return `provider: null`.
+
+  **Do not send `account_name`.** We resolve the proxy to its registered holder before we create
+  the beneficiary, and we store that name. Any name you send is replaced. This is the reason to
+  prefer a proxy to a raw account number: we can verify who holds a proxy before you pay it.
+
+  If we cannot verify the proxy, we reject the request with
+  [`400 invalid_input`](/errors#invalid_input) and create no beneficiary. This happens when the
+  number is not registered for PayShap, and also when the recipient's bank does not answer in time.
+  You cannot tell the two cases apart, so retry once before you treat a number as invalid. If
+  PayShap itself is unavailable, you get
+  [`500 external_service_unavailable`](/errors#external_service_unavailable); retry later.
+
+  `rail: "payshap"` is valid only with `network: "bank"`, currency `ZAR` and country `ZA`. Any
+  other combination returns [`400 invalid_input`](/errors#invalid_input). If PayShap is switched
+  off, creating a PayShap beneficiary returns [`403 forbidden`](/errors#forbidden).
+
+  ### What changes in responses
+
+  - **Beneficiaries** echo `details.rail` when it is set. Beneficiaries without a rail do not get
+    the field.
+  - **Offramps** paid over PayShap report `payment_instrument.type` as `"bank_account"`, the same
+    value as any bank payout, with `payment_instrument.rail: "payshap"` beside it. If you branch
+    on `type`, you do not need to change anything.
+  - **`provider` can be `null`** on a fiat beneficiary's `details` and on `payment_instrument`,
+    but only when `rail` is `"payshap"`. If you read `provider.id` or `provider.name`, handle
+    `null` before you create PayShap beneficiaries.
+</Update>
+
 <Update label="2026-09-30" tags={["Documentation", "Behavior change"]}>
   ## Every webhook event is now documented, with payloads
 
