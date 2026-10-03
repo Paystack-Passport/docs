@@ -6,6 +6,31 @@ description: "Notable changes to the GlobalStack API — new endpoints, behavior
 Changes that affect how you integrate: new endpoints and fields, behavior changes, and new error
 or failure codes. Breaking changes are called out explicitly.
 
+<Update label="2026-10-02" tags={["Behavior change"]}>
+  ## A returned offramp now refunds your wallet automatically
+
+  When a payout provider sends an offramp's funds back, the offramp goes `returned` as before — but
+  if we had already taken the source amount from your wallet, we now credit it straight back.
+  Previously the offramp went terminal while your balance stayed short, and recovering the funds
+  took a support request.
+
+  The refund is the **full source amount** of the offramp. No fee is withheld: the money movement
+  never happened, so nothing is retained.
+
+  How to see it:
+
+  - `offramp.returned` is still the signal. There is **no new webhook** — no `deposit.*` event is
+    emitted for the refund.
+  - The credit appears in [`GET /v1/transactions`](/api-reference/openapi#tag/transactions) as a
+    `deposit`-type transaction with a new `source_type` of **`offramp_reversal`**, linked to the
+    original offramp as its parent.
+  - Your wallet balance reflects it immediately.
+
+  If you reconcile on `source_type`, add `offramp_reversal` to the values you expect. A payout that
+  was never funded from your balance is unaffected — there is nothing to return, and no refund
+  transaction is written.
+</Update>
+
 <Update label="2026-09-30" tags={["New feature"]}>
   ## Pay South African beneficiaries over PayShap
 

@@ -81,13 +81,22 @@ These three run the same lifecycle, so they emit the same six events.
 | `*.processing` | The conversion or payout is in flight. |
 | `*.success` | Done. The destination has been credited. **Terminal.** |
 | `*.failed` | Could not complete. Read [`failure_reason`](/api-reference/failure-reasons). **Terminal.** |
-| `*.returned` | Funds were sent back to their origin. **Terminal.** |
+| `*.returned` | Funds were sent back to their origin. **Terminal.** For an offramp that had already been debited, your wallet is credited back for the full source amount — see the note below. |
 
 <Tip>
   `funds_received` and `processing` are separate events on purpose — `funds_received` is your cue
   that the money is in, which is usually what you tell a customer about. Don't treat either as
   final; wait for `success`, `failed` or `returned`.
 </Tip>
+
+<Note>
+  **A returned offramp refunds your wallet automatically.** If the payout had already been funded
+  from your balance when the provider sent the money back, we credit the full source amount back to
+  the same wallet. The refund shows up in [`GET /v1/transactions`](/api-reference/openapi#tag/transactions)
+  as a `deposit`-type transaction with `source_type` of `offramp_reversal`, linked to the original
+  offramp as its parent. No `deposit.*` event is emitted for it — `offramp.returned` is the signal,
+  and the offramp's `source_amount` is the amount returned.
+</Note>
 
 ### Transfers
 
