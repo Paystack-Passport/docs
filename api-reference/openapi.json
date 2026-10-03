@@ -593,7 +593,7 @@
           },
           "source_type": {
             "type": "string",
-            "description": "Granular origin: onramp | offramp | conversion | transfer | deposit_address | credential | deposit_forward.",
+            "description": "Granular origin: onramp | offramp | conversion | transfer | deposit_address | credential | deposit_forward | offramp_reversal.",
             "example": "onramp"
           },
           "source_id": {
