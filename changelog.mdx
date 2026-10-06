@@ -6,6 +6,44 @@ description: "Notable changes to the GlobalStack API — new endpoints, behavior
 Changes that affect how you integrate: new endpoints and fields, behavior changes, and new error
 or failure codes. Breaking changes are called out explicitly.
 
+<Update label="2026-10-06" tags={["Behavior change"]}>
+  ## South African account numbers are now validated before payout
+
+  A ZAR bank `account_number` that cannot structurally belong to its bank is now rejected with
+  `400 invalid_input`, instead of being accepted and failing at the bank days later. The check is
+  local to us — no extra latency, no new field, no schema change.
+
+  **This can reject requests that previously succeeded.** Two places:
+
+  - `POST /v1/beneficiaries` and `PATCH /v1/beneficiaries/{id}` — at the point the details are
+    captured, so the person entering them can still fix it.
+  - `POST /v1/quotes` for an offramp — which means **a beneficiary saved before today can fail
+    here**, even though it saved cleanly at the time. That is deliberate: the quote is the last
+    moment we hold the number before it goes to the payout network. Update the beneficiary's
+    `account_number` and quote again.
+
+  Two rules, and neither is a reformatting:
+
+  - **Digits only.** Separators are rejected, not stripped — `6200-4626-662` is invalid even
+    though removing the dashes would leave a valid number. We never alter what you send, so a
+    number we accept is exactly the number we pay. Trim your inputs before sending them.
+  - **Length must match the bank** on the beneficiary's `account_provider` — FNB 11, Capitec 10,
+    Nedbank 10, Standard Bank 9 or 11, Absa 8–11, and so on; any other South African bank is
+    checked against 8–11 digits. The full table is in
+    [Errors → South African account numbers](/errors#south-african-account-numbers).
+
+  The `message` names the bank and both digit counts — `FNB accounts are 11 digits; this account
+  number has 10.` — and is written to be shown to whoever entered the value. `"Invalid account"`
+  becomes a support ticket; the specific string gets fixed.
+
+  **PayShap is unaffected.** On the `payshap` rail `account_number` is an E.164 proxy, not a bank
+  account number, so none of these rules apply to it.
+
+  **What this does not do:** it cannot tell you whether an account exists, is open, or accepts
+  credits. A structurally perfect number can still be returned by the bank as unrecognised or
+  closed. This only removes the failures that were impossible from the start.
+</Update>
+
 <Update label="2026-09-30" tags={["New feature"]}>
   ## Pay South African beneficiaries over PayShap
 

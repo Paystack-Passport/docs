@@ -51,8 +51,39 @@ A field passed schema validation but failed a semantic check the API applies bef
 **Common causes**
 - A value is individually valid but invalid in context (e.g. an amount below the minimum, or mismatched currency pair).
 - A referenced field combination isn't permitted.
+- A South African `account_number` that cannot belong to the chosen bank — wrong number of digits, or any character that isn't a digit. See [South African account numbers](#south-african-account-numbers) below.
 
-**What to do** — Inspect the request payload for missing or malformed fields and retry.
+**What to do** — Inspect the request payload for missing or malformed fields and retry. The `message` is specific and safe to show to the person who entered the value.
+
+### South African account numbers
+
+ZAR bank account numbers are checked structurally before a beneficiary is saved and again when an offramp quote is created. The check is local — it answers *"could this number belong to this bank?"* and nothing more. It cannot tell you whether the account exists, is open, or accepts credits.
+
+**Digits only.** Spaces, dashes and every other separator are rejected rather than stripped. `6200-4626-662` and `" 62004626662 "` are both invalid, even though removing the punctuation would leave a valid number — we never alter what you send, so a number we accept is exactly the number we pay.
+
+**Length depends on the bank**, taken from the `account_provider` on the beneficiary:
+
+| Bank | Digits |
+| --- | --- |
+| FNB / RMB | 11 |
+| Capitec | 10 |
+| Nedbank | 10 |
+| Standard Bank | 9 or 11 |
+| Investec | 11 |
+| TymeBank | 11 |
+| Discovery | 11 |
+| Bank Zero | 11 |
+| African Bank | 11 |
+| Absa | 8, 9, 10 or 11 |
+
+Any other South African bank is checked against the general range of **8 to 11 digits**.
+
+The `message` names the bank and both counts — `FNB accounts are 11 digits; this account number has 10.` — so it can be surfaced directly to whoever is entering the details.
+
+Two cases worth knowing about:
+
+- **PayShap beneficiaries are not affected.** On the `payshap` rail, `account_number` is a proxy — a mobile number in E.164 form — so none of the rules above apply to it.
+- **An existing beneficiary can fail at quote time.** Beneficiaries saved before this check existed are validated the first time you quote against them, so `POST /v1/quotes` can return this error for a beneficiary that saved cleanly months ago. Update the beneficiary's `account_number` and quote again.
 
 ## Invalid amount precision {#invalid_amount_precision}
 
