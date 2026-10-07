@@ -6,6 +6,47 @@ description: "Notable changes to the GlobalStack API — new endpoints, behavior
 Changes that affect how you integrate: new endpoints and fields, behavior changes, and new error
 or failure codes. Breaking changes are called out explicitly.
 
+<Update label="2026-10-07" tags={["Behavior change"]}>
+  ## Failed transactions now tell you why: `quote_expired`, `refund_failed`, `returned`
+
+  A conversion, onramp, or offramp that ended badly used to report one thing no matter what
+  happened: `failure_reason: "failed"`, *"This transaction could not be completed."* A quote nobody
+  funded, which simply expired, was indistinguishable from something breaking mid-processing — which
+  inflated apparent failure rates and misrouted alerting. Three new codes separate them.
+
+  | `failure_reason` | When |
+  | --- | --- |
+  | `quote_expired` | The payment never arrived before the quote expired. No funds moved. |
+  | `refund_failed` | The transaction failed, and the refund attempt did not complete. |
+  | `returned` | The transaction was returned and any funds debited for it have been released. |
+
+  **`quote_expired` is the common one** — by a wide margin. It means nobody paid in time, not that
+  anything went wrong on our side. No funds moved, so it is always safe to create a fresh quote and
+  try again. If you alert on failures, this is the code to exclude.
+
+  **This can change what you already receive.** Cases that previously arrived as `failed` now arrive
+  as `quote_expired`, `refund_failed`, or `returned`. Nothing was removed and no field changed shape
+  — but if you branch on `failure_reason === "failed"`, that branch will stop catching them. `failed`
+  remains the generic catch-all for anything we do not surface specifically.
+
+  **`returned` is the one that is not a `failed` status.** The other codes accompany
+  `status: "failed"`; `returned` accompanies `status: "returned"`, which is its own terminal state.
+  If you only read `failure_reason` when `status` is `"failed"`, you will not see it — gate on the
+  transaction not having succeeded instead.
+
+  Note that `returned` deliberately does not promise a credit. Whether funds come back depends on how
+  far the transaction got: an offramp whose payout had already settled is credited back in full,
+  while one that never debited you has nothing to return. Check your balance or transactions list
+  rather than inferring a credit from the code.
+
+  Statuses themselves are unchanged — an expired conversion still reports `status: "failed"`, so the
+  six status values stay exactly as documented. The distinction travels on `failure_reason` alone,
+  which is why this needed no new field.
+
+  The full list, with the exact `failure_reason_message` for each, is in
+  [Failure reasons](/api-reference/failure-reasons).
+</Update>
+
 <Update label="2026-10-06" tags={["Behavior change"]}>
   ## South African account numbers are now validated before payout
 

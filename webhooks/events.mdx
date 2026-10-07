@@ -80,8 +80,8 @@ These three run the same lifecycle, so they emit the same six events.
 | `*.funds_received` | Your funds arrived and were recognised. Work has not finished. |
 | `*.processing` | The conversion or payout is in flight. |
 | `*.success` | Done. The destination has been credited. **Terminal.** |
-| `*.failed` | Could not complete. Read [`failure_reason`](/api-reference/failure-reasons). **Terminal.** |
-| `*.returned` | Funds were sent back to their origin. **Terminal.** |
+| `*.failed` | Could not complete. Read [`failure_reason`](/api-reference/failure-reasons) — it distinguishes a quote nobody funded (`quote_expired`) from a genuine failure. **Terminal.** |
+| `*.returned` | Funds were sent back to their origin. Also carries [`failure_reason: returned`](/api-reference/failure-reasons) — the one reason set while `status` is not `"failed"`. **Terminal.** |
 
 <Tip>
   `funds_received` and `processing` are separate events on purpose — `funds_received` is your cue
