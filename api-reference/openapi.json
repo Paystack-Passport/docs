@@ -658,6 +658,12 @@
             "description": "Destination currency code.",
             "example": "USDC"
           },
+          "received_amount": {
+            "type": "string",
+            "nullable": true,
+            "description": "Amount the recipient actually received, formatted to the destination currency precision. `destination_amount` is the amount quoted, which on corridors that surface a transaction fee is the amount before it. Null on an onramp/offramp/conversion that has not reached a terminal success, and on one that did not pay out. On rails where nothing is deducted (deposits, reversals) this equals `destination_amount`.",
+            "example": "100.00"
+          },
           "confirmed_at": {
             "type": "string",
             "nullable": true,

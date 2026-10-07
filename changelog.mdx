@@ -6,6 +6,43 @@ description: "Notable changes to the GlobalStack API — new endpoints, behavior
 Changes that affect how you integrate: new endpoints and fields, behavior changes, and new error
 or failure codes. Breaking changes are called out explicitly.
 
+<Update label="2026-10-07" tags={["New feature"]}>
+  ## Transactions now carry `received_amount` — what actually landed
+
+  `GET /v1/transactions` and `GET /v1/transactions/:id` now return `received_amount`: the amount
+  the recipient actually received, formatted to the destination currency's precision.
+
+  This closes a gap. `destination_amount` on a transaction is the amount **quoted**, and on
+  corridors that charge a transaction fee separately that figure is the amount *before* the fee —
+  an off-ramp quoted at 110 ZAR can credit the recipient's bank 100. The real figure was already
+  on `GET /v1/onramps/:id`, `GET /v1/offramps/:id` and `GET /v1/conversions/:id`, but reading it
+  from a transactions list meant a follow-up request per row. Now it is on the transaction itself.
+
+  **When it is `null`.** For onramp, offramp and conversion transactions, `received_amount` is
+  `null` until the transaction reaches a terminal success, and stays `null` on one that did not
+  pay out. Only a settled payout has a delivered amount; before then there is nothing to report,
+  and we would rather say so than hand back the quote dressed up as a result.
+
+  **When it equals `destination_amount`.** On rails where nothing is deducted — deposits and
+  returned funds — the two are the same by definition, and `received_amount` simply mirrors
+  `destination_amount`. Reading `received_amount` is therefore safe across every transaction type;
+  you do not need to branch on `source_type` to know which field to trust.
+
+  **Reconciling against the quote.** Compare `received_amount` with `destination_amount` to see
+  the gap a transaction fee opened up. `destination_amount` is unchanged and still the quoted
+  figure, so nothing you already read has shifted.
+
+  **One exception worth knowing: cross-currency deposits.** On an auto-converted deposit,
+  `destination_amount` is priced from the quote at deposit time, so the `received_amount` that
+  mirrors it is a quote-time figure too — not a settled one. The amount that actually landed is
+  `actual_destination_amount` on the matching `conversion.success` event. Reconcile those against
+  the conversion, as you do today; `received_amount` on the deposit is for display, not for
+  settlement.
+
+  Deposit webhooks carry the field too — their `event_object` *is* the transaction record — so
+  `deposit.received`, `deposit.held`, `deposit.confirmed` and `deposit.failed` all include it.
+</Update>
+
 <Update label="2026-10-07" tags={["Behavior change"]}>
   ## Failed transactions now tell you why: `quote_expired`, `refund_failed`, `returned`
 
