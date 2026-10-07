@@ -30,11 +30,17 @@ same reason whether you poll or receive a push.
 ## When the fields are present
 
 `failure_reason` and `failure_reason_message` are `null` (or absent) unless the resource actually
-failed. They are populated on:
+reached a bad outcome. They are populated on:
 
-- Failed money movements — an `onramp`, `offramp`, `conversion`, or `transfer` that ends in a failed
-  state.
+- Money movements that did not succeed — an `onramp`, `offramp`, `conversion`, or `transfer` with
+  `status: "failed"`, **and** an `onramp`, `offramp`, or `conversion` with `status: "returned"`.
 - Failed verifications — the `kyc.rejected` webhook event and the verification endpoints.
+
+<Warning>
+  `returned` is the one case where these fields are set while `status` is **not** `"failed"`. If you
+  read `failure_reason` only when `status === "failed"`, you will miss it. Gate on the resource not
+  having succeeded, not on the literal string `"failed"`.
+</Warning>
 
 Some codes are intentionally generic. We expose what is safe and actionable; we do not reveal
 internal or provider mechanics. Any internal state we do not surface specifically collapses to a
@@ -42,24 +48,43 @@ generic code — `failed` for money movements, `verification_failed` for verific
 
 ## Money movement codes
 
-These apply to a failed `onramp`, `offramp`, `conversion`, or `transfer`.
+These apply to an `onramp`, `offramp`, `conversion`, or `transfer` that did not succeed.
 
 | `failure_reason` | `failure_reason_message` |
 | --- | --- |
 | `insufficient_funds` | There were not enough funds to complete this transaction. |
 | `funding_failed` | This transaction failed before any funds moved: its funding transfer could not be completed. |
+| `quote_expired` | Payment was not received before the quote expired. |
 | `temporarily_unavailable` | This transaction could not be completed right now. Please try again later. |
 | `cancelled` | The transaction was cancelled. |
 | `reversed` | The transaction was reversed. |
+| `refund_failed` | This transaction failed, and the refund could not be completed. |
+| `returned` | This transaction was returned; any funds debited for it have been released. |
 | `failed` | This transaction could not be completed. |
 
 `temporarily_unavailable` is the retryable one — retry the request with backoff. `failed` is
 deliberately generic: a provider decline, invalid upstream input, a released hold, and anything
 otherwise unrecognised all collapse to it.
 
+`quote_expired` means nobody paid in before the quote's rate window closed — **not** that anything
+went wrong on our side. No funds moved, so it is always safe to create a fresh quote and try again.
+This is the most common non-success outcome by a wide margin, so if you alert on failures, exclude
+this code: counting it inflates your apparent failure rate with transactions that were simply never
+funded. It applies to `onramp`, `offramp`, and `conversion`.
+
 `funding_failed` is reported on an offramp whose funding transfer could not be completed. The
 offramp fails immediately rather than sitting in `processing` until its quote expires, and no funds
 moved — create a new quote and retry.
+
+`refund_failed` means the transaction failed and the refund attempt did not complete. Unlike the
+other codes it may need our involvement to resolve — contact support with the resource id rather
+than retrying.
+
+`returned` accompanies `status: "returned"`, not `"failed"` (see the warning above). Its message
+deliberately does not promise a credit, because whether one happens depends on how far the
+transaction got: an offramp whose payout had already settled is credited back in full — appearing as
+a `deposit`-type transaction — while a transaction that never debited you has nothing to credit
+back. Check your wallet balance or transactions list rather than inferring a credit from this code.
 
 ## Verification (KYC) codes
 
