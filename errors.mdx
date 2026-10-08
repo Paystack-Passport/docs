@@ -82,7 +82,7 @@ The `message` names the bank and both counts — `FNB accounts are 11 digits; th
 
 Two cases worth knowing about:
 
-- **PayShap beneficiaries are not affected.** On the `payshap` rail, `account_number` is a proxy — a mobile number in E.164 form — so none of the rules above apply to it.
+- **PayShap beneficiaries are not affected.** On the `payshap` rail, `account_number` is a proxy — a mobile number in E.164 form, or a ShapName such as `acme@nedbank` — so none of the rules above apply to it.
 - **An existing beneficiary can fail at quote time.** Beneficiaries saved before this check existed are validated the first time you quote against them, so `POST /v1/quotes` can return this error for a beneficiary that saved cleanly months ago. Update the beneficiary's `account_number` and quote again.
 
 ## Invalid amount precision {#invalid_amount_precision}

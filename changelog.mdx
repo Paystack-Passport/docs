@@ -7,6 +7,39 @@ Changes that affect how you integrate: new endpoints and fields, behavior change
 or failure codes. Breaking changes are called out explicitly.
 
 <Update label="2026-10-08" tags={["New feature"]}>
+  ## Pay businesses over PayShap by ShapName
+
+  A PayShap beneficiary can now be addressed by a **ShapName** as well as a mobile number. A
+  ShapName is the `name@bank` identifier that businesses usually register for PayShap, for example
+  `acme@nedbank`. Put it in `account_number`, exactly as the recipient gives it, including the part
+  after `@`:
+
+  ```json
+  {
+    "type": "fiat",
+    "name": "Acme Trading",
+    "label": "Acme supplier",
+    "currency": "ZAR",
+    "country_code": "ZA",
+    "network": "bank",
+    "rail": "payshap",
+    "account_number": "acme@nedbank"
+  }
+  ```
+
+  Everything else works as it does for a mobile number:
+
+  - We resolve the ShapName before we create the beneficiary. For a business, `account_name` is
+    the registered business name.
+  - An unregistered ShapName returns [`400 invalid_input`](/errors#invalid_input), and no
+    beneficiary is created.
+  - A value that cannot be a ShapName also returns `400 invalid_input`: nothing before or after
+    the `@`, more than one `@`, or a space inside it.
+
+  Mobile-number proxies are unchanged.
+</Update>
+
+<Update label="2026-10-08" tags={["New feature"]}>
   ## Fiat deposits now name the sender, and onramps report the payout hash
 
   Two additions to what you already receive. Both are additive and optional — nothing you read
