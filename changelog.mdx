@@ -39,6 +39,57 @@ or failure codes. Breaking changes are called out explicitly.
   Mobile-number proxies are unchanged.
 </Update>
 
+<Update label="2026-10-08" tags={["New feature"]}>
+  ## Fiat deposits now name the sender, and onramps report the payout hash
+
+  Two additions to what you already receive. Both are additive and optional — nothing you read
+  today has changed shape.
+
+  ### Who sent a fiat deposit
+
+  A deposit into a fiat credential now carries the payer in `metadata`, on both the `deposit.*`
+  webhook and `GET /v1/transactions/{id}`:
+
+  ```json
+  "metadata": {
+    "sender_account_name": "JOHN DOE",
+    "sender_bank_name": "GTBank",
+    "sender_account_number": "2813"
+  }
+  ```
+
+  Enough to reconcile an unreferenced transfer, or to show a human who paid, without asking your
+  customer.
+
+  **A key you do not see was not reported.** Keys are omitted rather than blank, so check for
+  presence instead of comparing against `""` — banks report these inconsistently, and you may get
+  the name without the bank, or nothing at all. `sender_account_number` is the **last 4 digits**,
+  always: use it to help someone recognise a payment, not as an account identifier.
+
+  One case worth knowing: on deposits into a Paystack NGN virtual account, the bank and account
+  describe the virtual account the money landed in, while the name is the payer's. That rail does
+  not expose the payer's own bank details to us, and we would rather say so than guess.
+
+  Crypto deposits are unchanged — the on-chain `from_address` in `metadata` is the equivalent.
+
+  ### The onramp payout hash
+
+  `onramp.success` now carries `transaction_hash` in `event_object`: the on-chain hash of the
+  payout that delivered your crypto, so you can link a settlement to a block explorer without
+  asking us for it.
+
+  **Present or absent, never `null`.** It appears on onramps and effectively nowhere else — an
+  offramp pays a bank account and has no on-chain leg, and a conversion between two of your own
+  balances moves nothing on-chain. Some onramp rails also settle before a hash exists. So write
+  your handler to tolerate the key being missing.
+
+  **Store it when you receive it.** This webhook is the only place it appears — `GET
+  /v1/onramps/{id}` does not return it, and a hash that reaches us after the terminal event does
+  not trigger a second webhook, because an onramp delivers `onramp.success` exactly once.
+
+  See [Webhook events](/webhooks/events) for the full payloads.
+</Update>
+
 <Update label="2026-10-07" tags={["Behavior change"]}>
   ## Failed transactions now tell you why: `quote_expired`, `refund_failed`, `returned`
 
