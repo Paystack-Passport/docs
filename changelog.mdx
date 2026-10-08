@@ -18,6 +18,7 @@ or failure codes. Breaking changes are called out explicitly.
   {
     "type": "fiat",
     "name": "Acme Trading",
+    "label": "Acme supplier",
     "currency": "ZAR",
     "country_code": "ZA",
     "network": "bank",
@@ -33,7 +34,7 @@ or failure codes. Breaking changes are called out explicitly.
   - An unregistered ShapName returns [`400 invalid_input`](/errors#invalid_input), and no
     beneficiary is created.
   - A value that cannot be a ShapName also returns `400 invalid_input`: nothing before or after
-    the `@`, more than one `@`, or a space.
+    the `@`, more than one `@`, or a space inside it.
 
   Mobile-number proxies are unchanged.
 </Update>
