@@ -42,16 +42,17 @@ or failure codes. Breaking changes are called out explicitly.
   ### The onramp payout hash
 
   `onramp.success` now carries `transaction_hash` in `event_object`: the on-chain hash of the
-  payout that delivered your crypto. It was already on `GET /v1/onramps/{id}`; now the terminal
-  webhook carries it, so you no longer have to follow up with a read to link a settlement to a
-  block explorer.
+  payout that delivered your crypto, so you can link a settlement to a block explorer without
+  asking us for it.
 
   **Present or absent, never `null`.** It appears on onramps and effectively nowhere else — an
   offramp pays a bank account and has no on-chain leg, and a conversion between two of your own
-  balances moves nothing on-chain. Some onramp rails also settle before a hash exists. Write your
-  handler to tolerate the key being missing, and fall back to `GET /v1/onramps/{id}` if you need to
-  look for a hash that arrived late: a hash that lands after the terminal event does not trigger a
-  second webhook, because an onramp delivers `onramp.success` exactly once.
+  balances moves nothing on-chain. Some onramp rails also settle before a hash exists. So write
+  your handler to tolerate the key being missing.
+
+  **Store it when you receive it.** This webhook is the only place it appears — `GET
+  /v1/onramps/{id}` does not return it, and a hash that reaches us after the terminal event does
+  not trigger a second webhook, because an onramp delivers `onramp.success` exactly once.
 
   See [Webhook events](/webhooks/events) for the full payloads.
 </Update>

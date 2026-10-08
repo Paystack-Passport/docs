@@ -216,10 +216,10 @@ A completed NGN → USDC onramp. Same body as `GET /v1/onramps/{id}`, plus the f
   offramp pays a bank account and has no on-chain leg, and a conversion between two of your own
   balances moves nothing on-chain. Some onramp rails also settle before a hash exists.
 
-  Treat it as a convenience, not a guarantee: write your handler to tolerate the key being missing,
-  and use `GET /v1/onramps/{id}` if you need to look for a hash that arrived late. A hash that
-  lands after the terminal event does **not** trigger a second webhook — an onramp delivers
-  `onramp.success` exactly once.
+  Treat it as a convenience, not a guarantee, and **store it when you receive it**: this webhook is
+  the only place it appears. `GET /v1/onramps/{id}` does not return it, and a hash that reaches us
+  after the terminal event does not trigger a second webhook — an onramp delivers `onramp.success`
+  exactly once. If you need a hash you did not capture, contact support.
 </Note>
 
 ### Offramp
