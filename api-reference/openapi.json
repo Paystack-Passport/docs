@@ -1102,13 +1102,13 @@
           "failure_reason": {
             "type": "string",
             "nullable": true,
-            "description": "Stable machine-readable failure code; null unless the onramp failed.",
+            "description": "Stable machine-readable failure code. Null unless the onramp reached a terminal non-success state — set on `failed` and on `returned`.",
             "example": null
           },
           "failure_reason_message": {
             "type": "string",
             "nullable": true,
-            "description": "Human-readable explanation of the failure; null unless the onramp failed.",
+            "description": "Human-readable explanation of the outcome. Null unless the onramp reached a terminal non-success state — set on `failed` and on `returned`.",
             "example": null
           },
           "metadata": {
@@ -1270,13 +1270,13 @@
           "failure_reason": {
             "type": "string",
             "nullable": true,
-            "description": "Stable machine-readable failure code; null unless failed.",
+            "description": "Stable machine-readable failure code. Null unless the offramp reached a terminal non-success state — set on `failed` and on `returned`.",
             "example": null
           },
           "failure_reason_message": {
             "type": "string",
             "nullable": true,
-            "description": "Human-readable failure explanation; null unless failed.",
+            "description": "Human-readable explanation of the outcome. Null unless the offramp reached a terminal non-success state — set on `failed` and on `returned`.",
             "example": null
           },
           "metadata": {
@@ -2698,13 +2698,13 @@
           "failure_reason": {
             "type": "string",
             "nullable": true,
-            "description": "Stable machine-readable failure code; null unless the conversion failed.",
+            "description": "Stable machine-readable failure code. Null unless the conversion reached a terminal non-success state — set on `failed` and on `returned`.",
             "example": null
           },
           "failure_reason_message": {
             "type": "string",
             "nullable": true,
-            "description": "Human-readable failure explanation; null unless the conversion failed.",
+            "description": "Human-readable explanation of the outcome. Null unless the conversion reached a terminal non-success state — set on `failed` and on `returned`.",
             "example": null
           },
           "metadata": {

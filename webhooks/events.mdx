@@ -80,8 +80,8 @@ These three run the same lifecycle, so they emit the same six events.
 | `*.funds_received` | Your funds arrived and were recognised. Work has not finished. |
 | `*.processing` | The conversion or payout is in flight. |
 | `*.success` | Done. The destination has been credited. **Terminal.** |
-| `*.failed` | Could not complete. Read [`failure_reason`](/api-reference/failure-reasons). **Terminal.** |
-| `*.returned` | Funds were sent back to their origin. **Terminal.** For an offramp that had already been debited, your wallet is credited back for the full source amount — see the note below. |
+| `*.failed` | Could not complete. Read [`failure_reason`](/api-reference/failure-reasons) — it distinguishes a quote nobody funded (`quote_expired`) from a genuine failure. **Terminal.** |
+| `*.returned` | Funds were sent back to their origin. Also carries [`failure_reason: returned`](/api-reference/failure-reasons) — the one reason set while `status` is not `"failed"`. **Terminal.** For an offramp that had already been debited, your wallet is credited back for the full source amount — see the note below. |
 
 <Tip>
   `funds_received` and `processing` are separate events on purpose — `funds_received` is your cue
@@ -145,6 +145,7 @@ documents, or being asked to resubmit — is visible on
 | --- | --- | --- |
 | `actual_source_amount`, `actual_destination_amount`, `actual_rate` | onramp, offramp, conversion | What actually settled, versus the quoted `rate` and amounts. Reconcile against these. |
 | `terminal_at` | onramp, offramp, conversion, transfer | When the resource reached its terminal state. `null` before then. |
+| `transaction_hash` | onramp (in practice) | The on-chain hash of the payout that delivered your crypto. **Present or absent — never `null`.** See below. |
 | `deposit_timestamp` | deposit | When the deposit was observed (on-chain time or the payer's transfer time), which differs from the row's `created_at`. |
 | `wallet`, `customer`, `credential` | cross-currency deposits only | Which wallet the money lands in, whose it is, and which credential was funded — no second API call. |
 
@@ -212,10 +213,23 @@ A completed NGN → USDC onramp. Same body as `GET /v1/onramps/{id}`, plus the f
     "actual_source_amount": "10000.00",
     "actual_destination_amount": "6.044100",
     "actual_rate": "0.000604",
-    "terminal_at": "2026-09-30T09:12:44.000Z"
+    "terminal_at": "2026-09-30T09:12:44.000Z",
+    "transaction_hash": "0x9f2c4b7e1a3d5f6089bc2e4a7d1f3b5c8e0a2d4f6b8c1e3a5d7f9b0c2e4a6d80"
   }
 }
 ```
+
+<Note>
+  **`transaction_hash` is present or absent, never `null`.** It is the on-chain hash of the payout
+  that delivered your crypto, so it appears on `onramp.success` and effectively nowhere else: an
+  offramp pays a bank account and has no on-chain leg, and a conversion between two of your own
+  balances moves nothing on-chain. Some onramp rails also settle before a hash exists.
+
+  Treat it as a convenience, not a guarantee, and **store it when you receive it**: this webhook is
+  the only place it appears. `GET /v1/onramps/{id}` does not return it, and a hash that reaches us
+  after the terminal event does not trigger a second webhook — an onramp delivers `onramp.success`
+  exactly once. If you need a hash you did not capture, contact support.
+</Note>
 
 ### Offramp
 
@@ -494,7 +508,10 @@ wallet's currency.
     "metadata": {
       "auto_conversion": "true",
       "quote_id": "quo_01KPBK123456789ABCDEFG",
-      "rate": "0.000605"
+      "rate": "0.000605",
+      "sender_account_name": "JOHN DOE",
+      "sender_bank_name": "GTBank",
+      "sender_account_number": "2813"
     },
     "created_at": "2026-09-30T08:29:44.000Z",
     "updated_at": "2026-09-30T08:30:00.000Z",
@@ -538,6 +555,30 @@ wallet's currency.
 A held cross-currency deposit arrives as `deposit.held` with `metadata.hold_reason` and a `null`
 `destination_amount` — no rate is quoted while it is under review. On release you receive
 `deposit.received` priced at the then-current rate.
+
+#### Who sent a fiat deposit
+
+When money lands in a fiat credential, `metadata` names the payer as far as the bank reported them.
+The same keys appear on `GET /v1/transactions/{id}`, so a webhook and a later read agree.
+
+| Key | What it is |
+| --- | --- |
+| `sender_account_name` | The name on the sending account. |
+| `sender_bank_name` | The sending bank. |
+| `sender_account_number` | The **last 4 digits** of the account number — never the full number. |
+
+Three rules to code against:
+
+- **A key you do not see was not reported.** Keys are omitted, never blank, so check for presence
+  rather than comparing against `""`. Banks report these inconsistently: you may get the name
+  without the bank, or nothing at all.
+- **`sender_account_number` is a last-4, always.** Use it to help a human recognise a payment, not
+  as an account identifier.
+- **On deposits into a Paystack NGN virtual account, the bank and account describe the virtual
+  account the money landed in**, while the name is the payer's. That rail does not expose the
+  payer's own bank details to us, and we would rather tell you that than guess.
+
+Crypto deposits carry no sender keys — the on-chain `from_address` in `metadata` is the equivalent.
 
 ### Verification
 

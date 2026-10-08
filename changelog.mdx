@@ -6,6 +6,169 @@ description: "Notable changes to the GlobalStack API — new endpoints, behavior
 Changes that affect how you integrate: new endpoints and fields, behavior changes, and new error
 or failure codes. Breaking changes are called out explicitly.
 
+<Update label="2026-10-08" tags={["New feature"]}>
+  ## Pay businesses over PayShap by ShapName
+
+  A PayShap beneficiary can now be addressed by a **ShapName** as well as a mobile number. A
+  ShapName is the `name@bank` identifier that businesses usually register for PayShap, for example
+  `acme@nedbank`. Put it in `account_number`, exactly as the recipient gives it, including the part
+  after `@`:
+
+  ```json
+  {
+    "type": "fiat",
+    "name": "Acme Trading",
+    "label": "Acme supplier",
+    "currency": "ZAR",
+    "country_code": "ZA",
+    "network": "bank",
+    "rail": "payshap",
+    "account_number": "acme@nedbank"
+  }
+  ```
+
+  Everything else works as it does for a mobile number:
+
+  - We resolve the ShapName before we create the beneficiary. For a business, `account_name` is
+    the registered business name.
+  - An unregistered ShapName returns [`400 invalid_input`](/errors#invalid_input), and no
+    beneficiary is created.
+  - A value that cannot be a ShapName also returns `400 invalid_input`: nothing before or after
+    the `@`, more than one `@`, or a space inside it.
+
+  Mobile-number proxies are unchanged.
+</Update>
+
+<Update label="2026-10-08" tags={["New feature"]}>
+  ## Fiat deposits now name the sender, and onramps report the payout hash
+
+  Two additions to what you already receive. Both are additive and optional — nothing you read
+  today has changed shape.
+
+  ### Who sent a fiat deposit
+
+  A deposit into a fiat credential now carries the payer in `metadata`, on both the `deposit.*`
+  webhook and `GET /v1/transactions/{id}`:
+
+  ```json
+  "metadata": {
+    "sender_account_name": "JOHN DOE",
+    "sender_bank_name": "GTBank",
+    "sender_account_number": "2813"
+  }
+  ```
+
+  Enough to reconcile an unreferenced transfer, or to show a human who paid, without asking your
+  customer.
+
+  **A key you do not see was not reported.** Keys are omitted rather than blank, so check for
+  presence instead of comparing against `""` — banks report these inconsistently, and you may get
+  the name without the bank, or nothing at all. `sender_account_number` is the **last 4 digits**,
+  always: use it to help someone recognise a payment, not as an account identifier.
+
+  One case worth knowing: on deposits into a Paystack NGN virtual account, the bank and account
+  describe the virtual account the money landed in, while the name is the payer's. That rail does
+  not expose the payer's own bank details to us, and we would rather say so than guess.
+
+  Crypto deposits are unchanged — the on-chain `from_address` in `metadata` is the equivalent.
+
+  ### The onramp payout hash
+
+  `onramp.success` now carries `transaction_hash` in `event_object`: the on-chain hash of the
+  payout that delivered your crypto, so you can link a settlement to a block explorer without
+  asking us for it.
+
+  **Present or absent, never `null`.** It appears on onramps and effectively nowhere else — an
+  offramp pays a bank account and has no on-chain leg, and a conversion between two of your own
+  balances moves nothing on-chain. Some onramp rails also settle before a hash exists. So write
+  your handler to tolerate the key being missing.
+
+  **Store it when you receive it.** This webhook is the only place it appears — `GET
+  /v1/onramps/{id}` does not return it, and a hash that reaches us after the terminal event does
+  not trigger a second webhook, because an onramp delivers `onramp.success` exactly once.
+
+  See [Webhook events](/webhooks/events) for the full payloads.
+</Update>
+
+<Update label="2026-10-07" tags={["Behavior change"]}>
+  ## Failed transactions now tell you why: `quote_expired`, `refund_failed`, `returned`
+
+  A conversion, onramp, or offramp that ended badly used to report one thing no matter what
+  happened: `failure_reason: "failed"`, *"This transaction could not be completed."* A quote nobody
+  funded, which simply expired, was indistinguishable from something breaking mid-processing — which
+  inflated apparent failure rates and misrouted alerting. Three new codes separate them.
+
+  | `failure_reason` | When |
+  | --- | --- |
+  | `quote_expired` | The payment never arrived before the quote expired. No funds moved. |
+  | `refund_failed` | The transaction failed, and the refund attempt did not complete. |
+  | `returned` | The transaction was returned and any funds debited for it have been released. |
+
+  **`quote_expired` is the common one** — by a wide margin. It means nobody paid in time, not that
+  anything went wrong on our side. No funds moved, so it is always safe to create a fresh quote and
+  try again. If you alert on failures, this is the code to exclude.
+
+  **This can change what you already receive.** Cases that previously arrived as `failed` now arrive
+  as `quote_expired`, `refund_failed`, or `returned`. Nothing was removed and no field changed shape
+  — but if you branch on `failure_reason === "failed"`, that branch will stop catching them. `failed`
+  remains the generic catch-all for anything we do not surface specifically.
+
+  **`returned` is the one that is not a `failed` status.** The other codes accompany
+  `status: "failed"`; `returned` accompanies `status: "returned"`, which is its own terminal state.
+  If you only read `failure_reason` when `status` is `"failed"`, you will not see it — gate on the
+  transaction not having succeeded instead.
+
+  Note that `returned` deliberately does not promise a credit. Whether funds come back depends on how
+  far the transaction got: an offramp whose payout had already settled is credited back in full,
+  while one that never debited you has nothing to return. Check your balance or transactions list
+  rather than inferring a credit from the code.
+
+  Statuses themselves are unchanged — an expired conversion still reports `status: "failed"`, so the
+  six status values stay exactly as documented. The distinction travels on `failure_reason` alone,
+  which is why this needed no new field.
+
+  The full list, with the exact `failure_reason_message` for each, is in
+  [Failure reasons](/api-reference/failure-reasons).
+</Update>
+
+<Update label="2026-10-06" tags={["Behavior change"]}>
+  ## South African account numbers are now validated before payout
+
+  A ZAR bank `account_number` that cannot structurally belong to its bank is now rejected with
+  `400 invalid_input`, instead of being accepted and failing at the bank days later. The check is
+  local to us — no extra latency, no new field, no schema change.
+
+  **This can reject requests that previously succeeded.** Two places:
+
+  - `POST /v1/beneficiaries` and `PATCH /v1/beneficiaries/{id}` — at the point the details are
+    captured, so the person entering them can still fix it.
+  - `POST /v1/quotes` for an offramp — which means **a beneficiary saved before today can fail
+    here**, even though it saved cleanly at the time. That is deliberate: the quote is the last
+    moment we hold the number before it goes to the payout network. Update the beneficiary's
+    `account_number` and quote again.
+
+  Two rules, and neither is a reformatting:
+
+  - **Digits only.** Separators are rejected, not stripped — `6200-4626-662` is invalid even
+    though removing the dashes would leave a valid number. We never alter what you send, so a
+    number we accept is exactly the number we pay. Trim your inputs before sending them.
+  - **Length must match the bank** on the beneficiary's `account_provider` — FNB 11, Capitec 10,
+    Nedbank 10, Standard Bank 9 or 11, Absa 8–11, and so on; any other South African bank is
+    checked against 8–11 digits. The full table is in
+    [Errors → South African account numbers](/errors#south-african-account-numbers).
+
+  The `message` names the bank and both digit counts — `FNB accounts are 11 digits; this account
+  number has 10.` — and is written to be shown to whoever entered the value. `"Invalid account"`
+  becomes a support ticket; the specific string gets fixed.
+
+  **PayShap is unaffected.** On the `payshap` rail `account_number` is an E.164 proxy, not a bank
+  account number, so none of these rules apply to it.
+
+  **What this does not do:** it cannot tell you whether an account exists, is open, or accepts
+  credits. A structurally perfect number can still be returned by the bank as unrecognised or
+  closed. This only removes the failures that were impossible from the start.
+</Update>
+
 <Update label="2026-10-02" tags={["Behavior change"]}>
   ## A returned offramp now refunds your wallet automatically
 
