@@ -6,27 +6,31 @@ description: "Notable changes to the GlobalStack API — new endpoints, behavior
 Changes that affect how you integrate: new endpoints and fields, behavior changes, and new error
 or failure codes. Breaking changes are called out explicitly.
 
-<Update label="2026-10-07" tags={["New feature"]}>
+<Update label="2026-10-13" tags={["New feature"]}>
   ## Transactions now carry `received_amount` — what actually landed
 
-  `GET /v1/transactions` and `GET /v1/transactions/:id` now return `received_amount`: the amount
-  the recipient actually received, formatted to the destination currency's precision.
+  `GET /v1/transactions` and `GET /v1/transactions/{transactionId}` now return `received_amount`:
+  the amount the recipient actually received, formatted to the destination currency's precision.
 
   This closes a gap. `destination_amount` on a transaction is the amount **quoted**, and on
   corridors that charge a transaction fee separately that figure is the amount *before* the fee —
   an off-ramp quoted at 110 ZAR can credit the recipient's bank 100. The real figure was already
-  on `GET /v1/onramps/:id`, `GET /v1/offramps/:id` and `GET /v1/conversions/:id`, but reading it
-  from a transactions list meant a follow-up request per row. Now it is on the transaction itself.
+  on `GET /v1/onramps/{onrampId}`, `GET /v1/offramps/{offrampId}` and
+  `GET /v1/conversions/{conversionId}`, but reading it from a transactions list meant a follow-up
+  request per row. Now it is on the transaction itself, and on each entry in
+  `related_transactions`.
 
   **When it is `null`.** For onramp, offramp and conversion transactions, `received_amount` is
   `null` until the transaction reaches a terminal success, and stays `null` on one that did not
   pay out. Only a settled payout has a delivered amount; before then there is nothing to report,
-  and we would rather say so than hand back the quote dressed up as a result.
+  and we would rather say so than hand back the quote dressed up as a result. **Treat `null` as
+  "not known yet", never as zero** — while a transaction is in flight, `destination_amount`
+  remains your best estimate of what will be delivered.
 
-  **When it equals `destination_amount`.** On rails where nothing is deducted — deposits and
-  returned funds — the two are the same by definition, and `received_amount` simply mirrors
-  `destination_amount`. Reading `received_amount` is therefore safe across every transaction type;
-  you do not need to branch on `source_type` to know which field to trust.
+  **When it equals `destination_amount`.** On rails where nothing is deducted — deposits, and
+  funds returned to your wallet — the two are the same by definition, and `received_amount` simply
+  mirrors `destination_amount`. Reading `received_amount` is therefore safe across every
+  transaction type; you do not need to branch on `source_type` to know which field to trust.
 
   **Reconciling against the quote.** Compare `received_amount` with `destination_amount` to see
   the gap a transaction fee opened up. `destination_amount` is unchanged and still the quoted
@@ -41,6 +45,91 @@ or failure codes. Breaking changes are called out explicitly.
 
   Deposit webhooks carry the field too — their `event_object` *is* the transaction record — so
   `deposit.received`, `deposit.held`, `deposit.confirmed` and `deposit.failed` all include it.
+  See [Webhook events](/webhooks/events) for the full payloads.
+</Update>
+
+<Update label="2026-10-08" tags={["New feature"]}>
+  ## Pay businesses over PayShap by ShapName
+
+  A PayShap beneficiary can now be addressed by a **ShapName** as well as a mobile number. A
+  ShapName is the `name@bank` identifier that businesses usually register for PayShap, for example
+  `acme@nedbank`. Put it in `account_number`, exactly as the recipient gives it, including the part
+  after `@`:
+
+  ```json
+  {
+    "type": "fiat",
+    "name": "Acme Trading",
+    "label": "Acme supplier",
+    "currency": "ZAR",
+    "country_code": "ZA",
+    "network": "bank",
+    "rail": "payshap",
+    "account_number": "acme@nedbank"
+  }
+  ```
+
+  Everything else works as it does for a mobile number:
+
+  - We resolve the ShapName before we create the beneficiary. For a business, `account_name` is
+    the registered business name.
+  - An unregistered ShapName returns [`400 invalid_input`](/errors#invalid_input), and no
+    beneficiary is created.
+  - A value that cannot be a ShapName also returns `400 invalid_input`: nothing before or after
+    the `@`, more than one `@`, or a space inside it.
+
+  Mobile-number proxies are unchanged.
+</Update>
+
+<Update label="2026-10-08" tags={["New feature"]}>
+  ## Fiat deposits now name the sender, and onramps report the payout hash
+
+  Two additions to what you already receive. Both are additive and optional — nothing you read
+  today has changed shape.
+
+  ### Who sent a fiat deposit
+
+  A deposit into a fiat credential now carries the payer in `metadata`, on both the `deposit.*`
+  webhook and `GET /v1/transactions/{id}`:
+
+  ```json
+  "metadata": {
+    "sender_account_name": "JOHN DOE",
+    "sender_bank_name": "GTBank",
+    "sender_account_number": "2813"
+  }
+  ```
+
+  Enough to reconcile an unreferenced transfer, or to show a human who paid, without asking your
+  customer.
+
+  **A key you do not see was not reported.** Keys are omitted rather than blank, so check for
+  presence instead of comparing against `""` — banks report these inconsistently, and you may get
+  the name without the bank, or nothing at all. `sender_account_number` is the **last 4 digits**,
+  always: use it to help someone recognise a payment, not as an account identifier.
+
+  One case worth knowing: on deposits into a Paystack NGN virtual account, the bank and account
+  describe the virtual account the money landed in, while the name is the payer's. That rail does
+  not expose the payer's own bank details to us, and we would rather say so than guess.
+
+  Crypto deposits are unchanged — the on-chain `from_address` in `metadata` is the equivalent.
+
+  ### The onramp payout hash
+
+  `onramp.success` now carries `transaction_hash` in `event_object`: the on-chain hash of the
+  payout that delivered your crypto, so you can link a settlement to a block explorer without
+  asking us for it.
+
+  **Present or absent, never `null`.** It appears on onramps and effectively nowhere else — an
+  offramp pays a bank account and has no on-chain leg, and a conversion between two of your own
+  balances moves nothing on-chain. Some onramp rails also settle before a hash exists. So write
+  your handler to tolerate the key being missing.
+
+  **Store it when you receive it.** This webhook is the only place it appears — `GET
+  /v1/onramps/{id}` does not return it, and a hash that reaches us after the terminal event does
+  not trigger a second webhook, because an onramp delivers `onramp.success` exactly once.
+
+  See [Webhook events](/webhooks/events) for the full payloads.
 </Update>
 
 <Update label="2026-10-07" tags={["Behavior change"]}>
@@ -120,6 +209,31 @@ or failure codes. Breaking changes are called out explicitly.
   **What this does not do:** it cannot tell you whether an account exists, is open, or accepts
   credits. A structurally perfect number can still be returned by the bank as unrecognised or
   closed. This only removes the failures that were impossible from the start.
+</Update>
+
+<Update label="2026-10-02" tags={["Behavior change"]}>
+  ## A returned offramp now refunds your wallet automatically
+
+  When a payout provider sends an offramp's funds back, the offramp goes `returned` as before — but
+  if we had already taken the source amount from your wallet, we now credit it straight back.
+  Previously the offramp went terminal while your balance stayed short, and recovering the funds
+  took a support request.
+
+  The refund is the **full source amount** of the offramp. No fee is withheld: the money movement
+  never happened, so nothing is retained.
+
+  How to see it:
+
+  - `offramp.returned` is still the signal. There is **no new webhook** — no `deposit.*` event is
+    emitted for the refund.
+  - The credit appears in [`GET /v1/transactions`](/api-reference/openapi#tag/transactions) as a
+    `deposit`-type transaction with a new `source_type` of **`offramp_reversal`**, linked to the
+    original offramp as its parent.
+  - Your wallet balance reflects it immediately.
+
+  If you reconcile on `source_type`, add `offramp_reversal` to the values you expect. A payout that
+  was never funded from your balance is unaffected — there is nothing to return, and no refund
+  transaction is written.
 </Update>
 
 <Update label="2026-09-30" tags={["New feature"]}>
@@ -303,36 +417,6 @@ or failure codes. Breaking changes are called out explicitly.
 
   All four wallet endpoints now return `type`, `destination_address` and `destination_chain`. On a
   custodial wallet the two destination fields are `null`.
-</Update>
-
-<Update label="2026-09-18" tags={["New feature"]}>
-  ## Transactions now return the amount the recipient received
-
-  `GET /v1/transactions` and `GET /v1/transactions/{transactionId}` now return `received_amount`:
-  the amount that actually reached the recipient, formatted to the destination currency's
-  precision.
-
-  This is not the same figure as `destination_amount`. `destination_amount` is the amount you were
-  quoted, and on corridors that surface a transaction fee separately it is the amount *before* that
-  fee — an off-ramp quoted at 110 ZAR credits the beneficiary's bank 100. If you have been showing
-  `destination_amount` as the payout figure, or subtracting fee line items from it yourself,
-  `received_amount` is the number you want. It is the same field, with the same meaning, already
-  returned on quote, onramp, offramp, and conversion responses.
-
-  `received_amount` is `null` until a transaction reaches a terminal success, and stays `null` on
-  transactions that never succeeded, on transfers, and on deposits. **Treat `null` as "not known
-  yet", never as zero** — for an in-flight transaction, `destination_amount` remains your best
-  estimate of what will be delivered. Once set, the figure is retained: a payout that is later
-  returned keeps the amount it originally delivered. Existing transactions were backfilled, so
-  transactions that settled before this change return the field too.
-
-  The field also appears on each entry in `related_transactions`. `destination_amount` is unchanged
-  and still returned, so nothing you already key off has moved.
-
-  <Note>
-    `deposit.*` webhook payloads now include `received_amount` as well. Deposits have no payout leg,
-    so it is always `null` there.
-  </Note>
 </Update>
 
 <Update label="2026-09-18" tags={["New feature"]}>
