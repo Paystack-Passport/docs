@@ -3,7 +3,7 @@ title: "Auto-conversion credentials"
 description: "Accept deposits in one currency and settle them into a wallet in a different currency, automatically."
 ---
 
-Wallet credentials can accept deposits in a currency that differs from the wallet's own — every arriving deposit is automatically converted into the wallet's currency at the FX rate live at deposit time. Two directions:
+Wallet credentials can accept deposits in a currency that differs from the wallet's own — arriving deposits are automatically converted into the wallet's currency at the FX rate live at conversion time. Two directions:
 
 - **Auto-onramp** — a fiat credential on a crypto wallet. The payer sends fiat; the wallet is credited in crypto.
 - **Auto-offramp** — a crypto credential on a fiat wallet. The payer sends crypto; the wallet is credited in fiat.
@@ -52,15 +52,55 @@ Cross-currency is admitted only when **every** condition below holds. Any failur
   The set of currencies that support `canOnramp` / `canOfframp` is fixed by GlobalStack. If your wallet's currency isn't eligible for a given direction, cross-currency provisioning will fail — reach out to support to confirm coverage.
 </Note>
 
+## Minimum conversion amount
+
+Every corridor has a minimum convertible amount, and a conversion is only quoted once the
+credential's balance clears it. Below that, the deposit is still recorded and you are still
+notified — it simply has no converted value yet, and its funds wait on the credential for the next
+deposit.
+
+Conversions are sized from the **credential's whole available balance**, not from the deposit that
+triggered them. So two 3,000 NGN deposits into a credential with a 4,500 NGN minimum convert
+together as one 6,000 NGN conversion when the second arrives. Nothing is lost and nothing needs
+chasing; small deposits accumulate until they are worth converting.
+
+<Note>
+  You can read the minimum for a corridor from `GET /v1/currencies`: it is
+  `networks[].inbound.min` on the **credential's** currency, for the credential's `network`. The
+  amount compared against it is the credential's available balance, which includes anything left
+  over from earlier deposits — not the single deposit you just received.
+</Note>
+
+A deposit that was not converted on arrival carries `metadata.conversion_pending_reason`:
+
+| Reason | What it means | What to do |
+| --- | --- | --- |
+| `below_minimum` | The credential's balance is under the corridor minimum. `metadata.conversion_minimum` carries the floor that was applied. | Nothing. The next deposit converts both. |
+| `fx_rejected` | The amount was refused by the FX provider as outside the corridor's limits. | Nothing automatic is pending; if the balance never clears, contact support. |
+| `deferred` | The conversion could not be attempted at that moment — another deposit on the same credential was mid-conversion, or the attempt timed out. | Nothing. The next deposit sweeps the balance. |
+
+The deposit that finally triggers the conversion carries the **whole aggregated amount** as its
+`destination_amount`, which can be larger than its own `source_amount`.
+`metadata.converted_source_amount` tells you how much was actually converted.
+
+<Warning>
+  Because the aggregate lands on one deposit, **do not sum `destination_amount` across deposits** to
+  reconcile a credential. The deposits folded into an aggregate carry `null`, and the triggering
+  one carries the total. Reconcile against the `conversion.*` events, which are one-per-conversion.
+</Warning>
+
 ## Deposit lifecycle
 
-A cross-currency deposit tells you twice: once when the money arrives, and again as the conversion
-moves. The arrival event waits for the FX quote, so it can tell you what the deposit is worth in
-your wallet's currency — the number you actually care about.
+A cross-currency deposit usually tells you twice: once when the money arrives, and again as the
+conversion moves. The arrival event waits for the FX quote where there is one, so it can tell you
+what the deposit is worth in your wallet's currency — the number you actually care about. Where the
+balance is under the corridor minimum there is no quote to wait for, and the arrival event carries
+no converted value.
 
 | Event | When it fires | Meaning |
 | --- | --- | --- |
-| `deposit.received` | Payer's funds arrived and the rate is quoted | The deposit is recorded, with `destination_amount` in your wallet's currency. |
+| `deposit.received` | Payer's funds arrived and a rate was quoted | The deposit is recorded, with `destination_amount` in your wallet's currency. |
+| `deposit.received` (no amount) | Funds arrived but the balance is under the corridor minimum | The deposit is recorded with a `null` `destination_amount` and a `metadata.conversion_pending_reason`. See [Minimum conversion amount](#minimum-conversion-amount). No `conversion.*` events follow until a later deposit converts the balance. |
 | `deposit.held` | Arrival breached your customer's money-in limit | The deposit is parked pending review. No conversion is quoted yet, so there is no `destination_amount`. |
 | `conversion.created` | Conversion registered against the deposit | Rate is locked. |
 | `conversion.funds_received` | FX Engine has custody of the source funds | The FX-side settlement leg is queued. |
@@ -89,7 +129,8 @@ credential's currency and `destination_*` in your wallet's currency:
     "metadata": {
       "auto_conversion": "true",
       "quote_id": "qt_01HXYZABC1234567890ABCDEFG",
-      "rate": "0.000605"
+      "rate": "0.000605",
+      "converted_source_amount": "10000.00"
     },
     "deposit_timestamp": "2026-04-22T02:01:29.000Z",
     "wallet": { "id": "wal_…", "currency": "USDC", "label": "Treasury USDC" },
@@ -119,6 +160,33 @@ cross-currency deposit events.
   `conversion.success`. Reconcile against the conversion, not the deposit.
 </Warning>
 
+`converted_source_amount` is how much the quote actually converted. It equals `source_amount` on a
+deposit that converted on its own, and exceeds it when the conversion swept residue from earlier
+deposits.
+
+A deposit that was **not** converted carries the same shape with no converted value:
+
+```json
+{
+  "event_type": "deposit.received",
+  "event_object": {
+    "id": "txn_01KPBG1Q3Z8X1Q6VJRE5R8ZFBH",
+    "type": "deposit",
+    "status": "received",
+    "source_amount": "3000.00",
+    "source_currency": "NGN",
+    "destination_amount": null,
+    "destination_currency": "USDC",
+    "metadata": {
+      "auto_conversion": "true",
+      "conversion_pending_reason": "below_minimum",
+      "conversion_minimum": "4500.00"
+    },
+    "deposit_timestamp": "2026-04-22T02:01:29.000Z"
+  }
+}
+```
+
 <Note>
   A cross-currency deposit never reaches a terminal `deposit.*` state. It stays at `received` for
   its whole life, and the `conversion.*` topics carry the outcome — do not wait for
@@ -132,7 +200,9 @@ If an arriving deposit breaches the customer's rolling money-in limit, you get `
 instead, with `metadata.hold_reason` set to `tier_limit` and a null `destination_amount` — no
 conversion is quoted while the deposit is under review. When GlobalStack releases it, the
 conversion runs at the **then-current rate** and you receive `deposit.received` carrying the
-quoted amount, followed by the usual `conversion.*` sequence.
+quoted amount, followed by the usual `conversion.*` sequence. A released deposit is subject to the
+same [minimum](#minimum-conversion-amount): if the balance is under the floor at release, the
+`deposit.received` you receive carries a `conversion_pending_reason` instead of an amount.
 
 ### Same-currency credentials
 
@@ -148,7 +218,9 @@ Auto-conversion fees follow the FX conversion contract: the destination amount i
 
 ## Recovery on failure
 
-If `conversion.failed` (or `conversion.returned`) fires, funds stay on the credential's own balance — no auto-retry (FX failures are typically structural, not transient). Contact GlobalStack support to drain the parked funds; ops will run a fresh conversion at the then-current rate. Once the drain lands, the wallet balance is credited and the credential balance clears.
+If `conversion.failed` (or `conversion.returned`) fires, funds stay on the credential's own balance. There is no auto-retry of the failed conversion — FX failures are typically structural, not transient — but the parked funds are **not stranded**: because conversions are sized from the credential's whole available balance, the next deposit into that credential converts the leftover along with itself, at the then-current rate.
+
+If no further deposit is expected, contact GlobalStack support to drain the parked funds; ops will run a fresh conversion at the then-current rate. Once the drain lands, the wallet balance is credited and the credential balance clears.
 
 <Warning>
   There is no merchant-facing "retry" or "refund" endpoint in v1. Recovery goes through GlobalStack support.

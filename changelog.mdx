@@ -6,6 +6,37 @@ description: "Notable changes to the GlobalStack API — new endpoints, behavior
 Changes that affect how you integrate: new endpoints and fields, behavior changes, and new error
 or failure codes. Breaking changes are called out explicitly.
 
+<Update label="2026-10-20" tags={["Behavior change"]}>
+  ## Small cross-currency deposits now accumulate instead of failing
+
+  On a [cross-currency credential](/api-reference/auto-conversion), a conversion is now quoted only
+  once the credential's balance clears the corridor's minimum convertible amount — and it is sized
+  from the **whole available balance**, not from the deposit that triggered it.
+
+  Two 3,000 NGN deposits into a credential with a 4,500 NGN minimum now convert together as one
+  6,000 NGN conversion when the second arrives. Previously each deposit was converted in isolation,
+  so a deposit under the minimum was refused by the FX provider and its funds sat on the credential
+  until support drained them. The same accumulation means a conversion that *fails* is no longer
+  stranded either: the next deposit into that credential converts the leftover along with itself.
+
+  **What changes in your integration.** `deposit.received` on this path can now carry a `null`
+  `destination_amount`, with `metadata.conversion_pending_reason` explaining why — `below_minimum`
+  (with `metadata.conversion_minimum`), `fx_rejected`, or `deferred`. That field was already
+  nullable for a deposit held by a tier limit; this is a second, more common cause. **Treat `null`
+  as "not converted yet", never as zero.** No `conversion.*` events follow such a deposit until a
+  later one converts the balance.
+
+  **One thing to watch.** Because the aggregate lands on the deposit that triggers the conversion,
+  that deposit's `destination_amount` can exceed its own `source_amount`, and the deposits folded
+  into it carry `null`. Summing `destination_amount` across deposits will not reconcile a
+  credential — reconcile against the `conversion.*` events, which stay one-per-conversion. The new
+  `metadata.converted_source_amount` tells you how much a given conversion actually converted.
+
+  No endpoint, request shape or response shape changed, and same-currency credentials are
+  unaffected. You can read a corridor's minimum from `GET /v1/currencies` as
+  `networks[].inbound.min` on the credential's currency, for the credential's `network`.
+</Update>
+
 <Update label="2026-10-13" tags={["New feature"]}>
   ## Transactions now carry `received_amount` — what actually landed
 
