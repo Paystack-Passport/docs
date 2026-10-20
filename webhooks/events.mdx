@@ -113,7 +113,7 @@ A cancelled or reversed transfer arrives as `transfer.failed` — `failure_reaso
 
 | Event | Fires when |
 | --- | --- |
-| `deposit.received` | Funds detected but not yet final — a crypto deposit seen on-chain before confirmation, or a cross-currency deposit that has just been priced. |
+| `deposit.received` | Funds detected but not yet final — a crypto deposit seen on-chain before confirmation, or a cross-currency deposit that has just been priced. On the cross-currency path `destination_amount` is `null` when the balance is under the corridor minimum; `metadata.conversion_pending_reason` says why. |
 | `deposit.held` | Credited but withheld pending review. `metadata.hold_reason` is `tier_limit`, `payin_frozen` or `payin_disabled`. |
 | `deposit.confirmed` | Settled and spendable from the wallet balance. **Terminal.** |
 | `deposit.failed` | The deposit could not be credited. **Terminal.** |
@@ -125,6 +125,11 @@ Two paths are worth planning for:
 - **A [cross-currency deposit](/api-reference/auto-conversion) never reaches a terminal
   `deposit.*` event.** It stays at `received`, and the `conversion.*` events carry the outcome.
   Waiting for `deposit.confirmed` on that path waits forever.
+- **A cross-currency deposit may arrive with no converted amount and no `conversion.*` events at
+  all.** Below the corridor minimum it is recorded, you are notified, and its funds wait for the
+  next deposit to convert them together. Treat a `null` `destination_amount` as "not converted
+  yet", and don't sum it across deposits — see
+  [Minimum conversion amount](/api-reference/auto-conversion#minimum-conversion-amount).
 
 ### Verifications
 
