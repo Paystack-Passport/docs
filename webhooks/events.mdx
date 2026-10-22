@@ -153,12 +153,71 @@ documents, or being asked to resubmit — is visible on
 | `transaction_hash` | onramp (in practice) | The on-chain hash of the payout that delivered your crypto. **Present or absent — never `null`.** See below. |
 | `deposit_timestamp` | deposit | When the deposit was observed (on-chain time or the payer's transfer time), which differs from the row's `created_at`. |
 | `wallet`, `customer`, `credential` | cross-currency deposits only | Which wallet the money lands in, whose it is, and which credential was funded — no second API call. |
+| `transaction` | onramp, offramp, conversion, transfer | The `txn_…` ids of this resource's transaction record and its place in the transaction tree. Use it to join two deliveries about the same money — see [Correlating deliveries](#correlating-deliveries). |
 
 <Warning>
   Reconcile money against `actual_*`, not against `rate`/`destination_amount`. The quoted values are
   what you were promised; the `actual_*` values are what settled. They are `null` until the
   economics are known.
 </Warning>
+
+### Correlating deliveries
+
+One movement of money usually produces more than one webhook. A fiat deposit into a cross-currency
+credential arrives as `deposit.received`, then converts and arrives again as `conversion.success`.
+Both deliveries describe the same money, and the transaction ids tell you so.
+
+Every transaction belongs to a tree. `parent_transaction_id` is the transaction that caused this
+one; `root_transaction_id` is the top of the tree. Two deliveries that share a
+`root_transaction_id` are about the same flow.
+
+Where you read those ids depends on the family:
+
+- **Onramp, offramp, conversion and transfer** events carry them nested, because the payload's own
+  `id` is already the resource id (`onr_…`, `con_…`):
+
+  ```json
+  "transaction": {
+    "id": "txn_01KPBG1Q3Z8X1Q6VJRE5R8ZFBG",
+    "parent_transaction_id": null,
+    "root_transaction_id": "txn_01KPBG1Q3Z8X1Q6VJRE5R8ZFBG"
+  }
+  ```
+
+- **Deposit** events carry `parent_transaction_id` and `root_transaction_id` **flat**, at the top of
+  `event_object` — that payload *is* a transaction record, so its `id` is already the `txn_…`. They
+  are part of the REST body you already get from `GET /v1/transactions/{transactionId}`, not
+  event-only fields.
+
+All three keys are always present. `null` means **not resolvable**, which is normal: the top of a
+tree has no parent, and transactions recorded before we tracked trees have neither id.
+
+<Warning>
+  **Join on `root_transaction_id`, not on `parent_transaction_id`.** Which of two related
+  transactions is the parent depends on how the flow started, and it is not the same in both
+  directions. On an auto-conversion the deposit is the parent of the conversion; on a conversion you
+  started yourself the conversion is the parent of its funding deposit. `root_transaction_id` is the
+  same value in both cases.
+</Warning>
+
+What each family's ids can actually join:
+
+| Family | `parent_transaction_id` | What you can correlate |
+| --- | --- | --- |
+| `deposit.*` | the conversion or onramp this deposit funded or satisfied, when there is one | the matching `conversion.*` or `onramp.*` delivery |
+| `conversion.*` | the triggering deposit on an auto-conversion; `null` on a conversion you created with `POST /v1/conversions` | the matching `deposit.*` delivery, in either direction, via the shared `root_transaction_id` |
+| `onramp.*` | always `null` | the satisfying deposit is recorded as the onramp's child, so **that deposit's** `parent_transaction_id` equals this event's `transaction.id` |
+| `offramp.*` | always `null` | nothing across webhooks. An offramp's child transactions (its settlement leg, and the credit that reverses a returned payout) are internal and never delivered as events — read them from `related_transactions` on `GET /v1/transactions/{transactionId}` |
+| `transfer.*` | always `null` | nothing across webhooks. Use `transaction.id` as the handle for `GET /v1/transactions/{transactionId}` |
+
+So `conversion.*`, `onramp.*` and `deposit.*` are joinable to each other; on `offramp.*` and
+`transfer.*` the ids are a REST handle rather than a correlation key.
+
+<Note>
+  If a resource has no transaction record yet when the event fires, all three ids come back `null`
+  and the event is still delivered. A correlation field will never hold back a delivery, so handle
+  `null` rather than treating it as an error.
+</Note>
 
 ### Onramp
 
@@ -219,6 +278,11 @@ A completed NGN → USDC onramp. Same body as `GET /v1/onramps/{id}`, plus the f
     "actual_destination_amount": "6.044100",
     "actual_rate": "0.000604",
     "terminal_at": "2026-09-30T09:12:44.000Z",
+    "transaction": {
+      "id": "txn_01KPBH80VJ4K2M6P8R0T2V4X6Z",
+      "parent_transaction_id": null,
+      "root_transaction_id": "txn_01KPBH80VJ4K2M6P8R0T2V4X6Z"
+    },
     "transaction_hash": "0x9f2c4b7e1a3d5f6089bc2e4a7d1f3b5c8e0a2d4f6b8c1e3a5d7f9b0c2e4a6d80"
   }
 }
@@ -308,7 +372,12 @@ and that `terminal_at` is set because `failed` is terminal.
     "actual_source_amount": null,
     "actual_destination_amount": null,
     "actual_rate": null,
-    "terminal_at": "2026-09-30T11:04:19.000Z"
+    "terminal_at": "2026-09-30T11:04:19.000Z",
+    "transaction": {
+      "id": "txn_01KPBH88RC5N3P7R9T1V3X5Z7B",
+      "parent_transaction_id": null,
+      "root_transaction_id": "txn_01KPBH88RC5N3P7R9T1V3X5Z7B"
+    }
   }
 }
 ```
@@ -360,10 +429,23 @@ because nothing has settled yet.
     "actual_source_amount": null,
     "actual_destination_amount": null,
     "actual_rate": null,
-    "terminal_at": null
+    "terminal_at": null,
+    "transaction": {
+      "id": "txn_01KPBH8MKD6P4R8T0V2X4Z6B8D",
+      "parent_transaction_id": null,
+      "root_transaction_id": "txn_01KPBH8MKD6P4R8T0V2X4Z6B8D"
+    }
   }
 }
 ```
+
+<Note>
+  This conversion was created with `POST /v1/conversions`, so it is the top of its own tree and
+  `transaction.parent_transaction_id` is `null`. On an [auto-conversion](/api-reference/auto-conversion)
+  the triggering deposit is the parent instead, and `transaction.root_transaction_id` is the same
+  value the `deposit.*` delivery carries — which is how you pair the two. See
+  [Correlating deliveries](#correlating-deliveries).
+</Note>
 
 ### Transfer
 
@@ -419,7 +501,12 @@ A completed crypto payout. Transfers have no FX leg, so there are **no `actual_*
     "metadata": { "payout_batch": "batch_001" },
     "created_at": "2026-09-30T16:39:55.000Z",
     "updated_at": "2026-09-30T16:41:07.000Z",
-    "terminal_at": "2026-09-30T16:41:07.000Z"
+    "terminal_at": "2026-09-30T16:41:07.000Z",
+    "transaction": {
+      "id": "txn_01KPBJ4MWQ7R5T9V1X3Z5B7D9F",
+      "parent_transaction_id": null,
+      "root_transaction_id": "txn_01KPBJ4MWQ7R5T9V1X3Z5B7D9F"
+    }
   }
 }
 ```
@@ -427,7 +514,10 @@ A completed crypto payout. Transfers have no FX leg, so there are **no `actual_*
 ### Deposit
 
 A confirmed same-currency crypto deposit. `event_object` is the transaction record, so it carries
-`transaction_hash`, the wallet it credited, and the on-chain addresses in `metadata`.
+`transaction_hash`, the wallet it credited, the on-chain addresses in `metadata`, and — flat rather
+than nested — the `parent_transaction_id` and `root_transaction_id` that
+[link this delivery to the rest of the flow](#correlating-deliveries). Nothing on your integration
+caused this deposit, so it is the top of its own tree: no parent, and a root that is its own `id`.
 
 ```json
 {
@@ -562,6 +652,12 @@ wallet's currency.
 A held cross-currency deposit arrives as `deposit.held` with `metadata.hold_reason` and a `null`
 `destination_amount` — no rate is quoted while it is under review. On release you receive
 `deposit.received` priced at the then-current rate.
+
+This deposit is the top of its own tree, so its `root_transaction_id` is its own `id` —
+`txn_01KPBG7YH2N4P8Q1R3S5T7V9WX` above. The `conversion.*` deliveries for the conversion it
+triggers carry that same value in `transaction.root_transaction_id`, and name this deposit in
+`transaction.parent_transaction_id`. Pair the two deliveries on the root id; see
+[Correlating deliveries](#correlating-deliveries).
 
 #### Who sent a fiat deposit
 
