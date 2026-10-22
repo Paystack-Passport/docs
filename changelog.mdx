@@ -6,6 +6,46 @@ description: "Notable changes to the GlobalStack API — new endpoints, behavior
 Changes that affect how you integrate: new endpoints and fields, behavior changes, and new error
 or failure codes. Breaking changes are called out explicitly.
 
+<Update label="2026-10-22" tags={["New feature", "Documentation"]}>
+  ## Webhook payloads carry the transaction ids that link related deliveries
+
+  One movement of money produces more than one webhook. A fiat deposit into a cross-currency
+  credential arrives as `deposit.received`, converts, and arrives again as `conversion.success`.
+  Those deliveries now tell you they are about the same money.
+
+  `onramp.*`, `offramp.*`, `conversion.*` and `transfer.*` payloads carry a `transaction` block:
+
+  ```json
+  "transaction": {
+    "id": "txn_01KPBG1Q3Z8X1Q6VJRE5R8ZFBG",
+    "parent_transaction_id": null,
+    "root_transaction_id": "txn_01KPBG1Q3Z8X1Q6VJRE5R8ZFBG"
+  }
+  ```
+
+  It is nested because those payloads' own `id` is already the resource id (`onr_…`, `con_…`).
+  Deposit events carry `parent_transaction_id` and `root_transaction_id` **flat** instead — that
+  payload *is* a transaction record — and those two are part of the REST body you already get from
+  `GET /v1/transactions/{transactionId}`.
+
+  **Join on `root_transaction_id`.** Two deliveries sharing a root id are about the same flow.
+  Which one is the *parent* depends on how the flow started and is not the same in both directions:
+  on an auto-conversion the deposit is the parent of the conversion, while on a conversion you
+  created yourself the conversion is the parent of its funding deposit. The root id is identical
+  either way.
+
+  All three keys are always present. **`null` means "not resolvable", never an error** — the top of
+  a tree has no parent, transactions recorded before we tracked trees have neither id, and an event
+  that fires before its transaction record exists is still delivered with all three `null`. A
+  correlation field will never hold back a delivery.
+
+  `conversion.*`, `onramp.*` and `deposit.*` are joinable to each other. On `offramp.*` and
+  `transfer.*` the ids are a handle for `GET /v1/transactions/{transactionId}` rather than a
+  correlation key: an offramp's child transactions are internal and never delivered as events, and
+  nothing is ever a transfer's child. [Correlating
+  deliveries](/webhooks/events#correlating-deliveries) has the per-family table.
+</Update>
+
 <Update label="2026-10-20" tags={["Behavior change"]}>
   ## Small cross-currency deposits now accumulate instead of failing
 
