@@ -6,6 +6,67 @@ description: "Notable changes to the GlobalStack API — new endpoints, behavior
 Changes that affect how you integrate: new endpoints and fields, behavior changes, and new error
 or failure codes. Breaking changes are called out explicitly.
 
+<Update label="2026-10-26" tags={["New feature", "Fix"]}>
+  ## Pay out NGN, ZAR and GHS to a bank account, mobile money wallet or PayShap proxy
+
+  `POST /v1/transfers` used to serve crypto beneficiaries only. Point it at a **fiat**
+  beneficiary and it pays out from your fiat wallet to a third party. Nothing about the request
+  changes — the beneficiary's type decides the corridor.
+
+  | Currency | Destination | How you address the beneficiary |
+  | --- | --- | --- |
+  | NGN | Bank | 10-digit NUBAN and a bank code |
+  | ZAR | Bank | Account number and a 6-digit branch code |
+  | ZAR | PayShap | A proxy — a mobile number in E.164 form, or a ShapName |
+  | GHS | Bank | Account number and a bank code |
+  | GHS | Mobile money | Mobile number and a provider code |
+
+  Those coordinates come from the beneficiary you reference, so create it first with
+  `POST /v1/beneficiaries`. A beneficiary missing what its corridor needs is rejected with
+  [`invalid_input`](/errors#invalid_input) before the transfer is created.
+
+  ### Fiat transfers carry a fee
+
+  The fee is charged **on top of** `amount`. Your beneficiary receives `amount` in full, and your
+  wallet is debited `amount` + `fee`. Both are reserved together when the transfer is created, so
+  the wallet must hold the combined total or you get
+  [`ledger_insufficient_funds`](/errors#ledger_insufficient_funds).
+
+  The transfer response now carries what you were charged:
+
+  ```json
+  "fee": { "amount": "100.00", "currency": "NGN" }
+  ```
+
+  It is `null` on crypto transfers, which carry no transfer fee.
+
+  ### Work out the fee before you transfer
+
+  `GET /v1/currencies` now returns a fee schedule per corridor at
+  `fees.payment_methods[].transfer`. It is a schedule rather than a quote, so you compute the
+  figure yourself:
+
+  1. Take the tiers whose `[transaction_value_min, transaction_value_max]` band contains your
+     amount. Both ends are inclusive, and `null` means unbounded.
+  2. Sort them ascending by `weight`.
+  3. For each tier in turn, deduct `max(min_fee, min(raw, max_fee))` from a running net — where
+     `raw` is `fee_value` for a `flat` tier and `net * fee_value / 100` for a `percentage` tier.
+  4. The fee is the sum of those deductions, floored to 2 decimal places.
+
+  A PayShap destination appears under the `bank` payment method with `payment_rail: "payshap"`,
+  because PayShap is a way of reaching a bank account rather than a different kind of account.
+
+  A corridor we cannot price is refused with [`invalid_input`](/errors#invalid_input) **before**
+  the transfer is created, so your `reference` is not consumed and you can reuse it once the
+  corridor is priced.
+
+  ### Cancelled transfers now reach a terminal state
+
+  A transfer the provider cancelled could previously sit at `processing` indefinitely. It now
+  resolves to `failed` with a `failure_reason` of `upstream_cancelled`, and the funds reserved
+  for it are released. This affected crypto transfers too.
+</Update>
+
 <Update label="2026-10-22" tags={["New feature", "Documentation"]}>
   ## Webhook payloads carry the transaction ids that link related deliveries
 
