@@ -540,6 +540,11 @@
             "description": "Human-readable failure explanation; null unless the transfer failed.",
             "example": null
           },
+          "fee": {
+            "$ref": "#/components/schemas/Object",
+            "nullable": true,
+            "description": "Fee charged on top of `amount` and debited from the same wallet, so the wallet is debited `amount` + `fee` while the beneficiary receives `amount` in full. Null for crypto transfers, which carry no transfer fee."
+          },
           "metadata": {
             "type": "object",
             "description": "Merchant-supplied opaque metadata.",
@@ -3921,6 +3926,10 @@
           },
           "onramp": {
             "$ref": "#/components/schemas/FeeScheduleResponse"
+          },
+          "transfer": {
+            "$ref": "#/components/schemas/TransferFeesResponse",
+            "description": "Fiat transfer fee schedules for this settlement network. Absent when the corridor publishes none. A PayShap destination appears here under the `bank` network with `payment_rail: \"payshap\"`."
           }
         },
         "type": "object",
@@ -3987,6 +3996,21 @@
           "network_fees"
         ]
       },
+      "TransferFeesResponse": {
+        "properties": {
+          "rails": {
+            "items": {
+              "$ref": "#/components/schemas/TransferFeeRailResponse"
+            },
+            "type": "array",
+            "description": "Transfer fee schedule, NOT a quote. Take the tiers whose [transaction_value_min, transaction_value_max] band contains the amount (inclusive at both ends), sort ascending by weight, then for each in turn deduct max(min_fee, min(raw, max_fee)) from a running net — raw being fee_value for `flat` and net * fee_value / 100 for `percentage`. The fee is the sum of the deductions, floored to 2 decimals, and is charged ON TOP of the transfer amount."
+          }
+        },
+        "type": "object",
+        "required": [
+          "rails"
+        ]
+      },
       "FeeTierResponse": {
         "properties": {
           "transaction_value_min": {
@@ -4046,6 +4070,68 @@
           "ethereum",
           "base",
           "solana"
+        ]
+      },
+      "TransferFeeRailResponse": {
+        "properties": {
+          "payment_rail": {
+            "type": "string",
+            "nullable": true,
+            "description": "Payout rail these tiers price. Null when the corridor has a single default rail.",
+            "example": "eft"
+          },
+          "tiers": {
+            "items": {
+              "$ref": "#/components/schemas/TransferFeeTierResponse"
+            },
+            "type": "array"
+          }
+        },
+        "type": "object",
+        "required": [
+          "tiers"
+        ]
+      },
+      "TransferFeeTierResponse": {
+        "properties": {
+          "transaction_value_min": {
+            "type": "number",
+            "description": "Lower bound of the tier band, inclusive. Null when unbounded."
+          },
+          "transaction_value_max": {
+            "type": "number",
+            "description": "Upper bound of the tier band, inclusive. Null when unbounded."
+          },
+          "fee_type": {
+            "type": "string",
+            "enum": [
+              "percentage",
+              "flat"
+            ],
+            "example": "flat"
+          },
+          "fee_value": {
+            "type": "number"
+          },
+          "min_fee": {
+            "type": "number",
+            "description": "Minimum fee floor, or null when unbounded."
+          },
+          "max_fee": {
+            "type": "number",
+            "description": "Maximum fee cap, or null when uncapped."
+          },
+          "weight": {
+            "type": "number",
+            "description": "Order in which this tier is applied. Tiers are applied ascending by weight, each deducting from the running net left by the previous one.",
+            "example": 1
+          }
+        },
+        "type": "object",
+        "required": [
+          "fee_type",
+          "fee_value",
+          "weight"
         ]
       }
     },
@@ -4728,7 +4814,7 @@
             "description": "Transfer executed successfully"
           },
           "400": {
-            "description": "Request body failed validation, the wallet_id/beneficiary_id is not a valid wal_…/ben_… id, the beneficiary is not crypto, the wallet and beneficiary currencies differ, a supplied source_currency/destination_currency does not match, the currency is not crypto / not transfer-enabled, the network is not supported, the amount is outside the network range or has more decimal places than the currency settles (`invalid_amount_precision` — USDC supports at most 2, trailing zeros allowed), or the Idempotency-Key header is malformed",
+            "description": "Request body failed validation, the wallet_id/beneficiary_id is not a valid wal_…/ben_… id, the wallet and beneficiary currencies differ, a supplied source_currency/destination_currency does not match, the currency is not transfer-enabled, the amount is outside the network range or has more decimal places than the currency settles (`invalid_amount_precision` — USDC supports at most 2, trailing zeros allowed), or the Idempotency-Key header is malformed. Crypto beneficiaries additionally require a crypto wallet currency and a supported network. Fiat beneficiaries (NGN, ZAR, GHS) additionally require a fiat wallet currency, a destination the corridor serves, the coordinates that corridor needs (a 10-digit NUBAN for NGN, a 6-digit branch code for ZAR bank, a PayShap proxy for the ZAR payshap rail, a mobile number and provider for GHS mobile money), and a corridor with an active fee schedule — an unpriced corridor is refused before the transfer is created, so the same `reference` stays free for the corrected retry",
             "content": {
               "application/json": {
                 "schema": {
@@ -4831,7 +4917,7 @@
             }
           },
           "422": {
-            "description": "The wallet balance does not have enough available funds for the transfer amount",
+            "description": "The wallet balance does not have enough available funds. For a fiat transfer the balance must cover the amount PLUS the transfer fee, which is charged on top: the wallet is debited `amount` + `fee` while the beneficiary receives `amount` in full. Read the applicable schedule from `fees.payment_methods[].transfer` on `GET /v1/currencies` to compute the fee before transferring.",
             "content": {
               "application/json": {
                 "schema": {
@@ -4886,7 +4972,7 @@
         "tags": [
           "Transfers"
         ],
-        "description": "Execute a **crypto transfer**: pay out crypto from one of your wallets to a crypto\nbeneficiary on the wallet's currency and network. This is the crypto outbound equivalent of an offramp.\n\n`amount` is\na decimal string within the currency network's outbound range. `source_currency` and\n`destination_currency` are optional; when supplied they must match the wallet and\nbeneficiary currencies respectively, otherwise the request is rejected with\n`400 invalid_input`. `reference` is your idempotency reference and must be unique\nwithin your integration; a reused reference returns `409 duplicate_resource`.\n\nThe transfer is created in the `processing` state and advances asynchronously\n(`processing` → `success`/`failed`). Send an `Idempotency-Key` header to make\nretries safe.\n\nUSDC amounts settle in whole US cents: `amount` may carry at most **2 significant\ndecimal places**. Trailing zeros are fine — `2.980000` is accepted, `2.980228` is rejected\nwith `400 invalid_amount_precision`.\n",
+        "description": "Execute a **transfer**: pay out from one of your wallets to a beneficiary holding the same\ncurrency. The beneficiary's type decides the corridor — a **crypto** beneficiary pays out\non-chain (the crypto outbound equivalent of an offramp), and a **fiat** beneficiary pays out to\na bank account, mobile-money wallet or PayShap proxy.\n\n`amount` is a decimal string within the currency network's outbound range. `source_currency` and\n`destination_currency` are optional; when supplied they must match the wallet and\nbeneficiary currencies respectively, otherwise the request is rejected with\n`400 invalid_input`. `reference` is your idempotency reference and must be unique\nwithin your integration; a reused reference returns `409 duplicate_resource`.\n\nThe transfer is created in the `processing` state and advances asynchronously\n(`processing` → `success`/`failed`). Send an `Idempotency-Key` header to make\nretries safe.\n\n## Crypto transfers\n\nUSDC amounts settle in whole US cents: `amount` may carry at most **2 significant\ndecimal places**. Trailing zeros are fine — `2.980000` is accepted, `2.980228` is rejected\nwith `400 invalid_amount_precision`.\n\nCrypto transfers carry no transfer fee, so `fee` is `null` on the response.\n\n## Fiat transfers\n\nSupported corridors:\n\n| Currency | Destination | How the beneficiary is addressed |\n| --- | --- | --- |\n| NGN | Bank | 10-digit NUBAN + bank code |\n| ZAR | Bank | Account number + 6-digit branch code |\n| ZAR | PayShap | A proxy — a mobile number in E.164 form, or a ShapName |\n| GHS | Bank | Account number + bank code |\n| GHS | Mobile money | Mobile number + provider code |\n\nThose coordinates come from the beneficiary you reference, so create it first with\n`POST /v1/beneficiaries`; a beneficiary missing what its corridor needs is rejected with\n`400 invalid_input` before the transfer is created.\n\n### Fees\n\nA fiat transfer is charged a fee **on top of** `amount`. The beneficiary receives `amount` in\nfull, and your wallet is debited `amount` + `fee`. Both are reserved together when the transfer\nis created, so the wallet must hold enough for the combined total or the request is rejected\nwith `422 ledger_insufficient_funds`.\n\nThe fee is reported on the response as `fee: { amount, currency }`.\n\nTo know the fee **before** transferring, read the schedule for your corridor from\n`fees.payment_methods[].transfer` on `GET /v1/currencies` and apply its tiers: take the tiers\nwhose `[transaction_value_min, transaction_value_max]` band contains your amount (inclusive at\nboth ends), sort them ascending by `weight`, then for each in turn deduct\n`max(min_fee, min(raw, max_fee))` from a running net — where `raw` is `fee_value` for a `flat`\ntier and `net * fee_value / 100` for a `percentage` tier. The fee is the sum of those\ndeductions, floored to 2 decimal places.\n\nA corridor with no published schedule cannot be priced and is refused with `400 invalid_input`\nbefore the transfer is created — your `reference` is not consumed, so the same one can be reused\nonce the corridor is priced.\n",
         "parameters": [
           {
             "in": "header",
