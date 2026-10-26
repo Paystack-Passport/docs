@@ -276,8 +276,9 @@ The source balance doesn't have enough available funds.
 
 **Common causes**
 - The wallet's available balance is below the requested amount (funds may be held/pending).
+- On a fiat transfer, the balance covers the amount but not the amount **plus the transfer fee**. The fee is charged on top, so the wallet is debited `amount` + `fee` while your beneficiary receives `amount` in full.
 
-**What to do** — The source balance does not have enough available funds for this amount. Fund the wallet or lower the amount and retry.
+**What to do** — The source balance does not have enough available funds for this amount. Fund the wallet or lower the amount and retry. For a fiat transfer, work out the fee from `fees.payment_methods[].transfer` on `GET /v1/currencies` and make sure the balance covers both.
 
 ## Rate limited {#rate_limited}
 
