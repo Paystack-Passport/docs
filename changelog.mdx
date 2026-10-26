@@ -56,15 +56,6 @@ or failure codes. Breaking changes are called out explicitly.
   A PayShap destination appears under the `bank` payment method with `payment_rail: "payshap"`,
   because PayShap is a way of reaching a bank account rather than a different kind of account.
 
-  A corridor we cannot price is refused with [`invalid_input`](/errors#invalid_input) **before**
-  the transfer is created, so your `reference` is not consumed and you can reuse it once the
-  corridor is priced.
-
-  ### Cancelled transfers now reach a terminal state
-
-  A transfer the provider cancelled could previously sit at `processing` indefinitely. It now
-  resolves to `failed` with a `failure_reason` of `upstream_cancelled`, and the funds reserved
-  for it are released. This affected crypto transfers too.
 </Update>
 
 <Update label="2026-10-22" tags={["New feature", "Documentation"]}>
