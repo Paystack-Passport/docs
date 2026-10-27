@@ -1,0 +1,91 @@
+---
+title: "Beneficiaries"
+description: "Save the bank accounts, mobile money wallets, PayShap proxies and crypto addresses you pay out to."
+---
+
+A **beneficiary** is a saved payout destination. You create it once and reference its `ben_…` id
+whenever you pay it:
+
+- From a wallet in the **same currency** with a [transfer](/api-reference/transfers/execute-a-transfer).
+- From a **stablecoin** wallet with an [offramp](/api-reference/offramps/execute-an-offramp), which
+  converts on the way out.
+
+A beneficiary belongs to a customer. If you leave `customer_id` out, it belongs to your own
+merchant account.
+
+## Destinations
+
+| `type` | `network` | Pays | Addressed by |
+| --- | --- | --- | --- |
+| `fiat` | `bank` | A bank account | `account_number` and the bank's `provider_id` |
+| `fiat` | `bank` with `rail: "payshap"` | A PayShap proxy (ZAR only) | `account_number`: a mobile number in E.164 form, or a ShapName such as `acme@nedbank`. No `provider_id`. |
+| `fiat` | `mobile_money` | A mobile money wallet | `account_number`: the phone number, and the operator's `provider_id` |
+| `crypto` | `solana`, `base` or `ethereum` | An on-chain address | `address` |
+
+For which currencies support which destinations, see
+[Supported currencies](/guides/virtual-accounts#supported-currencies).
+
+## Find the provider
+
+Bank and mobile money beneficiaries need the `provider_id` (`prov_…`) of the bank or operator. List
+the providers for a country:
+
+```bash
+curl "https://api.globalstack.io/v1/countries/NG/providers?network=bank&active=true" \
+  -H "Authorization: Bearer YOUR_SECRET_KEY"
+```
+
+`network` narrows the list to `bank` or `mobile_money`. `active=true` returns only providers
+currently accepting payments. Cache the list, and refresh it now and then: providers are added
+over time, and they can be temporarily unavailable.
+
+## Account names and lookups
+
+Where we can, we look up the account holder's name with the bank before saving the beneficiary,
+so you pay the person you meant to.
+
+| Destination | `account_name` |
+| --- | --- |
+| NGN and GHS bank accounts | Optional. The name is looked up from the bank and replaces anything you send. |
+| PayShap proxies | Optional. The recipient's bank returns the registered holder. |
+| Mobile money | **Required.** Mobile money names aren't looked up, so the name you send is the one we use. |
+| ZAR bank accounts | **Required.** |
+
+If the lookup fails, the beneficiary isn't saved and you get
+[`400 account_resolution_failed`](/errors#account_resolution_failed). Check the `account_number`
+and `provider_id`. ZAR account numbers are also checked for the right number of digits for the
+bank. See [South African account numbers](/errors#south-african-account-numbers).
+
+## Create a beneficiary
+
+```bash
+curl https://api.globalstack.io/v1/beneficiaries \
+  -X POST \
+  -H "Authorization: Bearer YOUR_SECRET_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "type": "fiat",
+    "currency": "NGN",
+    "country_code": "NG",
+    "network": "bank",
+    "provider_id": "prov_...",
+    "account_number": "0123456789",
+    "name": "Chidi Okafor",
+    "label": "Chidi — salary"
+  }'
+```
+
+`name` is how you identify the beneficiary, and `label` is a short tag for your own UI. Both are
+required. For mobile money and PayShap request bodies, see the beneficiary step of
+[Collect and pay out](/guides/collect-and-pay-out). For every field, see
+[Create a beneficiary](/api-reference/beneficiaries/create-a-beneficiary).
+
+## Update or remove
+
+- **Update** with [`PATCH /v1/beneficiaries/{beneficiaryId}`](/api-reference/beneficiaries/update-a-beneficiary).
+  You can change the account details, network and labels. You can't change `type`, `currency`,
+  `country_code` or `customer_id`: create a new beneficiary instead. Changing a fiat `network`
+  needs a new `provider_id` too, except for PayShap.
+- **Remove** with [`DELETE /v1/beneficiaries/{beneficiaryId}`](/api-reference/beneficiaries/deactivate-a-beneficiary).
+  This archives it: it stays readable for your records, but you can't pay it any more. Archiving
+  one that's already archived returns `409 invalid_status`.

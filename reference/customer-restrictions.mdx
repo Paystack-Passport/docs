@@ -27,7 +27,7 @@ When a capability the platform supports is unavailable to the customer, the flag
       "reason": "customer_kyc_not_approved",
       "next_steps": {
         "action": "Drive the customer through KYC via POST /v1/customers/:id/verifications, then retry.",
-        "docs_url": "https://docs.globalstack.io/api-reference/customer-restrictions"
+        "docs_url": "https://docs.globalstack.io/reference/customer-restrictions"
       }
     }
   ]
@@ -45,7 +45,7 @@ customer's view:
 <Note>
   Branch on `reason`, not on the `next_steps` copy — the code is stable, the wording is
   not. This mirrors how you branch on `failure_reason` for failed money movements. See
-  [Failure reasons](/api-reference/failure-reasons).
+  [Failure reasons](/reference/failure-reasons).
 </Note>
 
 ## Restriction reasons

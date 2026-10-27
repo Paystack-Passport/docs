@@ -14,7 +14,7 @@ payload.
 ## Subscribe by category
 
 You don't subscribe to individual events. You subscribe to **categories** — families of related
-events — when you [create a webhook endpoint](/api-reference/openapi#tag/notification-webhooks/POST/v1/notifications/webhooks),
+events — when you [create a webhook endpoint](/api-reference/notification-webhooks/create-a-webhook-endpoint),
 and receive every event in the family.
 
 | Category | Events you receive |
@@ -80,8 +80,8 @@ These three run the same lifecycle, so they emit the same six events.
 | `*.funds_received` | Your funds arrived and were recognised. Work has not finished. |
 | `*.processing` | The conversion or payout is in flight. |
 | `*.success` | Done. The destination has been credited. **Terminal.** |
-| `*.failed` | Could not complete. Read [`failure_reason`](/api-reference/failure-reasons) — it distinguishes a quote nobody funded (`quote_expired`) from a genuine failure. **Terminal.** |
-| `*.returned` | Funds were sent back to their origin. Also carries [`failure_reason: returned`](/api-reference/failure-reasons) — the one reason set while `status` is not `"failed"`. **Terminal.** For an offramp that had already been debited, your wallet is credited back for the full source amount — see the note below. |
+| `*.failed` | Could not complete. Read [`failure_reason`](/reference/failure-reasons) — it distinguishes a quote nobody funded (`quote_expired`) from a genuine failure. **Terminal.** |
+| `*.returned` | Funds were sent back to their origin. Also carries [`failure_reason: returned`](/reference/failure-reasons) — the one reason set while `status` is not `"failed"`. **Terminal.** For an offramp that had already been debited, your wallet is credited back for the full source amount — see the note below. |
 
 <Tip>
   `funds_received` and `processing` are separate events on purpose — `funds_received` is your cue
@@ -92,7 +92,7 @@ These three run the same lifecycle, so they emit the same six events.
 <Note>
   **A returned offramp refunds your wallet automatically.** If the payout had already been funded
   from your balance when the provider sent the money back, we credit the full source amount back to
-  the same wallet. The refund shows up in [`GET /v1/transactions`](/api-reference/openapi#tag/transactions)
+  the same wallet. The refund shows up in [`GET /v1/transactions`](/api-reference/transactions/list-transactions)
   as a `deposit`-type transaction with `source_type` of `offramp_reversal`, linked to the original
   offramp as its parent. No `deposit.*` event is emitted for it — `offramp.returned` is the signal,
   and the offramp's `source_amount` is the amount returned.
@@ -100,11 +100,18 @@ These three run the same lifecycle, so they emit the same six events.
 
 ### Transfers
 
+These cover every transfer: local-currency payouts to a bank account, mobile money wallet or
+PayShap proxy, and crypto sent on-chain.
+
 | Event | Fires when |
 | --- | --- |
 | `transfer.processing` | The payout has been submitted. |
 | `transfer.success` | The payout completed. **Terminal.** |
 | `transfer.failed` | The payout failed, was cancelled, or was reversed. **Terminal.** |
+
+Transfer, onramp, offramp and conversion statuses also list `temporary_failure`. It's reserved
+and not used today. If you ever see it, treat it as not final, and keep waiting for `success` or
+`failed`.
 
 A cancelled or reversed transfer arrives as `transfer.failed` — `failure_reason` tells you which
 (`cancelled`, `reversed`, or another code).
@@ -118,25 +125,25 @@ A cancelled or reversed transfer arrives as `transfer.failed` — `failure_reaso
 | `deposit.confirmed` | Settled and spendable from the wallet balance. **Terminal.** |
 | `deposit.failed` | The deposit could not be credited. **Terminal.** |
 
-Two paths are worth planning for:
+Three cases are worth planning for:
 
 - **A held deposit sends two events.** `deposit.held` first, then `deposit.confirmed` when the hold
   is released. Don't treat `held` as final, and don't expect it on every deposit.
-- **A [cross-currency deposit](/api-reference/auto-conversion) never reaches a terminal
+- **A [cross-currency deposit](/guides/auto-conversion) never reaches a terminal
   `deposit.*` event.** It stays at `received`, and the `conversion.*` events carry the outcome.
   Waiting for `deposit.confirmed` on that path waits forever.
 - **A cross-currency deposit may arrive with no converted amount and no `conversion.*` events at
   all.** Below the corridor minimum it is recorded, you are notified, and its funds wait for the
   next deposit to convert them together. Treat a `null` `destination_amount` as "not converted
   yet", and don't sum it across deposits — see
-  [Minimum conversion amount](/api-reference/auto-conversion#minimum-conversion-amount).
+  [Minimum conversion amount](/guides/auto-conversion#minimum-conversion-amount).
 
 ### Verifications
 
 | Event | Fires when |
 | --- | --- |
 | `kyc.approved` | The verification passed. `customer.tier` is the customer's **new** tier. |
-| `kyc.rejected` | The verification was declined. Read [`failure_reason`](/api-reference/failure-reasons#verification-kyc-codes). |
+| `kyc.rejected` | The verification was declined. Read [`failure_reason`](/reference/failure-reasons#verification-kyc-codes). |
 
 Only final outcomes are sent. Intermediate progress — a customer opening the link, submitting
 documents, or being asked to resubmit — is visible on
@@ -261,7 +268,7 @@ A completed NGN → USDC onramp. Same body as `GET /v1/onramps/{id}`, plus the f
     "deposit_instruction": {
       "version": 1,
       "type": "fiat",
-      "accountName": "GLOBALSTACK / FX ENGINE",
+      "accountName": "GLOBALSTACK COLLECTIONS",
       "accountNumber": "0123456789",
       "bankName": "Access Bank",
       "bankCode": "000014",
@@ -441,7 +448,7 @@ because nothing has settled yet.
 
 <Note>
   This conversion was created with `POST /v1/conversions`, so it is the top of its own tree and
-  `transaction.parent_transaction_id` is `null`. On an [auto-conversion](/api-reference/auto-conversion)
+  `transaction.parent_transaction_id` is `null`. On an [auto-conversion](/guides/auto-conversion)
   the triggering deposit is the parent instead, and `transaction.root_transaction_id` is the same
   value the `deposit.*` delivery carries — which is how you pair the two. See
   [Correlating deliveries](#correlating-deliveries).
@@ -569,7 +576,7 @@ caused this deposit, so it is the top of its own tree: no parent, and a root tha
 
 #### Cross-currency deposit
 
-A deposit into a [cross-currency credential](/api-reference/auto-conversion) adds three blocks —
+A deposit into a [cross-currency credential](/guides/auto-conversion) adds three blocks —
 `wallet`, `customer` and `credential` — so you can see which credential was funded, including the
 payer-facing bank details, without another call. `destination_amount` is the **quoted** value in the
 wallet's currency.
@@ -677,7 +684,7 @@ Three rules to code against:
   without the bank, or nothing at all.
 - **`sender_account_number` is a last-4, always.** Use it to help a human recognise a payment, not
   as an account identifier.
-- **On deposits into a Paystack NGN virtual account, the bank and account describe the virtual
+- **On deposits into some NGN virtual accounts, the bank and account describe the virtual
   account the money landed in**, while the name is the payer's. That rail does not expose the
   payer's own bank details to us, and we would rather tell you that than guess.
 
@@ -783,7 +790,8 @@ value are omitted rather than sent as `null`.
   </Step>
 </Steps>
 
-A given resource emits a given event **at most once** — so two upstream changes that map to the same
+Each resource **emits** a given event once, though that one event may be **delivered** more than
+once (see above). So two upstream changes that map to the same
 event (a cancelled transfer and then a reversed one, both `transfer.failed`) reach you once, not
 twice.
 
@@ -791,9 +799,9 @@ twice.
 
 | You want to | Use |
 | --- | --- |
-| See why deliveries are failing | [`GET /v1/notifications/webhooks/{id}/logs`](/api-reference/openapi#tag/notification-webhooks/GET/v1/notifications/webhooks/{id}/logs) — attempt history with the HTTP status you returned, error, and latency |
-| See what is queued | [`GET /v1/notifications/webhooks/{id}/events`](/api-reference/openapi#tag/notification-webhooks/GET/v1/notifications/webhooks/{id}/events) — pending events, oldest first, with the payload that will be sent |
-| Replay one you missed | [`POST /v1/notifications/webhooks/{id}/send`](/api-reference/openapi#tag/notification-webhooks/POST/v1/notifications/webhooks/{id}/send) with the event's `event_id` as `event_idempotency_key` |
+| See why deliveries are failing | [`GET /v1/notifications/webhooks/{id}/logs`](/api-reference/notification-webhooks/list-delivery-logs) — attempt history with the HTTP status you returned, error, and latency |
+| See what is queued | [`GET /v1/notifications/webhooks/{id}/events`](/api-reference/notification-webhooks/list-upcoming-queued-events) — pending events, oldest first, with the payload that will be sent |
+| Replay one you missed | [`POST /v1/notifications/webhooks/{id}/send`](/api-reference/notification-webhooks/send-replay-an-event-to-the-endpoint) with the event's `event_id` as `event_idempotency_key` |
 
 <Note>
   Replay only delivers to an **active** endpoint — an inactive one returns `409 invalid_status`.

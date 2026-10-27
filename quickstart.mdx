@@ -3,12 +3,21 @@ title: "Quickstart"
 description: "From an API key to your first wallet in a few minutes."
 ---
 
-This guide takes you from zero to a funded-ready USDC wallet: authenticate, create a customer, and create a wallet for them. Every call uses the base URL `https://api.globalstack.io`.
+This guide takes you from zero to a USDC wallet that's ready to fund: authenticate, create a customer, and create a wallet for them. Every call uses the base URL `https://api.globalstack.io`.
+
+<CardGroup cols={2}>
+  <Card title="Stablecoins" icon="coins">
+    Hold USDC and move between stablecoins and local currency with onramps and offramps. **Follow this page.**
+  </Card>
+  <Card title="Local currency" icon="building-columns" href="/guides/collect-and-pay-out">
+    Give customers named bank accounts in ZAR, NGN or GHS, and pay out to banks, mobile money and PayShap. **Start here instead.**
+  </Card>
+</CardGroup>
 
 ## Prerequisites
 
-- A **GlobalStack account** — request access from the [dashboard](https://dashboard.globalstack.io).
-- Your **secret API key**, issued during onboarding. Keep it server-side. See [Authentication](/api-reference/authentication).
+- A **GlobalStack account**: request access on the [dashboard](https://dashboard.globalstack.io) and begin onboarding.
+- An **API key**: once you've completed onboarding, you can generate one on the dashboard. Keep it server-side. See [Authentication](/essentials/authentication).
 
 ## Steps
 
@@ -40,7 +49,7 @@ This guide takes you from zero to a funded-ready USDC wallet: authenticate, crea
       }'
     ```
 
-    The response returns the new customer's id (prefixed `cus_`). Save it for the next step.
+    The response returns the new customer's id (prefixed `cust_`). Save it for the next step.
   </Step>
 
   <Step title="Create a wallet">
@@ -53,7 +62,7 @@ This guide takes you from zero to a funded-ready USDC wallet: authenticate, crea
       -H "Content-Type: application/json" \
       -d '{
         "currency": "USDC",
-        "customer_id": "cus_...",
+        "customer_id": "cust_...",
         "label": "Ada — USDC"
       }'
     ```
@@ -68,17 +77,23 @@ This guide takes you from zero to a funded-ready USDC wallet: authenticate, crea
   <Card title="Get a quote" icon="tag" href="/api-reference/quotes/create-an-onramp-quote">
     Lock an FX rate before you move money.
   </Card>
-  <Card title="Run an onramp" icon="arrow-down-to-line" href="/api-reference/onramps/execute-an-onramp">
-    Turn stablecoins into local currency, settled to a beneficiary.
+  <Card title="Run an onramp" icon="arrow-up-from-line" href="/api-reference/onramps/execute-an-onramp">
+    Accept local currency and settle it into the wallet as stablecoins.
   </Card>
-  <Card title="Stay idempotent" icon="rotate" href="/api-reference/idempotency">
+  <Card title="Collect and pay out locally" icon="building-columns" href="/guides/collect-and-pay-out">
+    Open a named virtual account in GHS, ZAR or NGN, and pay out to banks and mobile money.
+  </Card>
+  <Card title="Stay idempotent" icon="rotate" href="/essentials/idempotency">
     Safely retry write requests without creating duplicates.
   </Card>
   <Card title="Handle errors" icon="triangle-exclamation" href="/errors">
     The response envelope and the error codes to branch on.
   </Card>
+  <Card title="Virtual accounts" icon="wallet" href="/guides/virtual-accounts">
+    Which currencies support them, what each needs, and whose name is on the account.
+  </Card>
 </CardGroup>
 
 <Tip>
-  Pass an `Idempotency-Key` header on every `POST` so a retry never creates a second customer or wallet.
+  Pass an `Idempotency-Key` header on create requests so a retry never creates a second customer or wallet. See [Idempotency](/essentials/idempotency) for which endpoints support it.
 </Tip>

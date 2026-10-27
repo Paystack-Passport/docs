@@ -15,7 +15,7 @@ Every request carries three headers:
 
 | Header | Example | Meaning |
 | --- | --- | --- |
-| `svix-id` | `msg_2gT8sV...` | Unique message id. Equals the body's `event_id` with a `msg_` prefix. |
+| `svix-id` | `msg_evt_1b8dbe64-…` | Unique message id: `msg_` followed by the body's full `event_id`, which itself starts with `evt_`. |
 | `svix-timestamp` | `1718960400` | Unix seconds when the delivery was signed. |
 | `svix-signature` | `v1,g0hM9SsE...` | Space-separated list of `v1,<base64-signature>` entries. |
 

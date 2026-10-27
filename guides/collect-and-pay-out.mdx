@@ -1,0 +1,308 @@
+---
+title: "Collect and pay out in local currency"
+description: "Open a named virtual account for a customer, receive a bank transfer into it, and pay the money out to a bank account, mobile money wallet or PayShap."
+---
+
+This guide walks through the full local-currency flow with GHS. ZAR and NGN work the same way;
+only the [required customer details](/guides/virtual-accounts#required-customer-details) and the
+[payout destinations](/guides/virtual-accounts#supported-currencies) differ.
+
+1. Create a customer and verify them.
+2. Create a GHS wallet for them.
+3. Add a bank credential. This is the named virtual account.
+4. Receive a deposit.
+5. Create a beneficiary and pay out with a transfer.
+
+No conversion happens at any point: money comes in as GHS, is held as GHS, and goes out as GHS.
+
+<Tip>
+  Send an `Idempotency-Key` header on create requests, so a retry never opens a second account or
+  sends a second payout. See [Idempotency](/essentials/idempotency).
+</Tip>
+
+## Before you start: set up webhooks
+
+This guide waits for webhook events, so register an endpoint first:
+
+```bash
+curl https://api.globalstack.io/v1/notifications/webhooks \
+  -X POST \
+  -H "Authorization: Bearer YOUR_SECRET_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "url": "https://yourapp.example/webhooks/globalstack",
+    "event_categories": ["kyc", "deposit", "transfer"]
+  }'
+```
+
+1. **Store `signing_secret`** (`whsec_…`) from the response. It's shown only once.
+2. **Activate the endpoint.** New endpoints start inactive:
+   `PATCH /v1/notifications/webhooks/{id}` with `{ "active": true }`.
+3. **Verify every delivery** with the secret. See [Verify webhook signatures](/webhooks/verify-signatures).
+
+## Collect
+
+<Steps>
+  <Step title="Create a customer">
+    ```bash
+    curl https://api.globalstack.io/v1/customers \
+      -X POST \
+      -H "Authorization: Bearer YOUR_SECRET_KEY" \
+      -H "Content-Type: application/json" \
+      -d '{
+        "type": "individual",
+        "name": "Ama Mensah",
+        "email": "ama@example.com",
+        "country_code": "GH"
+      }'
+    ```
+
+    Save `data.id` (`cust_…`).
+
+    <Note>
+      To collect into an account in **your own** name instead, skip this step and the next, and
+      leave `customer_id` out when you create the wallet.
+    </Note>
+  </Step>
+
+  <Step title="Verify the customer">
+    The customer must pass verification before you can open a GHS wallet for them. Start a
+    verification session:
+
+    ```bash
+    curl https://api.globalstack.io/v1/customers/cust_.../verifications \
+      -X POST \
+      -H "Authorization: Bearer YOUR_SECRET_KEY" \
+      -H "Content-Type: application/json" \
+      -d '{
+        "redirect_url": "https://yourapp.example/onboarding/complete"
+      }'
+    ```
+
+    Send the customer to the returned `hosted_url` to complete verification. When it passes you
+    receive `kyc.approved`, and the customer's `kyc_status` is `approved`. Until then, creating the
+    wallet returns [`409 invalid_status`](/errors#invalid_status). See
+    [Verify the customer first](/guides/virtual-accounts#verify-the-customer-first).
+
+    GHS accounts also need a phone number. Verification usually captures it. If it didn't, add it
+    with `PATCH /v1/customers/cust_...` and `{ "profile": { "phone": "+233201234567" } }`.
+  </Step>
+
+  <Step title="Create a GHS wallet">
+    ```bash
+    curl https://api.globalstack.io/v1/wallets \
+      -X POST \
+      -H "Authorization: Bearer YOUR_SECRET_KEY" \
+      -H "Content-Type: application/json" \
+      -d '{
+        "currency": "GHS",
+        "customer_id": "cust_...",
+        "label": "Ama — GHS"
+      }'
+    ```
+
+    Save `data.id` (`wal_…`). The wallet holds the balance, but it has no account details yet.
+  </Step>
+
+  <Step title="Open the virtual account">
+    Create a bank credential on the wallet:
+
+    ```bash
+    curl https://api.globalstack.io/v1/wallets/wal_.../credentials \
+      -X POST \
+      -H "Authorization: Bearer YOUR_SECRET_KEY" \
+      -H "Content-Type: application/json" \
+      -d '{
+        "network": "bank",
+        "label": "Ama — collections"
+      }'
+    ```
+
+    If the response has `status: "pending"`, fetch the credential until it's `active`:
+
+    ```bash
+    curl https://api.globalstack.io/v1/wallets/wal_.../credentials/wcr_... \
+      -H "Authorization: Bearer YOUR_SECRET_KEY"
+    ```
+
+    `details` then holds the account, in the customer's name:
+
+    ```json
+    "details": {
+      "accountName": "Ama Mensah",
+      "accountNumber": "1234567890",
+      "bankName": "Example Bank",
+      "bankCode": "000",
+      "currency": "GHS"
+    }
+    ```
+
+    <Warning>
+      A ZAR account may also return `details.reference`. When it does, the payer must quote it as
+      the payment reference, or the deposit can't be matched automatically.
+    </Warning>
+  </Step>
+
+  <Step title="Receive a deposit">
+    Share the account details with the payer. When their bank transfer lands, the wallet is
+    credited and you receive `deposit.confirmed`:
+
+    ```json
+    {
+      "event_type": "deposit.confirmed",
+      "event_object_status": "confirmed",
+      "event_object": {
+        "id": "txn_...",
+        "type": "deposit",
+        "source_type": "credential",
+        "source_id": "wcr_...",
+        "to_wallet_id": "wal_...",
+        "destination_amount": "500.00",
+        "destination_currency": "GHS"
+      }
+    }
+    ```
+
+    The payload is trimmed here. See [Webhook events](/webhooks/events) for the full shape. To
+    check the balance at any time, call `GET /v1/wallets/wal_...` and read `available_balance`.
+  </Step>
+</Steps>
+
+## Pay out
+
+<Steps>
+  <Step title="Find the bank or mobile money provider">
+    Bank and mobile money beneficiaries need a `provider_id`. List the providers for the country:
+
+    ```bash
+    curl "https://api.globalstack.io/v1/countries/GH/providers?network=mobile_money" \
+      -H "Authorization: Bearer YOUR_SECRET_KEY"
+    ```
+
+    Use `network=bank` for banks. Save the provider's `id` (`prov_…`).
+  </Step>
+
+  <Step title="Create a beneficiary">
+    The beneficiary's currency must match the wallet you pay from.
+
+    <Tabs>
+      <Tab title="GHS — mobile money">
+        `account_number` is the mobile number. `account_name` is required, because mobile money
+        names aren't looked up for you.
+
+        ```bash
+        curl https://api.globalstack.io/v1/beneficiaries \
+          -X POST \
+          -H "Authorization: Bearer YOUR_SECRET_KEY" \
+          -H "Content-Type: application/json" \
+          -d '{
+            "type": "fiat",
+            "currency": "GHS",
+            "country_code": "GH",
+            "network": "mobile_money",
+            "provider_id": "prov_...",
+            "account_number": "+233241234567",
+            "account_name": "Kofi Boateng",
+            "name": "Kofi Boateng",
+            "label": "Kofi — MoMo"
+          }'
+        ```
+      </Tab>
+      <Tab title="GHS — bank">
+        Leave `account_name` out: the holder's name is looked up from the bank and replaces
+        anything you send.
+
+        ```bash
+        curl https://api.globalstack.io/v1/beneficiaries \
+          -X POST \
+          -H "Authorization: Bearer YOUR_SECRET_KEY" \
+          -H "Content-Type: application/json" \
+          -d '{
+            "type": "fiat",
+            "currency": "GHS",
+            "country_code": "GH",
+            "network": "bank",
+            "provider_id": "prov_...",
+            "account_number": "0123456789012",
+            "name": "Kofi Boateng",
+            "label": "Kofi — bank"
+          }'
+        ```
+      </Tab>
+      <Tab title="ZAR — PayShap">
+        Pays from a **ZAR** wallet. `account_number` is a PayShap proxy: a South African mobile
+        number in E.164 form, or a ShapName exactly as the recipient gives it (e.g.
+        `acme@nedbank`). There's no `provider_id`, and the recipient's bank returns the account
+        name.
+
+        ```bash
+        curl https://api.globalstack.io/v1/beneficiaries \
+          -X POST \
+          -H "Authorization: Bearer YOUR_SECRET_KEY" \
+          -H "Content-Type: application/json" \
+          -d '{
+            "type": "fiat",
+            "currency": "ZAR",
+            "country_code": "ZA",
+            "network": "bank",
+            "rail": "payshap",
+            "account_number": "+27821234567",
+            "name": "Thabo Nkosi",
+            "label": "Thabo — PayShap"
+          }'
+        ```
+      </Tab>
+    </Tabs>
+
+    Save `data.id` (`ben_…`). See [Create a beneficiary](/api-reference/beneficiaries/create-a-beneficiary)
+    for every field.
+  </Step>
+
+  <Step title="Check the fee (optional)">
+    A local-currency transfer is charged a fee **on top of** the amount. The beneficiary receives
+    `amount` in full, and the wallet is debited `amount` + `fee`, so the balance must cover both.
+
+    To work out the fee before you send, read your route's schedule from
+    `fees.payment_methods[].transfer` on `GET /v1/currencies`. The calculation is on the
+    [Execute a transfer](/api-reference/transfers/execute-a-transfer) reference, under "Fiat transfers".
+  </Step>
+
+  <Step title="Send the transfer">
+    ```bash
+    curl https://api.globalstack.io/v1/transfers \
+      -X POST \
+      -H "Authorization: Bearer YOUR_SECRET_KEY" \
+      -H "Content-Type: application/json" \
+      -H "Idempotency-Key: payout-inv-2026-001" \
+      -d '{
+        "wallet_id": "wal_...",
+        "beneficiary_id": "ben_...",
+        "amount": "250.00",
+        "reference": "payout-inv-2026-001"
+      }'
+    ```
+
+    The transfer starts as `processing`, and the response's `fee` shows what you were charged:
+
+    ```json
+    "fee": { "amount": "2.50", "currency": "GHS" }
+    ```
+  </Step>
+
+  <Step title="Track the outcome">
+    You receive `transfer.success` or `transfer.failed`. On failure, `failure_reason` says why;
+    see [Failure reasons](/reference/failure-reasons). You can also poll
+    `GET /v1/transfers/{transferId}`.
+  </Step>
+</Steps>
+
+## Next steps
+
+<CardGroup cols={2}>
+  <Card title="Virtual accounts" icon="building-columns" href="/guides/virtual-accounts">
+    Supported currencies, required details and whose name is on the account.
+  </Card>
+  <Card title="Webhook events" icon="bell" href="/webhooks/events">
+    Every `deposit.*` and `transfer.*` event and when it fires.
+  </Card>
+</CardGroup>

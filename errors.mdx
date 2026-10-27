@@ -27,7 +27,7 @@ Every API response — success or failure — uses the same envelope. On failure
 `message` is for developers and logs — do not show it to end users. Quote `meta.request_id` when contacting support.
 </Note>
 
-These are **request-level** errors — the API call itself was rejected. If a call *succeeds* but the resulting money movement or verification later ends in a failed state, the reason is reported on the resource's `failure_reason` field instead — see [Failure reasons](/api-reference/failure-reasons).
+These are **request-level** errors — the API call itself was rejected. If a call *succeeds* but the resulting money movement or verification later ends in a failed state, the reason is reported on the resource's `failure_reason` field instead — see [Failure reasons](/reference/failure-reasons).
 
 ## Bad request {#bad_request}
 
@@ -49,7 +49,7 @@ The request failed validation — a required field is missing, or a value has th
 A field passed schema validation but failed a semantic check the API applies before processing.
 
 **Common causes**
-- A value is individually valid but invalid in context (e.g. an amount below the minimum, or mismatched currency pair).
+- A value is individually valid but invalid in context (e.g. an amount outside the [transaction limits](/essentials/limits), or mismatched currency pair).
 - A referenced field combination isn't permitted.
 - A South African `account_number` that cannot belong to the chosen bank — wrong number of digits, or any character that isn't a digit. See [South African account numbers](#south-african-account-numbers) below.
 
@@ -83,13 +83,13 @@ The `message` names the bank and both counts — `FNB accounts are 11 digits; th
 Two cases worth knowing about:
 
 - **PayShap beneficiaries are not affected.** On the `payshap` rail, `account_number` is a proxy — a mobile number in E.164 form, or a ShapName such as `acme@nedbank` — so none of the rules above apply to it.
-- **An existing beneficiary can fail at quote time.** Beneficiaries saved before this check existed are validated the first time you quote against them, so `POST /v1/quotes` can return this error for a beneficiary that saved cleanly months ago. Update the beneficiary's `account_number` and quote again.
+- **An existing beneficiary can fail at quote time.** Beneficiaries saved before this check existed are validated the first time you quote against them, so `POST /v1/offramps/quotes` can return this error for a beneficiary that saved cleanly months ago. Update the beneficiary's `account_number` and quote again.
 
 ## Invalid amount precision {#invalid_amount_precision}
 
 **HTTP 400** · `invalid_amount_precision`
 
-The amount carries more decimal places than the currency can settle. USDC settles in whole US cents, so USDC amounts support at most **2 significant decimal places**. Trailing zeros are fine — `2.980000` is accepted, `2.980228` is rejected.
+The amount carries more decimal places than the currency can settle. USDC settles in whole US cents, so USDC amounts support at most **2 decimal places**, ignoring trailing zeros — `2.980000` is accepted, `2.980228` is rejected.
 
 **Common causes**
 - A high-precision USDC `source_amount` or `amount` on an offramp quote, conversion quote, or transfer — for example a 6-decimal value taken directly from a balance or a destination-anchored price calculation.
@@ -177,7 +177,7 @@ The resource requires an explicit access grant the caller doesn't have yet.
 **Common causes**
 - Using a resource (e.g. a currency) that is gated behind an access request.
 
-**What to do** — This resource requires explicit access. Request it via POST /v1/currencies/:code/access-requests and retry after approval.
+**What to do** — This resource requires explicit access. Request it via `POST /v1/currencies/:code/access-requests` and retry after approval. See [Currency access](/essentials/currency-access).
 
 ## Not found {#not_found}
 
@@ -198,9 +198,10 @@ The referenced resource doesn't exist.
 The action isn't allowed while the resource is in its current state.
 
 **Common causes**
-- Acting on a resource whose lifecycle has moved past the point the action is valid (e.g. cancelling an already-settled transfer).
+- Acting on a resource whose lifecycle has moved past the point the action is valid (e.g. archiving a beneficiary that's already archived).
+- Creating a local-currency (fiat) wallet or a bank credential for a customer whose `kyc_status` isn't `approved`. The message reads `Customer must be approved to create a fiat wallet (current status: '…')`, and `meta.next_steps` points you at verification.
 
-**What to do** — Check the resource status and ensure the action is permitted in its current state.
+**What to do** — Check the resource status and ensure the action is permitted in its current state. For the KYC case, start a verification with `POST /v1/customers/{customerId}/verifications`, send the customer to the returned `hosted_url`, and retry once you receive `kyc.approved`. See [Verify the customer first](/guides/virtual-accounts#verify-the-customer-first).
 
 ## Conflict {#conflict}
 
@@ -289,7 +290,7 @@ You've exceeded the request rate limit.
 **Common causes**
 - Too many requests in a short window.
 
-**What to do** — You have exceeded the request rate limit. Slow down and retry shortly.
+**What to do** — Back off with jitter and retry, reusing the same `Idempotency-Key` for money-movement writes. See [Rate limits](/essentials/rate-limits) for what's limited and how.
 
 ## Internal error {#internal_error}
 
