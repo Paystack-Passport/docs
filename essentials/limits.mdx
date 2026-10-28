@@ -1,0 +1,58 @@
+---
+title: "Transaction limits"
+description: "The minimum and maximum amount per transaction for each country and payment method."
+---
+
+Each country and payment method has a minimum and maximum amount **per transaction**, in the
+local currency.
+
+- **Pay-in** is what a payer can send in an [onramp](/api-reference/onramps/execute-an-onramp).
+- **Payout** is what a beneficiary can receive from an [offramp](/api-reference/offramps/execute-an-offramp).
+- **—** means that direction isn't offered for the country.
+
+| Country | Currency | Method | Pay-in | Payout |
+| --- | --- | --- | --- | --- |
+| Benin | XOF | Mobile money | 1,800 – 300,000 | 500 – 1,500,000 |
+| Botswana | BWP | Bank | 150 – 1,000,000 | 150 – 1,000,000 |
+| Botswana | BWP | Mobile money | 150 – 9,500 | 150 – 9,500 |
+| Burkina Faso | XOF | Mobile money | 1,000 – 1,500,000 | 1,000 – 1,500,000 |
+| Cameroon | XAF | Mobile money | 1,000 – 1,000,000 | 1,000 – 1,000,000 |
+| Congo | XAF | Bank | 1,000 – 1,500,000 | 1,000 – 1,500,000 |
+| Côte d'Ivoire | XOF | Mobile money | 500 – 1,500,000 | 500 – 1,500,000 |
+| DR Congo | CDF | Mobile money | 1,000 – 5,000,000 | 1,000 – 5,000,000 |
+| Gabon | XAF | Bank | 1,000 – 10,000,000 | — |
+| Ghana | GHS | Bank | 50 – 2,000,000 | — |
+| Ghana | GHS | Mobile money | 50 – 2,000,000 | — |
+| Kenya | KES | Bank | 330 – 999,999 | 500 – 999,999 |
+| Kenya | KES | Mobile money | 330 – 250,000 | 330 – 250,000 |
+| Malawi | MWK | Bank | 2,000 – 20,000,000 | 5,000 – 20,000,000 |
+| Malawi | MWK | Mobile money | 2,000 – 750,000 | 5,000 – 750,000 |
+| Mali | XOF | Bank | 500 – 1,500,000 | 500 – 1,500,000 |
+| Mali | XOF | Mobile money | 500 – 1,500,000 | 500 – 1,500,000 |
+| Nigeria | NGN | Bank | 4,500 – 30,000,000 | 1,800 – 30,000,000 |
+| Rwanda | RWF | Bank | 1,500 – 10,000,000 | 1,500 – 10,000,000 |
+| Rwanda | RWF | Mobile money | 1,500 – 10,000,000 | 1,500 – 10,000,000 |
+| Senegal | XOF | Mobile money | — | 1,000 – 200,000 |
+| South Africa | ZAR | Bank | 50 – 2,000,000 | 200 – 500,000 |
+| Tanzania | TZS | Bank | 2,500 – 150,000,000 | 2,500 – 150,000,000 |
+| Tanzania | TZS | Mobile money | 2,500 – 10,000,000 | 2,500 – 10,000,000 |
+| Togo | XOF | Mobile money | 500 – 1,500,000 | 500 – 1,500,000 |
+| Uganda | UGX | Bank | 15,000 – 36,000,000 | 15,000 – 36,000,000 |
+| Uganda | UGX | Mobile money | 15,000 – 3,000,000 | 15,000 – 3,000,000 |
+| Zambia | ZMW | Bank | 100 – 50,000 | From 100, no fixed maximum |
+| Zambia | ZMW | Mobile money | 100 – 20,000 | 100 – 20,000 |
+
+**USDC:** the minimum is 2.50 USDC, with no fixed maximum.
+
+## Outside the limits
+
+- An onramp or offramp quote for an amount outside the range is rejected with a `400` error.
+- An [auto-conversion](/guides/auto-conversion#minimum-conversion-amount) deposit below the minimum
+  isn't rejected. It waits on the credential, and converts with later deposits once the balance
+  clears the minimum.
+- Same-currency [transfers](/api-reference/transfers/execute-a-transfer) have their own limits,
+  set per currency and network.
+
+<Note>
+  Limits can change. Last updated 27 October 2026.
+</Note>

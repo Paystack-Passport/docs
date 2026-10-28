@@ -1,0 +1,72 @@
+---
+title: "How GlobalStack works"
+description: "The building blocks of the API, and the five ways money moves between them."
+---
+
+Every flow in GlobalStack is made from a few resources. Learn these first, and every endpoint in
+the [API reference](/api-reference/supported-countries/list-countries) will make sense.
+
+## The building blocks
+
+| Resource | What it is |
+| --- | --- |
+| **Customer** (`cust_…`) | The person or business you're moving money for: `individual` or `business`. Customers who hold local currency must be [verified](/guides/verify-customers) first. Your account also has a **default customer** that represents you. It's used whenever you leave `customer_id` out. |
+| **Wallet** (`wal_…`) | A balance in **one** currency, owned by a customer. A customer can hold one wallet per local currency, and several in a stablecoin. |
+| **Credential** (`wcr_…`) | A way to pay **into** a wallet. A bank credential is a named local bank account, which is a [virtual account](/guides/virtual-accounts). A crypto credential is an on-chain address. |
+| **Beneficiary** (`ben_…`) | A place to pay **out** to: a bank account, a mobile money wallet, a PayShap proxy or a crypto address. See [Beneficiaries](/guides/beneficiaries). |
+| **Quote** | A short-lived, priced offer to exchange one currency for another. Onramps, offramps and conversions each start from one. |
+| **Transaction** (`txn_…`) | The record of any money movement. [`GET /v1/transactions`](/api-reference/transactions/list-transactions) lists them all in one place. |
+
+## How money moves
+
+Money comes **in** to a wallet, is **held** there, and goes **out** to a beneficiary.
+
+<CardGroup cols={3}>
+  <Card title="1. Money in" icon="arrow-down-to-line">
+    **Deposit**: a payer sends a bank transfer or crypto to the wallet.
+
+    **Onramp**: a payer's local currency arrives as stablecoins.
+  </Card>
+  <Card title="2. Hold" icon="wallet">
+    Funds sit in a **wallet**, in one currency.
+
+    **Conversion**: move a balance to another currency.
+  </Card>
+  <Card title="3. Money out" icon="arrow-up-from-line">
+    **Transfer**: pay a beneficiary in the same currency.
+
+    **Offramp**: pay out stablecoins as local currency.
+  </Card>
+</CardGroup>
+
+| Movement | From → to | Currency changes? | Start with |
+| --- | --- | --- | --- |
+| **Deposit** | A payer → a wallet, through a credential or deposit address | Only for an [auto-conversion](/guides/auto-conversion) credential | Share a credential's details. The deposit arrives on its own. |
+| **Onramp** | A payer's local currency → a stablecoin wallet | Yes | [Onramp quote](/api-reference/quotes/create-an-onramp-quote), then [execute](/api-reference/onramps/execute-an-onramp) |
+| **Offramp** | A stablecoin wallet → a local-currency beneficiary | Yes | [Offramp quote](/api-reference/quotes/create-an-offramp-quote), then [execute](/api-reference/offramps/execute-an-offramp) |
+| **Conversion** | One wallet → another wallet of the same customer | Yes | [Conversion quote](/api-reference/quotes/create-a-conversion-quote), then [execute](/api-reference/conversions/execute-a-conversion) |
+| **Transfer** | A wallet → a beneficiary in the same currency | No | [Execute a transfer](/api-reference/transfers/execute-a-transfer) |
+
+Onramp and offramp are named from the stablecoin's point of view. **On**ramp brings money **onto**
+stablecoin rails, and **off**ramp takes it **off** them.
+
+## Which do I need?
+
+| You want to… | Use |
+| --- | --- |
+| Give each customer a named local bank account | A wallet with a bank credential: [Virtual accounts](/guides/virtual-accounts) |
+| Pay a supplier's bank account or mobile money in the same currency | [Transfer](/guides/collect-and-pay-out) |
+| Hold funds in USDC and pay out in local currency | Offramp |
+| Collect local currency and hold it as USDC | Onramp, or a local-currency credential on a USDC wallet ([auto-conversion](/guides/auto-conversion)) |
+| Move a customer's balance between currencies | Conversion |
+| Send USDC to an on-chain address | Transfer to a crypto beneficiary |
+
+## Following what happens
+
+Every money movement is asynchronous. It's created, then moves through statuses until it succeeds
+or fails. Subscribe to [webhooks](/webhooks/events) rather than polling. When something fails,
+branch on [`failure_reason`](/reference/failure-reasons).
+
+<Card title="Start building" icon="rocket" href="/quickstart">
+  Make your first calls in the quickstart.
+</Card>

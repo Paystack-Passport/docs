@@ -1,0 +1,47 @@
+---
+title: "Rate limits"
+description: "Which requests are rate limited, and how to back off when you hit a limit."
+---
+
+A request over a rate limit is rejected with HTTP `429` and the [`rate_limited`](/errors#rate_limited) code:
+
+```json
+{
+  "status": false,
+  "message": "Too many requests. Slow down and retry shortly.",
+  "code": "rate_limited",
+  "data": null
+}
+```
+
+## What is limited
+
+| Requests | Limited by | Notes |
+| --- | --- | --- |
+| Writes (`POST`, `PATCH`, `DELETE`) to `/v1/transfers`, `/v1/offramps`, `/v1/conversions` and `/v1/wallets`, including wallet credentials | Your merchant account | One budget, shared across all your API keys and dashboard sessions. |
+| Repeated failed authentication | Client IP | An IP that keeps sending invalid keys is cooled down for a few minutes, including its valid requests. |
+| Reads (`GET`) | Not limited | |
+
+The limits are generous for normal integrations. If you expect a sustained burst, such as opening
+virtual accounts for a large batch of existing customers, contact us first.
+
+## Handling a 429
+
+<Steps>
+  <Step title="Back off">
+    Wait and retry with exponential backoff and jitter. Don't retry in a tight loop: the retries
+    count against the same budget.
+  </Step>
+  <Step title="Reuse the idempotency key">
+    For a money-movement write, retry with the **same** `Idempotency-Key`, so the retry can never
+    create a second transfer or wallet. See [Idempotency](/essentials/idempotency).
+  </Step>
+  <Step title="Spread batch work">
+    Queue bulk jobs and send them at a steady rate instead of all at once.
+  </Step>
+</Steps>
+
+<Note>
+  A `429` caused by failed authentication means a key is wrong or revoked. Fix the key rather than
+  retrying. See [Authentication](/essentials/authentication).
+</Note>

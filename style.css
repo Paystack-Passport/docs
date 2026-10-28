@@ -47,3 +47,34 @@ code, pre, kbd, samp {
 :is(.dark) .gs-hero p { color: #c7cbd1; }
 :is(.dark) .gs-btn-primary { background: #ffc522; color: #0e141b !important; }
 :is(.dark) .gs-btn-secondary { background: transparent; color: #fff !important; border-color: #4a5056; }
+
+/* Code blocks inside API reference descriptions render outside Mintlify's code-block wrapper, so
+   in dark mode they kept Shiki's light background under dark-theme text. Apply the dark theme
+   Shiki already ships as CSS variables. */
+html.dark .prose > pre.shiki {
+  background-color: var(--shiki-dark-bg) !important;
+  color: var(--shiki-dark) !important;
+}
+html.dark .prose > pre.shiki span {
+  color: var(--shiki-dark) !important;
+}
+.prose > pre.shiki {
+  border: 1px solid rgb(128 128 128 / 0.2);
+  border-radius: 0.75rem;
+  padding: 1rem 1.25rem;
+  overflow-x: auto;
+}
+
+/* API reference descriptions set overflow-wrap:anywhere on their content, which lets tables
+   squeeze columns until headers ("St/at/us") and codes ("bad_reques/t") break mid-word.
+   Tables wrap at word boundaries instead, and scroll sideways if they still don't fit. */
+.prose table,
+.prose table * {
+  overflow-wrap: normal;
+  word-break: normal;
+}
+.prose > table {
+  display: block;
+  max-width: 100%;
+  overflow-x: auto;
+}

@@ -1,0 +1,69 @@
+---
+title: "Currency access"
+description: "Some currencies must be enabled for your account before you can use them. Here's how to check and request access."
+---
+
+Some currencies are available to every account. Others must be **enabled for your account**
+before you can open wallets, create beneficiaries or move money in them. Access is granted once
+per currency, for your whole merchant account. It isn't granted per customer.
+
+Using a currency you don't have access to yet is rejected with
+[`403 resource_access_required`](/errors#resource_access_required).
+
+## Check which currencies need access
+
+`GET /v1/currencies` returns two flags on each currency:
+
+| Field | Meaning |
+| --- | --- |
+| `requires_access` | `true` if the currency must be enabled for your account before use. |
+| `has_access` | `true` if you can use it now, either because it's open to everyone or because your account has been granted access. |
+
+Check `has_access` before you build a flow around a currency.
+
+```json
+{
+  "code": "RWF",
+  "country_code": "RW",
+  "requires_access": true,
+  "has_access": false
+}
+```
+
+## Request access
+
+<Steps>
+  <Step title="Send the request">
+    ```bash
+    curl https://api.globalstack.io/v1/currencies/RWF/access-requests \
+      -X POST \
+      -H "Authorization: Bearer YOUR_SECRET_KEY" \
+      -H "Content-Type: application/json" \
+      -d '{
+        "reason": "Collections and payouts for our Rwanda customers"
+      }'
+    ```
+
+    `reason` is optional, but it helps us review the request faster. When a currency code is used
+    in more than one country, such as `XOF`, also send `country_code` to say which one you mean.
+  </Step>
+  <Step title="Wait for review">
+    The request starts as `pending`. We review it and set it to `approved` or `rejected`, with a
+    `review_reason`. Check its status with `GET /v1/currencies/access-requests`.
+  </Step>
+  <Step title="Start using the currency">
+    Once the request is `approved`, `has_access` reads `true` and requests in that currency go
+    through.
+  </Step>
+</Steps>
+
+Requesting access to a currency you can already use returns
+[`409 access_already_granted`](/errors#access_already_granted). Requesting access to a currency
+that doesn't need it returns `400 invalid_input`.
+
+## Access and customer restrictions
+
+Currency access is about **your account**. A currency can also be unavailable for a **particular
+customer**. For example, local-currency deposits need the customer to pass verification. That
+case is reported separately, in `customer_restrictions`. See
+[Customer restrictions](/reference/customer-restrictions).

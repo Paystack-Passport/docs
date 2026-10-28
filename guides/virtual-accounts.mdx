@@ -1,0 +1,167 @@
+---
+title: "Virtual accounts"
+description: "Give each customer a named local bank account that pays straight into their wallet."
+---
+
+A **virtual account** is a local bank account, in your customer's name, that anyone can pay into
+by ordinary bank transfer. Money that lands in it is credited to that customer's wallet.
+
+In the API a virtual account is two resources working together:
+
+- A **wallet** holds the balance. It is in one currency, and it belongs either to one of your
+  customers or to you.
+- A **wallet credential** is the bank account that funds the wallet. Its `details` carry the
+  account number, bank and account name you share with the payer.
+
+So "create a virtual account" means: [create a wallet](/api-reference/wallets/create-a-wallet),
+then [create a credential](/api-reference/wallets/create-a-wallet-credential) on it with
+`network: "bank"`. A wallet on its own has no account details.
+
+## Supported currencies
+
+| Currency | Collect into a virtual account | Pay out with a transfer | Extra customer details required |
+| --- | --- | --- | --- |
+| ZAR | Yes — bank account | Bank account, PayShap | None |
+| NGN | Yes — bank account | Bank account | Phone number. Individuals also need a date of birth and address |
+| GHS | Yes — bank account | Bank account, mobile money | Phone number |
+| KES | Coming soon | Coming soon | — |
+
+Every customer needs `type`, `name`, `email` and `country_code`, which you already send when you
+[create the customer](/api-reference/customers/create-a-customer), and must
+[pass verification](#verify-the-customer-first) before an account can be opened for them.
+
+ZAR, NGN and GHS are open to every account. Some other currencies must be
+[enabled for your account](/essentials/currency-access) first: check `has_access` on
+`GET /v1/currencies`.
+
+<Note>
+  `GET /v1/currencies` is the source of truth for what each currency supports today. This table is
+  a summary and can trail a launch by a few days.
+</Note>
+
+A virtual account is always a **bank** account. PayShap and mobile money are payout destinations:
+you can [pay out](/api-reference/transfers/execute-a-transfer) to them, but you cannot collect
+through them.
+
+## Verify the customer first
+
+A customer must pass verification (KYC) before you can open a local-currency wallet or virtual
+account for them. Until their `kyc_status` is `approved`, `POST /v1/wallets` for a fiat currency
+and `POST /v1/wallets/{id}/credentials` for a bank credential both return
+[`409 invalid_status`](/errors#invalid_status).
+
+Start a verification with
+[`POST /v1/customers/{customerId}/verifications`](/api-reference/customers/start-verification-for-a-customer),
+send the customer to the returned `hosted_url`, and wait for the `kyc.approved` webhook. The
+customer is then active, and you can open accounts for them. A wallet in your **own** merchant name
+(no `customer_id`) doesn't need this step.
+
+<Card title="Verify customers (KYC)" icon="id-card" href="/guides/verify-customers">
+  The full flow: statuses, tiers, rejections, and the reliance model for licensed businesses.
+</Card>
+
+## Whose name is on the account
+
+The account is opened in the name of the customer that owns the wallet, so a payer sees who they
+are paying when their bank confirms the account:
+
+- **Individual customers** — the customer's first and last name. If the customer has completed
+  verification, the verified name is used. Otherwise it comes from the `name` you gave us.
+- **Business customers** — the business `name`.
+- **Wallets with no `customer_id`** — the wallet belongs to your own merchant account, so the
+  account carries your business name. Use this for a collection account of your own.
+
+To give each of your customers their own named account, create one wallet and one credential per
+customer.
+
+{/* TODO before merge: confirm the NGN account name is the customer's name and not prefixed. */}
+
+## Required customer details
+
+Some currencies need more than a name and email before a bank account can be opened:
+
+| Currency | Customer type | Detail | Where it comes from |
+| --- | --- | --- | --- |
+| GHS, NGN | Individual and business | Phone number | Verification, if it captured one. Otherwise `profile.phone`, in international format, e.g. `+233201234567`. |
+| NGN | Individual | Date of birth | Verification, if it captured one. Otherwise `profile.date_of_birth`, as `mm/dd/yyyy`. |
+| NGN | Individual | Address | Always `profile.address`, a single line. Verification doesn't supply it. |
+
+**The simplest way to add a missing detail is to update the customer** with just that field.
+[`PATCH /v1/customers/{customerId}`](/api-reference/customers/update-a-customer) merges `profile`
+field by field:
+
+```json
+{ "profile": { "address": "12 Admiralty Way, Lekki, Lagos" } }
+```
+
+Only **creating** a customer with a `profile` requires the whole profile at once: `phone`,
+`address`, `date_of_birth`, `id_number` and `id_type` for an individual, or `phone` and
+`business_licence` for a business. If you'd rather not send ID details, create the customer without
+a `profile`, verify them, then add only what's missing.
+
+If a detail is missing, the credential is refused with `400 invalid_input` before anything is
+created, and the message names the field:
+
+```text
+a phone number is required for GHS credentials — update customer 'cust_…' with a phone number and retry
+```
+
+## Lifecycle
+
+<Steps>
+  <Step title="Create the wallet">
+    `POST /v1/wallets` with the local `currency`, and the `customer_id` whose name should be on
+    the account. That customer must already be [verified](#verify-the-customer-first). Leave `customer_id` out to open the account in your own name. The wallet holds the
+    balance, but has no account details yet.
+  </Step>
+  <Step title="Add a bank credential to the wallet">
+    `POST /v1/wallets/{id}/credentials` with `{ "network": "bank" }`, using the wallet's `wal_…`
+    id. The response may come back with `status: "pending"` while the account is opened, and
+    `details` has no account number yet.
+  </Step>
+  <Step title="Wait for it to become active">
+    Fetch it with `GET /v1/wallets/{id}/credentials/{credentialId}` until `status` is `active`.
+    `details` then carries the account:
+
+    ```json
+    "details": {
+      "accountName": "Ama Mensah",
+      "accountNumber": "1234567890",
+      "bankName": "Example Bank",
+      "bankCode": "000",
+      "currency": "GHS"
+    }
+    ```
+  </Step>
+  <Step title="Share the details with the payer">
+    The payer pays into the account by ordinary bank transfer.
+  </Step>
+  <Step title="Receive the deposit">
+    The deposit is credited to the wallet. You get a
+    [`deposit.confirmed`](/webhooks/events) webhook when it's spendable, and it's listed under
+    `GET /v1/transactions?type=deposit&source_type=credential`.
+  </Step>
+</Steps>
+
+### Deposit references (ZAR)
+
+Some ZAR accounts come back with a `details.reference`. When it's present, the payer **must** use
+it as the payment reference. A deposit without it can't be matched to the account automatically
+and won't be credited until it's resolved by hand. When `reference` is absent, no reference is
+needed.
+
+## Holding, converting and paying out
+
+A wallet funded by a virtual account holds local currency. From there you can:
+
+- **Pay out** in the same currency to a bank account, mobile money wallet or PayShap proxy with
+  [`POST /v1/transfers`](/api-reference/transfers/execute-a-transfer). See
+  [Collect and pay out in local currency](/guides/collect-and-pay-out).
+- **Convert** to another currency with a [conversion](/api-reference/conversions/execute-a-conversion).
+- **Credit stablecoins directly**: put a local-currency credential on a USDC wallet, and every
+  deposit is converted on arrival. See [Auto-conversion](/guides/auto-conversion).
+
+## Limits
+
+- A customer can hold **one wallet per fiat currency**.
+- Fiat credentials support `network: "bank"` only. Any other network is refused with `400 invalid_input`.

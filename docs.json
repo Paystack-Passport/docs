@@ -25,14 +25,19 @@
     "tabs": [
       {
         "tab": "🏠 Home",
-        "pages": ["index"]
+        "pages": [
+          "index"
+        ]
       },
       {
         "tab": "🚀 Get Started",
         "groups": [
           {
             "group": "Get Started",
-            "pages": ["quickstart"]
+            "pages": [
+              "how-it-works",
+              "quickstart"
+            ]
           }
         ]
       },
@@ -40,17 +45,39 @@
         "tab": "🛠️ Developer Platform",
         "groups": [
           {
-            "group": "Platform",
+            "group": "Guides",
             "pages": [
-              "api-reference/authentication",
-              "api-reference/idempotency",
-              "api-reference/pagination",
-              "api-reference/auto-conversion",
-              "webhooks/events",
-              "webhooks/verify-signatures",
+              "guides/virtual-accounts",
+              "guides/collect-and-pay-out",
+              "guides/verify-customers",
+              "guides/beneficiaries",
+              "guides/auto-conversion"
+            ]
+          },
+          {
+            "group": "Essentials",
+            "pages": [
+              "essentials/authentication",
+              "essentials/idempotency",
+              "essentials/pagination",
+              "essentials/rate-limits",
+              "essentials/limits",
               "errors",
-              "api-reference/failure-reasons",
-              "api-reference/customer-restrictions"
+              "essentials/currency-access"
+            ]
+          },
+          {
+            "group": "Webhooks",
+            "pages": [
+              "webhooks/events",
+              "webhooks/verify-signatures"
+            ]
+          },
+          {
+            "group": "Reference",
+            "pages": [
+              "reference/failure-reasons",
+              "reference/customer-restrictions"
             ]
           }
         ]
@@ -61,12 +88,53 @@
       },
       {
         "tab": "🗒️ Changelog",
-        "pages": ["changelog"]
+        "pages": [
+          "changelog"
+        ]
       }
     ]
   },
   "redirects": [
-    { "source": "/api-reference/errors", "destination": "/errors" }
+    {
+      "source": "/api-reference/errors",
+      "destination": "/errors"
+    },
+    {
+      "source": "/virtual-accounts",
+      "destination": "/guides/virtual-accounts"
+    },
+    {
+      "source": "/guides/fiat-payouts",
+      "destination": "/guides/collect-and-pay-out"
+    },
+    {
+      "source": "/api-reference/authentication",
+      "destination": "/essentials/authentication"
+    },
+    {
+      "source": "/api-reference/idempotency",
+      "destination": "/essentials/idempotency"
+    },
+    {
+      "source": "/api-reference/pagination",
+      "destination": "/essentials/pagination"
+    },
+    {
+      "source": "/api-reference/auto-conversion",
+      "destination": "/guides/auto-conversion"
+    },
+    {
+      "source": "/api-reference/failure-reasons",
+      "destination": "/reference/failure-reasons"
+    },
+    {
+      "source": "/api-reference/customer-restrictions",
+      "destination": "/reference/customer-restrictions"
+    },
+    {
+      "source": "/kyc",
+      "destination": "/guides/verify-customers"
+    }
   ],
   "logo": {
     "light": "/logo/light.svg",

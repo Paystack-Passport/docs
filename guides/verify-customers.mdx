@@ -1,0 +1,149 @@
+---
+title: "Verify customers (KYC)"
+description: "Send a customer through hosted identity verification, and what approval unlocks."
+---
+
+Before a customer can hold or receive **local currency**, they must pass identity verification
+(KYC). That means opening a local-currency wallet or a [virtual account](/guides/virtual-accounts)
+for them. You don't collect identity documents yourself. You send the customer a hosted
+verification link, they complete it, and we tell you the outcome.
+
+## What verification unlocks
+
+| | Before approval | After approval |
+| --- | --- | --- |
+| Create local-currency (fiat) wallets and bank credentials | Refused with [`409 invalid_status`](/errors#invalid_status) | Allowed |
+| Receive local-currency deposits | Not available | Allowed |
+| Stablecoin wallets, onramps, offramps, conversions and transfers | Allowed | Allowed |
+
+To see what a specific customer can do right now, call `GET /v1/currencies?customer_id=cust_…`.
+Anything verification would unlock is listed under `customer_restrictions`. See
+[Customer restrictions](/reference/customer-restrictions).
+
+Your own merchant account, used when you leave `customer_id` out, doesn't go through this flow.
+
+## Before you start: set up webhooks
+
+This guide waits for webhook events, so register an endpoint first:
+
+```bash
+curl https://api.globalstack.io/v1/notifications/webhooks \
+  -X POST \
+  -H "Authorization: Bearer YOUR_SECRET_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "url": "https://yourapp.example/webhooks/globalstack",
+    "event_categories": ["kyc"]
+  }'
+```
+
+1. **Store `signing_secret`** (`whsec_…`) from the response. It's shown only once.
+2. **Activate the endpoint.** New endpoints start inactive:
+   `PATCH /v1/notifications/webhooks/{id}` with `{ "active": true }`.
+3. **Verify every delivery** with the secret. See [Verify webhook signatures](/webhooks/verify-signatures).
+
+## Verify a customer
+
+<Steps>
+  <Step title="Create the customer">
+    ```bash
+    curl https://api.globalstack.io/v1/customers \
+      -X POST \
+      -H "Authorization: Bearer YOUR_SECRET_KEY" \
+      -H "Content-Type: application/json" \
+      -d '{
+        "type": "individual",
+        "name": "Ama Mensah",
+        "email": "ama@example.com",
+        "country_code": "GH"
+      }'
+    ```
+
+    A new customer starts with `kyc_status: "not_started"` and `tier: "tier_0"`.
+  </Step>
+
+  <Step title="Start a verification">
+    ```bash
+    curl https://api.globalstack.io/v1/customers/cust_.../verifications \
+      -X POST \
+      -H "Authorization: Bearer YOUR_SECRET_KEY" \
+      -H "Content-Type: application/json" \
+      -d '{
+        "redirect_url": "https://yourapp.example/onboarding/complete"
+      }'
+    ```
+
+    The response carries a `hosted_url` and the time it expires, `hosted_url_expires_at`.
+    `redirect_url` is optional; it's where the customer lands when they finish. `tier` is
+    optional too, and defaults to the next tier up.
+  </Step>
+
+  <Step title="Send the customer to the link">
+    Redirect them from your app, or email or text them the `hosted_url`. They complete identity
+    verification on the hosted page, uploading an ID document and taking a selfie, for example.
+
+    Calling the endpoint again is safe. While the session is open, it returns the same link. Once
+    the link has expired, it returns a fresh one.
+  </Step>
+
+  <Step title="Get the outcome">
+    You receive one webhook when verification finishes:
+
+    - [`kyc.approved`](/webhooks/events): `kyc_status` is `approved`, and `customer.tier` is the
+      new tier. The customer is now active, so you can open local-currency wallets and virtual
+      accounts for them.
+    - [`kyc.rejected`](/webhooks/events): read `failure_reason`.
+
+    Progress before the outcome, like the customer opening the link or uploading documents, doesn't
+    send a webhook. Check it with `GET /v1/customers/{customerId}/verifications` if you need to.
+  </Step>
+</Steps>
+
+## Statuses
+
+`kyc_status` on the customer moves through:
+
+| Status | Meaning |
+| --- | --- |
+| `not_started` | The customer hasn't submitted anything yet, even if you've created a session. |
+| `in_progress` | The customer has submitted, and verification is under review. |
+| `pending` | A reviewer asked the customer to fix something and resubmit. `failure_reason` says what. |
+| `approved` | Verified. Local-currency features are unlocked. |
+| `rejected` | Verification was declined. See `failure_reason`. |
+| `expired` | The session lapsed before it finished. Start a new one. |
+
+The verification **session**, returned by `GET /v1/customers/{customerId}/verifications`, has its
+own `status`. It uses the same values while in flight (`not_started`, `in_progress`, `pending`),
+but ends as `completed` or `failed`. On the customer, those show as `approved` and `rejected`.
+Branch on the customer's `kyc_status`, or on the `kyc.*` webhooks.
+
+## Tiers
+
+Customers start at `tier_0`. Each approved verification raises the tier, and a higher tier comes
+with higher transaction limits. Any approved tier unlocks virtual accounts. Request `tier_2` for
+customers who need to move larger amounts. A deposit that would take a customer over
+their tier's limit is held, and you receive `deposit.held` with `hold_reason: "tier_limit"`.
+
+## When verification is rejected
+
+[`failure_reason`](/reference/failure-reasons#verification-kyc-codes) tells you what went wrong.
+Most reasons, such as `document_quality` or `identity_mismatch`, can be fixed. Send the customer
+back to the verification link with a note about what to fix. Call
+`POST /v1/customers/{customerId}/verifications` again to get the link, or a fresh one if it has
+expired. `verification_failed` is deliberately generic. Contact support if the customer believes
+it's wrong.
+
+## Details we reuse
+
+Details captured during verification, such as phone number, date of birth and the verified name,
+are used when you open a virtual account for the customer. You usually don't need to send them in
+`profile` as well.
+
+<Note>
+  **Coming soon:** passing your customer's verified identity details to us over the API, instead
+  of sending them through the hosted flow.
+
+  If you're a licensed business that already verifies its customers, you may qualify for a
+  **reliance model**, where we rely on your KYC rather than verifying each customer again.
+  [Contact us](https://globalstack.io) to find out whether you qualify.
+</Note>

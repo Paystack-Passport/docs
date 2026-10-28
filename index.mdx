@@ -1,23 +1,28 @@
 ---
-description: "One API to accept, hold, convert, and pay out funds across 12 currencies in 18 African markets — powered by stablecoin infrastructure."
+description: "One API to accept, hold, convert, and pay out funds across 14 currencies across 21 African countries — powered by stablecoin infrastructure."
 mode: "wide"
 ---
 
 <div className="gs-hero">
   <p className="gs-hero-eyebrow">Cross-border · stablecoin rails</p>
   <h1>Build with GlobalStack</h1>
-  <p>One API to accept, hold, convert, and pay out funds across 12 currencies in 18 African markets. Send, receive, or hold — GlobalStack handles the conversion, routing, and settlement.</p>
+  <p>One API to accept, hold, convert, and pay out funds across 14 currencies across 21 African countries. Give your customers named virtual accounts in local currency, pay out to bank accounts and mobile money, or move value over stablecoin rails — GlobalStack handles the conversion, routing, and settlement.</p>
   <div className="gs-hero-btns">
-    <a className="gs-btn-primary" href="/quickstart">Get Started →</a>
+    <a className="gs-btn-primary" href="/how-it-works">Get Started →</a>
     <a className="gs-btn-secondary" href="/api-reference/supported-countries/list-countries">API Reference</a>
   </div>
 </div>
 
-```bash Your first quote
+```bash Price an onramp: 50,000 NGN in, USDC out
 curl https://api.globalstack.io/v1/onramps/quotes \
-  -H "Authorization: Bearer gsa_sk_live_..." \
+  -H "Authorization: Bearer YOUR_SECRET_KEY" \
   -H "Content-Type: application/json" \
-  -d '{ "amount": "100", "source_currency": "USDC", "target_currency": "NGN" }'
+  -d '{
+    "wallet_id": "wal_...",
+    "source_currency": "NGN",
+    "source_network": "bank",
+    "source_amount": "50000"
+  }'
 ```
 
 ## Core flows
@@ -26,14 +31,20 @@ curl https://api.globalstack.io/v1/onramps/quotes \
   <Card title="Quotes" icon="tag" href="/api-reference/quotes/create-an-onramp-quote">
     Lock an FX rate before you move money.
   </Card>
-  <Card title="Onramps" icon="arrow-down-to-line" href="/api-reference/onramps/execute-an-onramp">
-    Turn stablecoins into local currency, settled to a beneficiary.
-  </Card>
-  <Card title="Offramps" icon="arrow-up-from-line" href="/api-reference/offramps/execute-an-offramp">
-    Accept local currency and settle out in stablecoins.
+  <Card title="Virtual accounts" icon="building-columns" href="/guides/virtual-accounts">
+    Give a customer a named local bank account that pays into their wallet.
   </Card>
   <Card title="Wallets" icon="wallet" href="/api-reference/wallets/create-a-wallet">
-    Hold stablecoins in a programmable, multi-currency wallet.
+    Hold a balance in local currency or stablecoins — one currency per wallet.
+  </Card>
+  <Card title="Transfers" icon="paper-plane" href="/api-reference/transfers/execute-a-transfer">
+    Pay out to a bank account, mobile money wallet or PayShap, or send crypto on-chain.
+  </Card>
+  <Card title="Onramps" icon="arrow-up-from-line" href="/api-reference/onramps/execute-an-onramp">
+    Accept local currency and settle it into a stablecoin wallet.
+  </Card>
+  <Card title="Offramps" icon="arrow-down-to-line" href="/api-reference/offramps/execute-an-offramp">
+    Turn stablecoins into local currency, paid out to a beneficiary.
   </Card>
   <Card title="Conversions" icon="right-left" href="/api-reference/conversions/execute-a-conversion">
     Convert between supported currencies on demand.
@@ -52,7 +63,7 @@ curl https://api.globalstack.io/v1/onramps/quotes \
   <Card title="Stablecoin rails" icon="coins">
     Settlement in seconds, not days — no FX desks, no correspondent delays.
   </Card>
-  <Card title="18 markets, 12 currencies" icon="globe">
+  <Card title="21 countries, 14 currencies" icon="globe">
     Broad African coverage behind a single, consistent API surface.
   </Card>
 </CardGroup>
