@@ -6,6 +6,37 @@ description: "Notable changes to the GlobalStack API — new endpoints, behavior
 Changes that affect how you integrate: new endpoints and fields, behavior changes, and new error
 or failure codes. Breaking changes are called out explicitly.
 
+<Update label="2026-10-29" tags={["New feature", "Error code"]}>
+  ## Pin an API key to one or more IP addresses
+
+  You can now restrict an API key so it only works when called from an allowlist of up to
+  three IPv4 or IPv6 addresses, or CIDR blocks. Keys created without an allowlist keep
+  working from any address exactly as before — this is strictly opt-in.
+
+  Set the allowlist from the dashboard when you create the key. Bare addresses are stored as
+  `/32` (IPv4) or `/128` (IPv6). The allowlist cannot be changed after creation: to change
+  it, revoke the key and create a new one.
+
+  A `GET /v1/me` response now echoes the allowlist on each key:
+
+  ```json
+  "api_key": {
+    "last4": "ab12",
+    "ip_restrictions": ["203.0.113.5/32", "198.51.100.0/24"]
+  }
+  ```
+
+  `ip_restrictions` is `null` on keys with no allowlist.
+
+  ### New 401 error code: `ip_restriction_violated`
+
+  Requests presenting a restricted key from an address that isn't on its allowlist return
+  `401` with [`ip_restriction_violated`](/errors#ip_restriction_violated) — distinct from
+  [`authentication_failed`](/errors#authentication_failed) so you can tell "my key is valid
+  but your IP is wrong" apart from a bad credential. Treat it as an operational problem
+  (fix the caller or rotate the key), not an auth-retry condition.
+</Update>
+
 <Update label="2026-10-27" tags={["Documentation"]}>
   ## New guides: virtual accounts, and collecting and paying out in local currency
 
