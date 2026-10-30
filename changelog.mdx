@@ -6,6 +6,18 @@ description: "Notable changes to the GlobalStack API — new endpoints, behavior
 Changes that affect how you integrate: new endpoints and fields, behavior changes, and new error
 or failure codes. Breaking changes are called out explicitly.
 
+<Update label="2026-10-30" tags={["Behavior change"]}>
+  ## Rates are only returned for currencies you can see
+
+  `GET /v1/currencies/{code}/rates` now accepts only a `code` returned by
+  `GET /v1/currencies`. Any other code returns
+  [`invalid_input`](/errors#invalid_input) with the message
+  `currency '<code>' is not supported`. Previously some unlisted codes returned `200` with an
+  empty list, and others returned `400` with a message listing currency codes.
+
+  If you build the `code` from `GET /v1/currencies`, nothing changes for you.
+</Update>
+
 <Update label="2026-10-27" tags={["Documentation"]}>
   ## New guides: virtual accounts, and collecting and paying out in local currency
 
