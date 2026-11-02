@@ -433,6 +433,119 @@
           "updated_at"
         ]
       },
+      "CreateWalletTransferDto": {
+        "properties": {
+          "from_wallet_id": {
+            "maxLength": 64,
+            "type": "string"
+          },
+          "to_wallet_id": {
+            "maxLength": 64,
+            "type": "string"
+          },
+          "amount": {
+            "pattern": "^\\d+(\\.\\d+)?$",
+            "type": "string"
+          },
+          "reference": {
+            "maxLength": 128,
+            "type": "string",
+            "minLength": 1
+          },
+          "metadata": {
+            "type": "object"
+          }
+        },
+        "type": "object",
+        "required": [
+          "from_wallet_id",
+          "to_wallet_id",
+          "amount",
+          "reference"
+        ]
+      },
+      "WalletTransferResponse": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "description": "Wallet transfer external id (prefixed wtr_).",
+            "example": "wtr_01HXYZABC1234567890ABCDEFG"
+          },
+          "reference": {
+            "type": "string",
+            "description": "Merchant-supplied reference; unique per integration.",
+            "example": "INV-2026-001"
+          },
+          "status": {
+            "type": "string",
+            "description": "Terminal status of the move. Wallet-to-wallet transfers settle in-request via a single atomic ledger write, so there is no `processing` phase.",
+            "enum": [
+              "success",
+              "failed"
+            ],
+            "example": "success"
+          },
+          "amount": {
+            "type": "string",
+            "description": "Transfer amount, formatted to the currency precision.",
+            "example": "10.000000"
+          },
+          "currency": {
+            "type": "string",
+            "description": "Uppercase currency code",
+            "example": "USDC"
+          },
+          "from_wallet": {
+            "$ref": "#/components/schemas/WalletTransferWalletResponse",
+            "description": "Projection of the source wallet (with its customer)."
+          },
+          "to_wallet": {
+            "$ref": "#/components/schemas/WalletTransferWalletResponse",
+            "description": "Projection of the destination wallet (with its customer)."
+          },
+          "failure_reason": {
+            "type": "string",
+            "nullable": true,
+            "description": "Stable machine-readable failure code; null unless `status` is `failed`. Shape matches the sibling money-movement resources.",
+            "example": null
+          },
+          "failure_reason_message": {
+            "type": "string",
+            "nullable": true,
+            "description": "Human-readable failure explanation; null unless `status` is `failed`.",
+            "example": null
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time",
+            "example": "2026-10-31T07:00:00.000Z"
+          },
+          "terminal_at": {
+            "type": "string",
+            "description": "When the move reached its terminal status.",
+            "format": "date-time",
+            "example": "2026-10-31T07:00:00.000Z"
+          },
+          "metadata": {
+            "type": "object",
+            "description": "Merchant-supplied metadata, echoed back verbatim. Empty object if omitted.",
+            "example": {}
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "reference",
+          "status",
+          "amount",
+          "currency",
+          "from_wallet",
+          "to_wallet",
+          "created_at",
+          "terminal_at",
+          "metadata"
+        ]
+      },
       "ExecuteTransferDto": {
         "properties": {
           "wallet_id": {
@@ -1345,7 +1458,8 @@
                 "conversion",
                 "transfer",
                 "deposit",
-                "kyc"
+                "kyc",
+                "wallet_transfer"
               ],
               "type": "string"
             },
@@ -1380,7 +1494,8 @@
                 "conversion",
                 "transfer",
                 "deposit",
-                "kyc"
+                "kyc",
+                "wallet_transfer"
               ]
             },
             "type": "array",
@@ -1443,7 +1558,8 @@
                 "conversion",
                 "transfer",
                 "deposit",
-                "kyc"
+                "kyc",
+                "wallet_transfer"
               ]
             },
             "type": "array",
@@ -1493,7 +1609,8 @@
                 "conversion",
                 "transfer",
                 "deposit",
-                "kyc"
+                "kyc",
+                "wallet_transfer"
               ],
               "type": "string"
             },
@@ -2162,7 +2279,7 @@
           },
           "can_wallet_transfer": {
             "type": "boolean",
-            "description": "True when this currency is enabled for intra-wallet transfers between two custodial wallets owned by the same integration. Distinct from `can_transfer`, which gates outbound transfers via FX Engine.",
+            "description": "True when this currency is enabled for intra-wallet transfers between two custodial wallets owned by the same integration. Distinct from `can_transfer`, which gates outbound transfers to a beneficiary.",
             "example": false
           },
           "requires_access": {
@@ -3103,6 +3220,35 @@
           "version"
         ]
       },
+      "WalletTransferWalletResponse": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "example": "wal_01HXYZ",
+            "description": "Wallet external id."
+          },
+          "currency": {
+            "type": "string",
+            "description": "Uppercase currency code.",
+            "example": "USDC"
+          },
+          "label": {
+            "type": "string",
+            "nullable": true,
+            "example": "USDC Wallet"
+          },
+          "customer": {
+            "$ref": "#/components/schemas/WalletTransferCustomerResponse",
+            "description": "The customer that owns this wallet."
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "currency",
+          "customer"
+        ]
+      },
       "TransferCustomerResponse": {
         "properties": {
           "id": {
@@ -3844,6 +3990,61 @@
         "required": [
           "action",
           "docs_url"
+        ]
+      },
+      "WalletTransferCustomerResponse": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "example": "cust_01HXYZ",
+            "description": "Customer external id."
+          },
+          "type": {
+            "type": "string",
+            "enum": [
+              "individual",
+              "business"
+            ],
+            "example": "individual"
+          },
+          "name": {
+            "type": "string",
+            "example": "Alice Johnson"
+          },
+          "email": {
+            "type": "string",
+            "format": "email",
+            "example": "alice@example.com"
+          },
+          "tier": {
+            "type": "string",
+            "enum": [
+              "tier_0",
+              "tier_1",
+              "tier_2"
+            ],
+            "example": "tier_2"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time",
+            "example": "2026-10-31T07:00:00.000Z"
+          },
+          "updated_at": {
+            "type": "string",
+            "format": "date-time",
+            "example": "2026-10-31T07:00:00.000Z"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "type",
+          "name",
+          "email",
+          "tier",
+          "created_at",
+          "updated_at"
         ]
       },
       "FeeLineItemResponse": {
@@ -4780,6 +4981,548 @@
           "Wallets"
         ],
         "description": "Fetch one wallet by its `wal_…` id, with its balances and credentials.\n\n- **Balances.** `available_balance`, `pending_balance` and `total_balance`, formatted to the\n  currency's precision.\n- **Credentials.** `credentials` lists the wallet's credentials, newest first. It's empty if the\n  wallet has none. For a bank credential, that's where the virtual account details are.\n- **Owner.** `customer` summarises the owning customer (`id`, `type`, `name`, `email`, `tier`).\n  For the full customer, call `GET /v1/customers/{customerId}`.\n\n### Errors\n\n| Status | Code | When |\n| --- | --- | --- |\n| 400 | `invalid_input` | The id doesn't start with `wal_`, for example a `cust_…` id. |\n| 404 | `not_found` | No wallet with this id. |\n\n### Example\n\n```\nGET /v1/wallets/wal_01HXYZABC1234567890ABCDEFG\n```\n"
+      }
+    },
+    "/v1/wallet_transfers": {
+      "post": {
+        "operationId": "WalletTransferController.create",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateWalletTransferDto"
+              }
+            }
+          },
+          "description": "CreateWalletTransferDto",
+          "required": false
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/ApiSuccessEnvelope"
+                    },
+                    {
+                      "type": "object",
+                      "required": [
+                        "data",
+                        "meta"
+                      ],
+                      "properties": {
+                        "message": {
+                          "type": "string",
+                          "example": "Wallet transfer completed"
+                        },
+                        "data": {
+                          "$ref": "#/components/schemas/WalletTransferResponse"
+                        },
+                        "meta": {
+                          "$ref": "#/components/schemas/ApiResponseMetaSchema"
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            },
+            "description": "Wallet transfer completed"
+          },
+          "400": {
+            "description": "Request body failed validation, from_wallet_id/to_wallet_id is not a valid wal_… id, the two wallets are the same, either side is a forwarding wallet, the two wallets hold different currencies, the currency is not enabled for wallet-to-wallet transfers, the amount is zero or has more decimal places than the currency settles, the Idempotency-Key header is malformed, or the ledger refused the request outright (`ledger_validation`). Insufficient-funds attempts are PERSISTED at `status: \"failed\"` rather than returned as 400 — read the body's `failure_reason`.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/ApiErrorEnvelope"
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string",
+                          "enum": [
+                            "invalid_input",
+                            "invalid_amount_precision",
+                            "ledger_validation"
+                          ]
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized — invalid or missing API key",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/ApiErrorEnvelope"
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string",
+                          "enum": [
+                            "authentication_failed"
+                          ]
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "The sending or receiving customer is not approved for on-ledger activity in this currency. Drive the customer through KYC via POST /v1/customers/:id/verifications before retrying.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/ApiErrorEnvelope"
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string",
+                          "enum": [
+                            "invalid_status"
+                          ]
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "from_wallet_id or to_wallet_id was not found, or it belongs to a different integration",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/ApiErrorEnvelope"
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string",
+                          "enum": [
+                            "not_found"
+                          ]
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict — possible codes: `duplicate_resource` (the `reference` is already used by another wallet transfer for this integration), `idempotency_conflict` (Idempotency-Key reused with a different request body), `idempotency_in_progress` (a request with the same Idempotency-Key is still in flight). Branch on the `code` field of the response envelope.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/ApiErrorEnvelope"
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string",
+                          "enum": [
+                            "duplicate_resource",
+                            "idempotency_conflict",
+                            "idempotency_in_progress"
+                          ]
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Either wallet is not fully provisioned, or the service is misconfigured (`configuration_error`). The merchant action is to contact support — the row either did not land or requires manual reconciliation.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/ApiErrorEnvelope"
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string",
+                          "enum": [
+                            "configuration_error"
+                          ]
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "502": {
+            "description": "The ledger is unreachable (`ledger_unavailable`), or the ledger accepted the request but returned an unparseable response (`external_service_unavailable`). In BOTH cases the merchant can safely retry with the same `reference`: the service pre-flights the reference and, if a prior attempt did commit, recovers the orphaned move on the retry rather than moving funds twice.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/ApiErrorEnvelope"
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string",
+                          "enum": [
+                            "ledger_unavailable",
+                            "external_service_unavailable"
+                          ]
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        },
+        "summary": "Execute a wallet-to-wallet transfer",
+        "tags": [
+          "Wallet Transfers"
+        ],
+        "description": "Move funds between two custodial wallets you own, in the **same currency**. This is an\nintra-ledger move: a single ledger entry, no external payout rail, no FX leg. The move settles\nin-request and the response carries the terminal `status` directly.\n\nBoth wallets must:\n\n- belong to the API key's integration,\n- be of type `custodial` (forwarding wallets hold no balance),\n- share the same `currency`,\n- hold customers approved for on-ledger activity in that currency.\n\nDifferent customers under the same integration are allowed — Alice's wallet can send to Bob's as\nlong as both belong to your merchant and are KYC-approved for the currency.\n\nThe currency must be explicitly enabled for wallet-to-wallet transfers (`can_wallet_transfer` on\n`GET /v1/currencies`). The flag is independent of `can_transfer`, which gates outbound\nbeneficiary payouts via `POST /v1/transfers`.\n\n### Body\n\n| Field | Required | Description |\n| --- | --- | --- |\n| `from_wallet_id` | Yes | The source wallet (`wal_…`). Must be custodial, must belong to your integration, and must have enough available balance. |\n| `to_wallet_id` | Yes | The destination wallet (`wal_…`). Must be custodial, same currency, same integration. |\n| `amount` | Yes | Decimal string, strictly positive, with at most the currency's decimal places. |\n| `reference` | Yes | Your id, unique per integration. A reused one returns `409 duplicate_resource`. |\n| `metadata` | No | `Record<string, string>`. Echoed back verbatim on the response and the webhook. |\n\nSend an `Idempotency-Key` header so retries are safe.\n\n### Status model\n\nThe move is synchronous — there is no `processing` phase. The response carries one of:\n\n- `success` — the ledger write committed. Funds moved atomically.\n- `failed` — the move was refused for a bounded reason:\n  - `insufficient_funds` — the source wallet's available balance is below the amount.\n\nAn insufficient-funds attempt is PERSISTED as a `failed` row (not returned as 4xx), so it\nappears on `GET /v1/wallet_transfers` and emits a `wallet_transfer.failed` webhook. The merchant\nreference is consumed; retrying the same reference returns `409 duplicate_resource`.\n\nAny other ledger error — an unreachable ledger, an unprovisioned wallet, a provider rejection\nthat could have landed after the move committed — is returned as a non-2xx with no row. The\nmerchant can safely retry with the same reference: the service pre-flights the reference and, if\na prior attempt committed the move but failed to persist, recovers it on retry instead of moving\nfunds twice.\n\nAn unreachable ledger on the short-balance path also surfaces as 502 rather than a persisted\n`failed` row. The service consults the ledger to distinguish a genuine short balance from the\ndrained residue of a prior committed move; when that lookup cannot complete, the service refuses\nto classify until it can, so the merchant retries safely.\n\n### Webhook\n\nSubscribe to the `wallet_transfer` category on `POST /v1/webhooks/endpoints` to receive\n`wallet_transfer.success` and `wallet_transfer.failed` deliveries. The payload mirrors this\nresponse plus the usual webhook envelope.\n",
+        "parameters": [
+          {
+            "in": "header",
+            "name": "Idempotency-Key",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9_\\-]{8,255}$"
+            },
+            "description": "Optional client-supplied key. Identical key + identical body within 24h replays the original response. Identical key + different body returns 409 idempotency_conflict. The hash is over raw bytes — clients retrying must send the byte-identical body; a re-serialised JSON payload will produce a different hash and a 409. Strongly recommended for retry-safe clients."
+          }
+        ]
+      },
+      "get": {
+        "operationId": "WalletTransferController.list",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "wallet_id",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "customer_id",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "reference",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "page",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "per_page",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/ApiSuccessEnvelope"
+                    },
+                    {
+                      "type": "object",
+                      "required": [
+                        "data",
+                        "meta"
+                      ],
+                      "properties": {
+                        "message": {
+                          "type": "string",
+                          "example": "Wallet transfers fetched successfully"
+                        },
+                        "data": {
+                          "type": "array",
+                          "items": {
+                            "$ref": "#/components/schemas/WalletTransferResponse"
+                          }
+                        },
+                        "meta": {
+                          "$ref": "#/components/schemas/ApiPaginatedResponseMetaSchema"
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            },
+            "description": "Wallet transfers fetched successfully"
+          },
+          "400": {
+            "description": "A filter failed validation: wallet_id/customer_id is not a valid id, or page/per_page is non-numeric or out of range",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/ApiErrorEnvelope"
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string",
+                          "enum": [
+                            "invalid_input"
+                          ]
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized — invalid or missing API key",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/ApiErrorEnvelope"
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string",
+                          "enum": [
+                            "authentication_failed"
+                          ]
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "A filter wallet_id or customer_id was not found, or it belongs to a different integration",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/ApiErrorEnvelope"
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string",
+                          "enum": [
+                            "not_found"
+                          ]
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        },
+        "summary": "List wallet transfers",
+        "tags": [
+          "Wallet Transfers"
+        ],
+        "description": "List wallet transfers for the authenticated integration, newest first. Filter by any single\nwallet (`wallet_id` matches either `from_wallet_id` or `to_wallet_id`), any single customer\n(`customer_id` matches either side), or a merchant reference.\n"
+      }
+    },
+    "/v1/wallet_transfers/{walletTransferId}": {
+      "get": {
+        "operationId": "WalletTransferController.get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "walletTransferId",
+            "required": true,
+            "schema": {
+              "pattern": "[^\\/#\\?]+?",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/ApiSuccessEnvelope"
+                    },
+                    {
+                      "type": "object",
+                      "required": [
+                        "data",
+                        "meta"
+                      ],
+                      "properties": {
+                        "message": {
+                          "type": "string",
+                          "example": "Wallet transfer fetched successfully"
+                        },
+                        "data": {
+                          "$ref": "#/components/schemas/WalletTransferResponse"
+                        },
+                        "meta": {
+                          "$ref": "#/components/schemas/ApiResponseMetaSchema"
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            },
+            "description": "Wallet transfer fetched successfully"
+          },
+          "400": {
+            "description": "The id path segment is not a valid wtr_… id",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/ApiErrorEnvelope"
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string",
+                          "enum": [
+                            "invalid_input"
+                          ]
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized — invalid or missing API key",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/ApiErrorEnvelope"
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string",
+                          "enum": [
+                            "authentication_failed"
+                          ]
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Wallet transfer not found, or it belongs to a different integration",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/ApiErrorEnvelope"
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string",
+                          "enum": [
+                            "not_found"
+                          ]
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        },
+        "summary": "Fetch a wallet transfer",
+        "tags": [
+          "Wallet Transfers"
+        ],
+        "description": "Fetch one wallet transfer by its external id. Scoped to the authenticated integration — a\n`wtr_…` under a different integration returns `404`.\n"
       }
     },
     "/v1/transfers": {
@@ -13105,6 +13848,9 @@
     },
     {
       "name": "Transfers"
+    },
+    {
+      "name": "Wallet Transfers"
     },
     {
       "name": "Transactions"
