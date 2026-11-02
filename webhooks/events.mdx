@@ -23,6 +23,7 @@ and receive every event in the family.
 | `offramp` | `offramp.created`, `offramp.funds_received`, `offramp.processing`, `offramp.success`, `offramp.failed`, `offramp.returned` |
 | `conversion` | `conversion.created`, `conversion.funds_received`, `conversion.processing`, `conversion.success`, `conversion.failed`, `conversion.returned` |
 | `transfer` | `transfer.processing`, `transfer.success`, `transfer.failed` |
+| `wallet_transfer` | `wallet_transfer.success` |
 | `deposit` | `deposit.received`, `deposit.held`, `deposit.confirmed`, `deposit.failed` |
 | `kyc` | `kyc.approved`, `kyc.rejected` |
 
@@ -115,6 +116,21 @@ and not used today. If you ever see it, treat it as not final, and keep waiting 
 
 A cancelled or reversed transfer arrives as `transfer.failed` — `failure_reason` tells you which
 (`cancelled`, `reversed`, or another code).
+
+### Wallet transfers
+
+These cover intra-ledger moves between two custodial wallets you own, settled atomically with no
+external payout.
+
+| Event | Fires when |
+| --- | --- |
+| `wallet_transfer.success` | The move committed. Funds moved from `from_wallet` to `to_wallet`. **Terminal.** |
+
+There is no `wallet_transfer.processing` — the move settles in-request, so the first and only event
+is terminal. Insufficient-funds attempts return `422 ledger_insufficient_funds` without persisting
+a row, so no `.failed` webhook fires; the `reference` stays free for retry once the balance is
+topped up. If the ledger is unreachable or the response could not be parsed, nothing is written
+and no webhook fires either; retry the request with the same `reference`.
 
 ### Deposits
 
@@ -517,6 +533,73 @@ A completed crypto payout. Transfers have no FX leg, so there are **no `actual_*
   }
 }
 ```
+
+### Wallet transfer
+
+An intra-ledger move between two custodial wallets you own, settled atomically with no external
+payout. There is no FX leg, no beneficiary, and no `transaction` block — the move does not
+project onto the transaction tree the way the FX families do. `failure_reason` is `null` on
+`wallet_transfer.success`.
+
+```json
+{
+  "event_id": "evt_f3a9b7d2-5c81-5e46-9b2f-7d4a1c6e8b03",
+  "event_type": "wallet_transfer.success",
+  "event_category": "wallet_transfer",
+  "event_developer_id": "int_01HXYZABC1234567890ABCDEFG",
+  "api_version": "v1",
+  "event_created_at": "2026-10-31T07:00:00.000Z",
+  "event_object_id": "wtr_01KPCX8MKD6P4R8T0V2X4Z6B8D",
+  "event_object_status": "success",
+  "event_object_changes": { "status": [null, "success"] },
+  "event_object": {
+    "id": "wtr_01KPCX8MKD6P4R8T0V2X4Z6B8D",
+    "reference": "INV-2026-001",
+    "status": "success",
+    "amount": "10.000000",
+    "currency": "USDC",
+    "from_wallet": {
+      "id": "wal_01HXYZABC1234567890ABCDEFG",
+      "currency": "USDC",
+      "label": "Treasury USDC",
+      "customer": {
+        "id": "cust_01HXYZABC1234567890ABCDEFG",
+        "type": "business",
+        "name": "Acme Ltd",
+        "email": "ops@acme.example",
+        "tier": "tier_2",
+        "created_at": "2026-09-01T10:00:00.000Z",
+        "updated_at": "2026-09-01T10:00:00.000Z"
+      }
+    },
+    "to_wallet": {
+      "id": "wal_01HXYZABC1234567890ABCDEFH",
+      "currency": "USDC",
+      "label": "Supplier payouts",
+      "customer": {
+        "id": "cust_01HXYZABC1234567890ABCDEFH",
+        "type": "individual",
+        "name": "Alice Johnson",
+        "email": "alice@example.com",
+        "tier": "tier_2",
+        "created_at": "2026-09-01T10:00:00.000Z",
+        "updated_at": "2026-09-01T10:00:00.000Z"
+      }
+    },
+    "failure_reason": null,
+    "failure_reason_message": null,
+    "created_at": "2026-10-31T07:00:00.000Z",
+    "terminal_at": "2026-10-31T07:00:00.000Z",
+    "metadata": { "internal_batch": "batch_42" }
+  }
+}
+```
+
+<Note>
+  Unlike the four FX families, `event_object_changes.status[0]` is `null` on
+  `wallet_transfer.success`. Wallet transfers do not pass through a `processing` state — the
+  very first event is terminal, so there is no previous status to report.
+</Note>
 
 ### Deposit
 

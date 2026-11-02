@@ -6,6 +6,21 @@ description: "Notable changes to the GlobalStack API — new endpoints, behavior
 Changes that affect how you integrate: new endpoints and fields, behavior changes, and new error
 or failure codes. Breaking changes are called out explicitly.
 
+<Update label="2026-11-02" tags={["New feature", "Webhook"]}>
+  ## Move funds between two of your wallets
+
+  You can now move funds between two custodial wallets you own in the **same currency** with
+  `POST /v1/wallet_transfers`. The response carries the terminal `status` directly —
+  wallet transfers have no `processing` state.
+
+  Both wallets must belong to your integration, be `custodial`, hold the same currency, and have
+  KYC-approved customers. Different customers under the same integration are allowed. The currency
+  must have [`can_wallet_transfer: true`](/api-reference/supported-currencies/list-supported-currencies).
+
+  New webhook category `wallet_transfer` fires `wallet_transfer.success`. See
+  [Webhook events → Wallet transfers](/webhooks/events#wallet-transfers).
+</Update>
+
 <Update label="2026-11-02" tags={["Behavior change"]}>
   ## Rates are only returned for currencies you can see
 
