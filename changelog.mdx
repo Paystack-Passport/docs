@@ -19,14 +19,14 @@ or failure codes. Breaking changes are called out explicitly.
   must have [`can_wallet_transfer: true`](/api-reference/supported-currencies/list-supported-currencies)
   — a new per-currency flag independent of `can_transfer` (which gates outbound payouts).
 
-  Insufficient-funds attempts are persisted as `status: "failed"` with `failure_reason:
-  "insufficient_funds"` rather than returned as 4xx, so they appear on
-  `GET /v1/wallet_transfers`. Any other ledger error is returned as a non-2xx with no row — you
-  can safely retry with the same `reference`: the service pre-flights the reference and, if a
-  prior attempt committed the move, recovers it on retry instead of moving funds twice.
+  Insufficient-funds attempts return `422 ledger_insufficient_funds` without persisting a row
+  — matching how `POST /v1/transfers` reports the same case — so the `reference` stays free
+  for retry once the balance is topped up. Any other ledger error is returned as a non-2xx
+  with no row; you can safely retry with the same `reference`: the service pre-flights the
+  reference and, if a prior attempt committed the move, recovers it on retry instead of moving
+  funds twice.
 
-  New webhook category `wallet_transfer` fires `wallet_transfer.success` and
-  `wallet_transfer.failed`. See
+  New webhook category `wallet_transfer` fires `wallet_transfer.success`. See
   [Webhook events → Wallet transfers](/webhooks/events#wallet-transfers).
 </Update>
 

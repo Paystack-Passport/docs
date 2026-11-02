@@ -5032,7 +5032,7 @@
             "description": "Wallet transfer completed"
           },
           "400": {
-            "description": "Request body failed validation, from_wallet_id/to_wallet_id is not a valid wal_… id, the two wallets are the same, either side is a forwarding wallet, the two wallets hold different currencies, the currency is not enabled for wallet-to-wallet transfers, the amount is zero or has more decimal places than the currency settles, the Idempotency-Key header is malformed, or the ledger refused the request outright (`ledger_validation`). Insufficient-funds attempts are PERSISTED at `status: \"failed\"` rather than returned as 400 — read the body's `failure_reason`.",
+            "description": "Request body failed validation, from_wallet_id/to_wallet_id is not a valid wal_… id, the two wallets are the same, either side is a forwarding wallet, the two wallets hold different currencies, the currency is not enabled for wallet-to-wallet transfers, the amount is zero or has more decimal places than the currency settles, the Idempotency-Key header is malformed, or the ledger refused the request outright (`ledger_validation`).",
             "content": {
               "application/json": {
                 "schema": {
@@ -5160,6 +5160,31 @@
               }
             }
           },
+          "422": {
+            "description": "The source wallet does not hold enough funds to cover the transfer amount. No row is persisted and no webhook fires — the `reference` stays free for retry once the balance is topped up.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/ApiErrorEnvelope"
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string",
+                          "enum": [
+                            "ledger_insufficient_funds"
+                          ]
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          },
           "500": {
             "description": "Either wallet is not fully provisioned, or the service is misconfigured (`configuration_error`). The merchant action is to contact support — the row either did not land or requires manual reconciliation.",
             "content": {
@@ -5216,7 +5241,7 @@
         "tags": [
           "Wallet Transfers"
         ],
-        "description": "Move funds between two custodial wallets you own, in the **same currency**. This is an\nintra-ledger move: a single ledger entry, no external payout rail, no FX leg. The move settles\nin-request and the response carries the terminal `status` directly.\n\nBoth wallets must:\n\n- belong to the API key's integration,\n- be of type `custodial` (forwarding wallets hold no balance),\n- share the same `currency`,\n- hold customers approved for on-ledger activity in that currency.\n\nDifferent customers under the same integration are allowed — Alice's wallet can send to Bob's as\nlong as both belong to your merchant and are KYC-approved for the currency.\n\nThe currency must be explicitly enabled for wallet-to-wallet transfers (`can_wallet_transfer` on\n`GET /v1/currencies`). The flag is independent of `can_transfer`, which gates outbound\nbeneficiary payouts via `POST /v1/transfers`.\n\n### Body\n\n| Field | Required | Description |\n| --- | --- | --- |\n| `from_wallet_id` | Yes | The source wallet (`wal_…`). Must be custodial, must belong to your integration, and must have enough available balance. |\n| `to_wallet_id` | Yes | The destination wallet (`wal_…`). Must be custodial, same currency, same integration. |\n| `amount` | Yes | Decimal string, strictly positive, with at most the currency's decimal places. |\n| `reference` | Yes | Your id, unique per integration. A reused one returns `409 duplicate_resource`. |\n| `metadata` | No | `Record<string, string>`. Echoed back verbatim on the response and the webhook. |\n\nSend an `Idempotency-Key` header so retries are safe.\n\n### Status model\n\nThe move is synchronous — there is no `processing` phase. The response carries one of:\n\n- `success` — the ledger write committed. Funds moved atomically.\n- `failed` — the move was refused for a bounded reason:\n  - `insufficient_funds` — the source wallet's available balance is below the amount.\n\nAn insufficient-funds attempt is PERSISTED as a `failed` row (not returned as 4xx), so it\nappears on `GET /v1/wallet_transfers` and emits a `wallet_transfer.failed` webhook. The merchant\nreference is consumed; retrying the same reference returns `409 duplicate_resource`.\n\nAny other ledger error — an unreachable ledger, an unprovisioned wallet, a provider rejection\nthat could have landed after the move committed — is returned as a non-2xx with no row. The\nmerchant can safely retry with the same reference: the service pre-flights the reference and, if\na prior attempt committed the move but failed to persist, recovers it on retry instead of moving\nfunds twice.\n\nAn unreachable ledger on the short-balance path also surfaces as 502 rather than a persisted\n`failed` row. The service consults the ledger to distinguish a genuine short balance from the\ndrained residue of a prior committed move; when that lookup cannot complete, the service refuses\nto classify until it can, so the merchant retries safely.\n\n### Webhook\n\nSubscribe to the `wallet_transfer` category on `POST /v1/webhooks/endpoints` to receive\n`wallet_transfer.success` and `wallet_transfer.failed` deliveries. The payload mirrors this\nresponse plus the usual webhook envelope.\n",
+        "description": "Move funds between two custodial wallets you own, in the **same currency**. This is an\nintra-ledger move: a single ledger entry, no external payout rail, no FX leg. The move settles\nin-request and the response carries the terminal `status` directly.\n\nBoth wallets must:\n\n- belong to the API key's integration,\n- be of type `custodial` (forwarding wallets hold no balance),\n- share the same `currency`,\n- hold customers approved for on-ledger activity in that currency.\n\nDifferent customers under the same integration are allowed — Alice's wallet can send to Bob's as\nlong as both belong to your merchant and are KYC-approved for the currency.\n\nThe currency must be explicitly enabled for wallet-to-wallet transfers (`can_wallet_transfer` on\n`GET /v1/currencies`). The flag is independent of `can_transfer`, which gates outbound\nbeneficiary payouts via `POST /v1/transfers`.\n\n### Body\n\n| Field | Required | Description |\n| --- | --- | --- |\n| `from_wallet_id` | Yes | The source wallet (`wal_…`). Must be custodial, must belong to your integration, and must have enough available balance. |\n| `to_wallet_id` | Yes | The destination wallet (`wal_…`). Must be custodial, same currency, same integration. |\n| `amount` | Yes | Decimal string, strictly positive, with at most the currency's decimal places. |\n| `reference` | Yes | Your id, unique per integration. A reused one returns `409 duplicate_resource`. |\n| `metadata` | No | `Record<string, string>`. Echoed back verbatim on the response and the webhook. |\n\nSend an `Idempotency-Key` header so retries are safe.\n\n### Status model\n\nThe move is synchronous — there is no `processing` phase. A 200 response always carries\n`status: \"success\"`: the ledger write committed, funds moved atomically. Bounded failures surface\nas 4xx without persisting a row, so the merchant `reference` stays free for retry.\n\n### Errors\n\n| Status | Code | When |\n| --- | --- | --- |\n| 400 | `invalid_input` | Validation (same wallet, forwarding wallet, mismatched currency, currency not enabled for wallet transfer, amount zero / too many decimals). |\n| 400 | `invalid_amount_precision` | Amount exceeds the currency's decimal places. |\n| 409 | `duplicate_resource` | `reference` already used by another wallet transfer for this integration. |\n| 422 | `ledger_insufficient_funds` | The source wallet's available balance is below the amount. **No row is persisted and no webhook fires** — retry safely once the balance is topped up. |\n| 502 | `ledger_unavailable` / `external_service_unavailable` | The ledger is unreachable or returned an unparseable response. Retry safely with the same `reference`: the service pre-flights the reference and, if a prior attempt committed the move but failed to persist, recovers it on retry instead of moving funds twice. |\n\nAn unreachable ledger on the short-balance recovery path also surfaces as 502 rather than a 422.\nThe service consults the ledger to distinguish a genuine short balance from the drained residue\nof a prior committed move; when that lookup cannot complete, the service refuses to classify\nuntil it can, so the merchant retries safely.\n\n### Webhook\n\nSubscribe to the `wallet_transfer` category on `POST /v1/webhooks/endpoints` to receive\n`wallet_transfer.success` deliveries. The payload mirrors this response plus the usual webhook\nenvelope. There is no `wallet_transfer.failed` topic — insufficient-funds attempts throw 422\nwithout persisting a row, so no failure event is emitted.\n",
         "parameters": [
           {
             "in": "header",

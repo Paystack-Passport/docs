@@ -23,7 +23,7 @@ and receive every event in the family.
 | `offramp` | `offramp.created`, `offramp.funds_received`, `offramp.processing`, `offramp.success`, `offramp.failed`, `offramp.returned` |
 | `conversion` | `conversion.created`, `conversion.funds_received`, `conversion.processing`, `conversion.success`, `conversion.failed`, `conversion.returned` |
 | `transfer` | `transfer.processing`, `transfer.success`, `transfer.failed` |
-| `wallet_transfer` | `wallet_transfer.success`, `wallet_transfer.failed` |
+| `wallet_transfer` | `wallet_transfer.success` |
 | `deposit` | `deposit.received`, `deposit.held`, `deposit.confirmed`, `deposit.failed` |
 | `kyc` | `kyc.approved`, `kyc.rejected` |
 
@@ -125,11 +125,12 @@ external payout.
 | Event | Fires when |
 | --- | --- |
 | `wallet_transfer.success` | The move committed. Funds moved from `from_wallet` to `to_wallet`. **Terminal.** |
-| `wallet_transfer.failed` | The move was refused for a bounded reason — today only `insufficient_funds`. The row is still retrievable via `GET /v1/wallet_transfers/{id}`. **Terminal.** |
 
 There is no `wallet_transfer.processing` — the move settles in-request, so the first and only event
-is terminal. If the ledger is unreachable or the response could not be parsed, nothing is written
-and no webhook fires; retry the request with the same `reference`.
+is terminal. Insufficient-funds attempts return `422 ledger_insufficient_funds` without persisting
+a row, so no `.failed` webhook fires; the `reference` stays free for retry once the balance is
+topped up. If the ledger is unreachable or the response could not be parsed, nothing is written
+and no webhook fires either; retry the request with the same `reference`.
 
 ### Deposits
 
