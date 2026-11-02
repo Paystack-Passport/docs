@@ -6,6 +6,30 @@ description: "Notable changes to the GlobalStack API — new endpoints, behavior
 Changes that affect how you integrate: new endpoints and fields, behavior changes, and new error
 or failure codes. Breaking changes are called out explicitly.
 
+<Update label="2026-11-02" tags={["New feature", "Webhook"]}>
+  ## Move funds between two of your wallets
+
+  You can now move funds between two custodial wallets you own in the **same currency** with
+  `POST /v1/wallet_transfers`. The move is intra-ledger: a single atomic write between the two
+  balances, no FX leg, no payout rail. The response carries the terminal `status` directly —
+  wallet transfers have no `processing` state.
+
+  Both wallets must belong to your integration, be `custodial`, hold the same currency, and have
+  KYC-approved customers. Different customers under the same integration are allowed. The currency
+  must have [`can_wallet_transfer: true`](/api-reference/supported-currencies/list-supported-currencies)
+  — a new per-currency flag independent of `can_transfer` (which gates outbound payouts).
+
+  Insufficient-funds attempts are persisted as `status: "failed"` with `failure_reason:
+  "insufficient_funds"` rather than returned as 4xx, so they appear on
+  `GET /v1/wallet_transfers`. Any other ledger error is returned as a non-2xx with no row — you
+  can safely retry with the same `reference`: the service pre-flights the reference and, if a
+  prior attempt committed the move, recovers it on retry instead of moving funds twice.
+
+  New webhook category `wallet_transfer` fires `wallet_transfer.success` and
+  `wallet_transfer.failed`. See
+  [Webhook events → Wallet transfers](/webhooks/events#wallet-transfers).
+</Update>
+
 <Update label="2026-11-02" tags={["Behavior change"]}>
   ## Rates are only returned for currencies you can see
 
