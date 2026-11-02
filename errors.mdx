@@ -133,6 +133,23 @@ The request was not authenticated.
 
 **What to do** — Include a valid Bearer token in the Authorization header.
 
+## IP restriction violated {#ip_restriction_violated}
+
+**HTTP 401** · `ip_restriction_violated`
+
+The API key is valid, but your request came from an address that isn't on the key's IP
+allowlist. Keys can be pinned to up to three IPv4/IPv6 addresses or CIDR blocks at creation
+time; keys with no allowlist accept requests from any address and never return this code.
+
+**Common causes**
+- Calling from a server whose outbound IP changed and is no longer on the allowlist.
+- Calling from a developer machine, CI runner, or a new environment that wasn't pinned.
+- The allowlist has drifted from the real set of callers.
+
+**What to do** — Allowlists are set at key creation and are immutable. Revoke the key, create
+a new one with the correct list, and update the callers. If you need to call from many
+dynamic IPs, create the key without an allowlist.
+
 ## Merchant inactive {#merchant_inactive}
 
 **HTTP 401** · `merchant_inactive`

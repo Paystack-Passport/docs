@@ -2160,6 +2160,11 @@
           "can_convert": {
             "type": "boolean"
           },
+          "can_wallet_transfer": {
+            "type": "boolean",
+            "description": "True when this currency is enabled for intra-wallet transfers between two custodial wallets owned by the same integration. Distinct from `can_transfer`, which gates outbound transfers via FX Engine.",
+            "example": false
+          },
           "requires_access": {
             "type": "boolean",
             "description": "True when this currency is gated behind per-merchant access. Merchants without an active grant must request access via POST /v1/currencies/:code/access-requests before use.",
@@ -2210,6 +2215,7 @@
           "can_transfer",
           "can_deposit",
           "can_convert",
+          "can_wallet_transfer",
           "requires_access",
           "networks",
           "created_at",
@@ -10371,6 +10377,14 @@
             "schema": {
               "type": "string"
             }
+          },
+          {
+            "in": "query",
+            "name": "can_wallet_transfer",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
           }
         ],
         "responses": {
@@ -10632,7 +10646,7 @@
         "tags": [
           "Supported Currencies"
         ],
-        "description": "Get buy and sell rates for a currency against every currency it pairs with directly.\n\n`buy` is the rate when you acquire the listed `currency` using the path code currency. sell is the rate when you dispose of the listed `currency` to receive the path currency. For fiat currencies the only pair is USDC. For USDC you receive one row per supported fiat. Fiat-to-fiat pairs are not listed here (they price through USDC internally).\n\nValues include a small mock spread and deterministic jitter so consecutive calls stay in a narrow band.\n\nRates are quoted as decimal strings with two places — they are not numbers,\nto avoid floating-point precision loss for downstream callers handling\nfinancial amounts.\n\n### Path parameters\n\n- `code` — the currency code (e.g. `NGN`, `USDC`).\n\n### Query parameters\n\n- `country_code` *(optional)* — restricts the rates to a specific country\n  (ISO 3166-1 alpha-2). Useful for currencies that quote differently per\n  market.\n\n### Example\n\n```\nGET /v1/currencies/NGN/rates?country_code=NG\n```\n"
+        "description": "Get buy and sell rates for a currency against every currency it pairs with directly.\n\n`buy` is the rate when you acquire the listed `currency` using the path code currency. sell is the rate when you dispose of the listed `currency` to receive the path currency. For fiat currencies the only pair is USDC. For USDC you receive one row per supported fiat. Fiat-to-fiat pairs are not listed here (they price through USDC internally).\n\nValues include a small mock spread and deterministic jitter so consecutive calls stay in a narrow band.\n\nRates are quoted as decimal strings with two places — they are not numbers,\nto avoid floating-point precision loss for downstream callers handling\nfinancial amounts.\n\n### Path parameters\n\n- `code` — the currency code (e.g. `NGN`, `USDC`). It must be a currency returned by\n  `GET /v1/currencies`; any other code returns `400 invalid_input`.\n\n### Query parameters\n\n- `country_code` *(optional)* — restricts the rates to a specific country\n  (ISO 3166-1 alpha-2). Useful for currencies that quote differently per\n  market.\n\n### Example\n\n```\nGET /v1/currencies/NGN/rates?country_code=NG\n```\n"
       }
     },
     "/v1/currencies/{code}/access-requests": {
