@@ -711,7 +711,7 @@
           },
           "source_type": {
             "type": "string",
-            "description": "Granular origin: onramp | offramp | conversion | transfer | deposit_address | credential | deposit_forward | offramp_reversal.",
+            "description": "Granular origin: onramp | offramp | conversion | transfer | deposit_address | credential | deposit_forward | offramp_reversal | wallet_transfer | deposit_split.",
             "example": "onramp"
           },
           "source_id": {
@@ -744,7 +744,7 @@
           },
           "type": {
             "type": "string",
-            "description": "Coarse category: onramp | offramp | conversion | transfer | deposit.",
+            "description": "Coarse category: onramp | offramp | conversion | transfer | deposit | split.",
             "example": "onramp"
           },
           "status": {
@@ -851,6 +851,116 @@
           "updated_at"
         ]
       },
+      "CreateSplitDto": {
+        "properties": {
+          "name": {
+            "maxLength": 128,
+            "type": "string",
+            "minLength": 1
+          },
+          "type": {
+            "type": "string",
+            "enum": [
+              "percentage",
+              "flat"
+            ]
+          },
+          "shares": {
+            "items": {
+              "$ref": "#/components/schemas/SplitShareDto"
+            },
+            "type": "array",
+            "maxItems": 20,
+            "minItems": 1
+          }
+        },
+        "type": "object",
+        "required": [
+          "name",
+          "type",
+          "shares"
+        ]
+      },
+      "SplitResponse": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "description": "Split external id (prefixed spl_).",
+            "example": "spl_01HXYZABC1234567890ABCDEFG"
+          },
+          "name": {
+            "type": "string",
+            "example": "Marketplace sellers"
+          },
+          "type": {
+            "type": "string",
+            "enum": [
+              "percentage",
+              "flat"
+            ],
+            "example": "percentage"
+          },
+          "currency": {
+            "type": "string",
+            "description": "Currency every share wallet holds.",
+            "example": "USDC"
+          },
+          "active": {
+            "type": "boolean",
+            "description": "Inactive splits cannot be attached to new quotes.",
+            "example": true
+          },
+          "shares": {
+            "items": {
+              "$ref": "#/components/schemas/SplitShareResponse"
+            },
+            "type": "array",
+            "description": "Recipients, in order. Whatever the shares do not assign stays in the destination wallet of the quote the split is attached to."
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time",
+            "example": "2026-11-06T10:00:00.000Z"
+          },
+          "updated_at": {
+            "type": "string",
+            "format": "date-time",
+            "example": "2026-11-06T10:00:00.000Z"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "name",
+          "type",
+          "currency",
+          "active",
+          "shares",
+          "created_at",
+          "updated_at"
+        ]
+      },
+      "UpdateSplitDto": {
+        "properties": {
+          "name": {
+            "maxLength": 128,
+            "type": "string",
+            "minLength": 1
+          },
+          "active": {
+            "type": "boolean"
+          },
+          "shares": {
+            "items": {
+              "$ref": "#/components/schemas/SplitShareDto"
+            },
+            "type": "array",
+            "maxItems": 20,
+            "minItems": 1
+          }
+        },
+        "type": "object"
+      },
       "CreateOnrampQuoteDto": {
         "properties": {
           "wallet_id": {
@@ -911,6 +1021,19 @@
           "reference": {
             "maxLength": 128,
             "type": "string"
+          },
+          "split_code": {
+            "maxLength": 64,
+            "type": "string",
+            "description": "Saved split to attach (spl_…). Send this or `split`, not both."
+          },
+          "split": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/InlineSplitDto"
+              }
+            ],
+            "description": "Inline split to attach. Send this or `split_code`, not both."
           }
         },
         "type": "object",
@@ -1008,6 +1131,15 @@
               ]
             }
           },
+          "split": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/QuoteSplitResponse"
+              }
+            ],
+            "nullable": true,
+            "description": "The split attached to this quote, or null."
+          },
           "expires_at": {
             "type": "string",
             "format": "date-time",
@@ -1095,6 +1227,19 @@
           "reference": {
             "maxLength": 128,
             "type": "string"
+          },
+          "split_code": {
+            "maxLength": 64,
+            "type": "string",
+            "description": "Saved split to attach (spl_…). Send this or `split`, not both."
+          },
+          "split": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/InlineSplitDto"
+              }
+            ],
+            "description": "Inline split to attach. Send this or `split_code`, not both."
           }
         },
         "type": "object",
@@ -1251,6 +1396,15 @@
             "type": "string",
             "format": "date-time",
             "example": "2026-04-16T16:16:03.000Z"
+          },
+          "split": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/SplitStatusResponse"
+              }
+            ],
+            "nullable": true,
+            "description": "The split attached to this operation's quote and how it was applied; null when none."
           }
         },
         "type": "object",
@@ -1460,7 +1614,8 @@
                 "transfer",
                 "deposit",
                 "kyc",
-                "wallet_transfer"
+                "wallet_transfer",
+                "split"
               ]
             },
             "type": "array",
@@ -1495,7 +1650,8 @@
                 "transfer",
                 "deposit",
                 "kyc",
-                "wallet_transfer"
+                "wallet_transfer",
+                "split"
               ]
             },
             "type": "array",
@@ -1559,7 +1715,8 @@
                 "transfer",
                 "deposit",
                 "kyc",
-                "wallet_transfer"
+                "wallet_transfer",
+                "split"
               ]
             },
             "type": "array",
@@ -1611,7 +1768,8 @@
                 "transfer",
                 "deposit",
                 "kyc",
-                "wallet_transfer"
+                "wallet_transfer",
+                "split"
               ]
             },
             "type": "array",
@@ -2856,6 +3014,15 @@
             "type": "string",
             "format": "date-time",
             "example": "2026-04-16T16:16:26.000Z"
+          },
+          "split": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/SplitStatusResponse"
+              }
+            ],
+            "nullable": true,
+            "description": "The split attached to this operation's quote and how it was applied; null when none."
           }
         },
         "type": "object",
@@ -3341,6 +3508,101 @@
           "line_items"
         ]
       },
+      "SplitShareDto": {
+        "properties": {
+          "wallet_id": {
+            "maxLength": 64,
+            "type": "string"
+          },
+          "percentage": {
+            "pattern": "^\\d+(\\.\\d+)?$",
+            "type": "string"
+          },
+          "amount": {
+            "pattern": "^\\d+(\\.\\d+)?$",
+            "type": "string"
+          }
+        },
+        "type": "object",
+        "required": [
+          "wallet_id"
+        ]
+      },
+      "SplitShareResponse": {
+        "properties": {
+          "wallet_id": {
+            "type": "string",
+            "description": "Recipient wallet external id.",
+            "example": "wal_01HXYZ"
+          },
+          "percentage": {
+            "type": "string",
+            "description": "Share of the settled amount, in percent at 2 dp. Present on `percentage` splits only.",
+            "example": "60.00"
+          },
+          "amount": {
+            "type": "string",
+            "description": "Fixed amount at the currency precision. Present on `flat` splits only.",
+            "example": "10.000000"
+          }
+        },
+        "type": "object",
+        "required": [
+          "wallet_id"
+        ]
+      },
+      "InlineSplitDto": {
+        "properties": {
+          "type": {
+            "type": "string",
+            "enum": [
+              "percentage",
+              "flat"
+            ]
+          },
+          "shares": {
+            "items": {
+              "$ref": "#/components/schemas/SplitShareDto"
+            },
+            "type": "array",
+            "maxItems": 20,
+            "minItems": 1
+          }
+        },
+        "type": "object",
+        "required": [
+          "type",
+          "shares"
+        ]
+      },
+      "QuoteSplitResponse": {
+        "properties": {
+          "split_id": {
+            "type": "string",
+            "nullable": true,
+            "example": "spl_01HXYZ"
+          },
+          "type": {
+            "type": "string",
+            "enum": [
+              "percentage",
+              "flat"
+            ],
+            "example": "percentage"
+          },
+          "shares": {
+            "items": {
+              "$ref": "#/components/schemas/SplitShareResponse"
+            },
+            "type": "array"
+          }
+        },
+        "type": "object",
+        "required": [
+          "type",
+          "shares"
+        ]
+      },
       "OnrampCustomerResponse": {
         "properties": {
           "id": {
@@ -3412,6 +3674,61 @@
         "required": [
           "id",
           "currency"
+        ]
+      },
+      "SplitStatusResponse": {
+        "properties": {
+          "split_id": {
+            "type": "string",
+            "nullable": true,
+            "description": "Saved split external id; null for an inline split.",
+            "example": "spl_01HXYZ"
+          },
+          "type": {
+            "type": "string",
+            "enum": [
+              "percentage",
+              "flat"
+            ],
+            "example": "percentage"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "in_progress",
+              "completed",
+              "skipped"
+            ],
+            "description": "`completed` once every leg has its final outcome (a held leg counts)."
+          },
+          "reason": {
+            "type": "string",
+            "nullable": true,
+            "enum": [
+              "insufficient_delivered_amount",
+              "shares_round_to_zero"
+            ]
+          },
+          "shares": {
+            "items": {
+              "$ref": "#/components/schemas/SplitShareResponse"
+            },
+            "type": "array"
+          },
+          "legs": {
+            "items": {
+              "$ref": "#/components/schemas/SplitStatusLegResponse"
+            },
+            "type": "array",
+            "description": "Every credited wallet, the destination's remainder included; empty until applied."
+          }
+        },
+        "type": "object",
+        "required": [
+          "type",
+          "status",
+          "shares",
+          "legs"
         ]
       },
       "OfframpCustomerResponse": {
@@ -4070,6 +4387,49 @@
           "name",
           "amount",
           "currency"
+        ]
+      },
+      "SplitStatusLegResponse": {
+        "properties": {
+          "wallet_id": {
+            "type": "string",
+            "description": "Credited wallet external id.",
+            "example": "wal_01HXYZ"
+          },
+          "amount": {
+            "type": "string",
+            "description": "Amount credited to the wallet, at the currency precision.",
+            "example": "60.000000"
+          },
+          "is_remainder": {
+            "type": "boolean",
+            "description": "True for what the shares left in the quote's destination wallet."
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "processing",
+              "success",
+              "held",
+              "failed"
+            ]
+          },
+          "hold_reason": {
+            "type": "string",
+            "nullable": true,
+            "enum": [
+              "tier_limit",
+              "payin_frozen",
+              "payin_disabled"
+            ]
+          }
+        },
+        "type": "object",
+        "required": [
+          "wallet_id",
+          "amount",
+          "is_remainder",
+          "status"
         ]
       },
       "PaymentInstrumentProviderResponse": {
@@ -6235,7 +6595,7 @@
         "tags": [
           "Transactions"
         ],
-        "description": "Unified view across `onramps`, `offramps`, `conversions`, `deposits`, and `transfers` for reconciliation and history.\n\nFilter by `type`, `source_type` (for deposits), `customer_id`, `wallet_id`, `status`, `source_currency`, and `created_after` / `created_before`. Results are paginated with page and per_page (max 200).\n\n### Filter behavior\n\n- `type` — coarse category. One of `onramp`, `offramp`, `conversion`,\n  `transfer`, `deposit`.\n- `source_type` — granular origin. One of  `deposit_address`, `credential`,\n  `deposit_forward`.\n- `customer_id` — restricts to a single customer. Must be a valid `cust_…` id.\n  An unknown id returns an empty page (`200`, `data: []`),\n  not `404`.\n- `wallet_id` — matches transactions where the wallet is either the source\n  (`from_wallet_id`) or the destination (`to_wallet_id`). Must be a valid\n  `wal_…` id. Unknown returns an empty page.\n- `status` — one of `created`, `awaiting_deposit`, `processing`,\n  `temporary_failure`, `success`, `failed`, `returned`, `received`, `confirmed`.\n- `source_currency` — exact currency-code match (e.g. `NGN`, `USDC`).\n- `created_after` / `created_before` — either a `YYYY-MM-DD` calendar date (UTC,\n  inclusive: `created_after` matches at or after `00:00:00`, `created_before` at\n  or before `23:59:59.999`) or a full ISO 8601 UTC timestamp ending in `Z`\n  (e.g. `2026-04-16T16:16:03Z`), used as the exact instant.\n\n### Pagination\n\n- `page` — 1-indexed page number. Defaults to `1`. Between `1` and `1,000,000`.\n- `per_page` — page size. Defaults to `50`. Between `1` and `200`.\n"
+        "description": "Unified view across `onramps`, `offramps`, `conversions`, `deposits`, `transfers`, and split payment shares for reconciliation and history.\n\nFilter by `type`, `source_type`, `customer_id`, `wallet_id`, `status`, `source_currency`, and `created_after` / `created_before`. Results are paginated with page and per_page (max 200).\n\n### Filter behavior\n\n- `type` — coarse category. One of `onramp`, `offramp`, `conversion`,\n  `transfer`, `deposit`, `split`. A `split` transaction is one recipient's\n  share of a split deposit: a child of the deposit transaction, moving that\n  share from the destination wallet to the recipient wallet.\n- `source_type` — granular origin. One of `onramp`, `offramp`, `conversion`,\n  `transfer`, `deposit_address`, `credential`, `deposit_forward`,\n  `offramp_reversal`, `wallet_transfer`, `deposit_split`.\n- `customer_id` — restricts to a single customer. Must be a valid `cust_…` id.\n  An unknown id returns an empty page (`200`, `data: []`),\n  not `404`.\n- `wallet_id` — matches transactions where the wallet is either the source\n  (`from_wallet_id`) or the destination (`to_wallet_id`). Must be a valid\n  `wal_…` id. Unknown returns an empty page.\n- `status` — one of `created`, `awaiting_deposit`, `processing`,\n  `temporary_failure`, `success`, `failed`, `returned`, `received`, `confirmed`.\n- `source_currency` — exact currency-code match (e.g. `NGN`, `USDC`).\n- `created_after` / `created_before` — either a `YYYY-MM-DD` calendar date (UTC,\n  inclusive: `created_after` matches at or after `00:00:00`, `created_before` at\n  or before `23:59:59.999`) or a full ISO 8601 UTC timestamp ending in `Z`\n  (e.g. `2026-04-16T16:16:03Z`), used as the exact instant.\n\n### Split transactions\n\nThe list returns root transactions by default, and `split` transactions are\nchildren of their deposit. Pass `include_related=true` to see them: either\nfiltered directly (`type=split&include_related=true`, e.g. with a recipient's\n`wallet_id`), or embedded under the deposit in `related_transactions`. The\ndeposit transaction itself still shows the full amount credited to the\ndestination wallet.\n\n### Pagination\n\n- `page` — 1-indexed page number. Defaults to `1`. Between `1` and `1,000,000`.\n- `per_page` — page size. Defaults to `50`. Between `1` and `200`.\n"
       }
     },
     "/v1/transactions/{transactionId}": {
@@ -6369,18 +6729,18 @@
         "description": "Fetch a transaction by its txn_… external id, scoped to the authenticated merchant. Returns 404 not_found when the id is unknown."
       }
     },
-    "/v1/onramps/quotes": {
+    "/v1/splits": {
       "post": {
-        "operationId": "QuoteController.createOnrampQuote",
+        "operationId": "SplitController.create",
         "requestBody": {
           "content": {
             "application/json": {
               "schema": {
-                "$ref": "#/components/schemas/CreateOnrampQuoteDto"
+                "$ref": "#/components/schemas/CreateSplitDto"
               }
             }
           },
-          "description": "CreateOnrampQuoteDto",
+          "description": "CreateSplitDto",
           "required": false
         },
         "responses": {
@@ -6401,10 +6761,10 @@
                       "properties": {
                         "message": {
                           "type": "string",
-                          "example": "Quote created successfully"
+                          "example": "Split created successfully"
                         },
                         "data": {
-                          "$ref": "#/components/schemas/QuoteResponse"
+                          "$ref": "#/components/schemas/SplitResponse"
                         },
                         "meta": {
                           "$ref": "#/components/schemas/ApiResponseMetaSchema"
@@ -6415,10 +6775,327 @@
                 }
               }
             },
-            "description": "Quote created successfully"
+            "description": "Split created successfully"
           },
           "400": {
-            "description": "Request body failed validation (wallet_id / source_currency / country_code / source_amount / target_amount / source_network / destination_network / phone_number / provider_id / full_name), the wallet_id is not a valid wal_… id, provider_id is not a valid prov_… id, source_amount or target_amount is not a positive decimal, neither or both of source_amount and target_amount were provided (exactly one is required), source_currency is not supported (globally, or not supported in the supplied country_code), source_currency exists in multiple countries and country_code is required to disambiguate, destination_network is not supported by the wallet currency, source_network is mobile_money but no payer phone is resolvable or provider_id is missing, full_name was supplied on a non-mobile-money onramp, full_name is required for mobile_money onramps when phone_number is supplied or the customer is a business, the customer profile is missing a KYC field required for the route (phone, address, date of birth, id document, or business registration number), the provider rejected the conversion request, or the Idempotency-Key header is malformed",
+            "description": "Request body failed validation: shares has fewer than 1 or more than 20 entries, a wallet appears twice, a share carries the wrong field for the split type (`percentage` vs `amount`), a wallet is a forwarding wallet, the wallets hold different currencies, a value is zero, has too many decimal places (2 for percentages, the currency precision for amounts), or percentages add up to more than 100.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/ApiErrorEnvelope"
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string",
+                          "enum": [
+                            "invalid_input",
+                            "bad_request"
+                          ]
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized — invalid or missing API key",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/ApiErrorEnvelope"
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string",
+                          "enum": [
+                            "authentication_failed"
+                          ]
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "A share wallet_id was not found, or it belongs to a different integration",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/ApiErrorEnvelope"
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string",
+                          "enum": [
+                            "not_found"
+                          ]
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict — `idempotency_conflict` (Idempotency-Key reused with a different body) or `idempotency_in_progress` (same Idempotency-Key still in flight).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/ApiErrorEnvelope"
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string",
+                          "enum": [
+                            "idempotency_conflict",
+                            "idempotency_in_progress"
+                          ]
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "A share wallet's currency is not configured",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/ApiErrorEnvelope"
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string",
+                          "enum": [
+                            "configuration_error"
+                          ]
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        },
+        "summary": "Create a split",
+        "tags": [
+          "Splits"
+        ],
+        "description": "Create a reusable split: a list of wallets and the share each receives when a payment settles.\nA split does nothing on its own: pass its `id` as `split_code` when you create an onramp or conversion quote.\n\nAll share wallets must belong to your integration, be `custodial`, and hold the same currency.\nWhatever the shares do not assign stays in the quote's destination wallet.\n\n### Body\n\n| Field | Required | Description |\n| --- | --- | --- |\n| `name` | Yes | A label, up to 128 characters. Not unique. |\n| `type` | Yes | `percentage` or `flat`. Cannot be changed later. |\n| `shares` | Yes | 1–20 entries of `{ wallet_id, percentage }` (percentage splits) or `{ wallet_id, amount }` (flat splits). |\n\n- `percentage`: decimal string, greater than 0, at most 2 decimal places; all percentages add up to 100 or less.\n- `amount`: decimal string, greater than 0, at most the currency's decimal places.\n\nSend an `Idempotency-Key` header so retries are safe.\n",
+        "parameters": [
+          {
+            "in": "header",
+            "name": "Idempotency-Key",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9_\\-]{8,255}$"
+            },
+            "description": "Optional client-supplied key. Identical key + identical body within 24h replays the original response. Identical key + different body returns 409 idempotency_conflict. The hash is over raw bytes — clients retrying must send the byte-identical body; a re-serialised JSON payload will produce a different hash and a 409. Strongly recommended for retry-safe clients."
+          }
+        ]
+      },
+      "get": {
+        "operationId": "SplitController.list",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "active",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "page",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "per_page",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/ApiSuccessEnvelope"
+                    },
+                    {
+                      "type": "object",
+                      "required": [
+                        "data",
+                        "meta"
+                      ],
+                      "properties": {
+                        "message": {
+                          "type": "string",
+                          "example": "Splits fetched successfully"
+                        },
+                        "data": {
+                          "type": "array",
+                          "items": {
+                            "$ref": "#/components/schemas/SplitResponse"
+                          }
+                        },
+                        "meta": {
+                          "$ref": "#/components/schemas/ApiPaginatedResponseMetaSchema"
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            },
+            "description": "Splits fetched successfully"
+          },
+          "400": {
+            "description": "active is not 'true'/'false', or page/per_page is non-numeric or out of range",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/ApiErrorEnvelope"
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string",
+                          "enum": [
+                            "invalid_input"
+                          ]
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized — invalid or missing API key",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/ApiErrorEnvelope"
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string",
+                          "enum": [
+                            "authentication_failed"
+                          ]
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        },
+        "summary": "List splits",
+        "tags": [
+          "Splits"
+        ],
+        "description": "List your splits, newest first. Filter with `active=true` or `active=false`. Paginate with `page`\nand `per_page` (default 50, maximum 200).\n"
+      }
+    },
+    "/v1/splits/{splitId}": {
+      "get": {
+        "operationId": "SplitController.get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "splitId",
+            "required": true,
+            "schema": {
+              "pattern": "[^\\/#\\?]+?",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/ApiSuccessEnvelope"
+                    },
+                    {
+                      "type": "object",
+                      "required": [
+                        "data",
+                        "meta"
+                      ],
+                      "properties": {
+                        "message": {
+                          "type": "string",
+                          "example": "Split fetched successfully"
+                        },
+                        "data": {
+                          "$ref": "#/components/schemas/SplitResponse"
+                        },
+                        "meta": {
+                          "$ref": "#/components/schemas/ApiResponseMetaSchema"
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            },
+            "description": "Split fetched successfully"
+          },
+          "400": {
+            "description": "The id path segment is not a valid spl_… id",
             "content": {
               "application/json": {
                 "schema": {
@@ -6468,7 +7145,304 @@
             }
           },
           "404": {
-            "description": "Wallet not found in this integration",
+            "description": "Split not found, or it belongs to a different integration",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/ApiErrorEnvelope"
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string",
+                          "enum": [
+                            "not_found"
+                          ]
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        },
+        "summary": "Fetch a split",
+        "tags": [
+          "Splits"
+        ],
+        "description": "Fetch one split by its `spl_…` id.\n"
+      },
+      "patch": {
+        "operationId": "SplitController.update",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "splitId",
+            "required": true,
+            "schema": {
+              "pattern": "[^\\/#\\?]+?",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateSplitDto"
+              }
+            }
+          },
+          "description": "UpdateSplitDto",
+          "required": false
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/ApiSuccessEnvelope"
+                    },
+                    {
+                      "type": "object",
+                      "required": [
+                        "data",
+                        "meta"
+                      ],
+                      "properties": {
+                        "message": {
+                          "type": "string",
+                          "example": "Split updated successfully"
+                        },
+                        "data": {
+                          "$ref": "#/components/schemas/SplitResponse"
+                        },
+                        "meta": {
+                          "$ref": "#/components/schemas/ApiResponseMetaSchema"
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            },
+            "description": "Split updated successfully"
+          },
+          "400": {
+            "description": "The body is empty, carries an immutable or unknown field (e.g. `type`), or the replacement shares fail validation or use a currency other than the split's. Request body failed validation: shares has fewer than 1 or more than 20 entries, a wallet appears twice, a share carries the wrong field for the split type (`percentage` vs `amount`), a wallet is a forwarding wallet, the wallets hold different currencies, a value is zero, has too many decimal places (2 for percentages, the currency precision for amounts), or percentages add up to more than 100.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/ApiErrorEnvelope"
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string",
+                          "enum": [
+                            "invalid_input"
+                          ]
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized — invalid or missing API key",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/ApiErrorEnvelope"
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string",
+                          "enum": [
+                            "authentication_failed"
+                          ]
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Split or a share wallet not found, or it belongs to a different integration",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/ApiErrorEnvelope"
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string",
+                          "enum": [
+                            "not_found"
+                          ]
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "A replacement share wallet's currency is not configured",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/ApiErrorEnvelope"
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string",
+                          "enum": [
+                            "configuration_error"
+                          ]
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        },
+        "summary": "Update a split",
+        "tags": [
+          "Splits"
+        ],
+        "description": "Update a split's `name`, `active` flag or `shares`. Send at least one field.\n\n- `shares` replaces the whole list and is validated exactly as on create. The new wallets must hold\n  the split's currency.\n- `type` and the currency cannot be changed — create a new split instead.\n- Changes never affect quotes already created with this split: a quote keeps a copy of the split as\n  it was when the quote was created.\n"
+      }
+    },
+    "/v1/onramps/quotes": {
+      "post": {
+        "operationId": "QuoteController.createOnrampQuote",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateOnrampQuoteDto"
+              }
+            }
+          },
+          "description": "CreateOnrampQuoteDto",
+          "required": false
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/ApiSuccessEnvelope"
+                    },
+                    {
+                      "type": "object",
+                      "required": [
+                        "data",
+                        "meta"
+                      ],
+                      "properties": {
+                        "message": {
+                          "type": "string",
+                          "example": "Quote created successfully"
+                        },
+                        "data": {
+                          "$ref": "#/components/schemas/QuoteResponse"
+                        },
+                        "meta": {
+                          "$ref": "#/components/schemas/ApiResponseMetaSchema"
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            },
+            "description": "Quote created successfully"
+          },
+          "400": {
+            "description": "Request body failed validation (wallet_id / source_currency / country_code / source_amount / target_amount / source_network / destination_network / phone_number / provider_id / full_name), the wallet_id is not a valid wal_… id, provider_id is not a valid prov_… id, source_amount or target_amount is not a positive decimal, neither or both of source_amount and target_amount were provided (exactly one is required), source_currency is not supported (globally, or not supported in the supplied country_code), source_currency exists in multiple countries and country_code is required to disambiguate, destination_network is not supported by the wallet currency, source_network is mobile_money but no payer phone is resolvable or provider_id is missing, full_name was supplied on a non-mobile-money onramp, full_name is required for mobile_money onramps when phone_number is supplied or the customer is a business, the customer profile is missing a KYC field required for the route (phone, address, date of birth, id document, or business registration number), the provider rejected the conversion request, or the Idempotency-Key header is malformed. A split adds: `invalid_input` for both split_code and split sent, a non-custodial or wrong-currency wallet, the destination wallet as a recipient, an inactive saved split, a flat split without or above target_amount, a wallet listed twice, a zero or over-precise share, or percentages over 100; `bad_request` for an inline split body that fails validation (1–20 shares, the split type, the share fields).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/ApiErrorEnvelope"
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string",
+                          "enum": [
+                            "invalid_input",
+                            "bad_request"
+                          ]
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized — invalid or missing API key",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/ApiErrorEnvelope"
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string",
+                          "enum": [
+                            "authentication_failed"
+                          ]
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Wallet not found in this integration, or the split_code or a split share wallet was not found",
             "content": {
               "application/json": {
                 "schema": {
@@ -6548,7 +7522,7 @@
         "tags": [
           "Quotes"
         ],
-        "description": "Price an onramp: local currency paid in, credited as crypto to a wallet. The quote is `active`\nuntil `expires_at`. Execute it with `POST /v1/onramps` before then.\n\n### Body\n\n| Field | Required | Description |\n| --- | --- | --- |\n| `wallet_id` | Yes | The crypto wallet to credit. Its currency, e.g. `USDC`, is the destination. |\n| `source_currency` | Yes | The fiat being paid in, e.g. `NGN`. |\n| `source_network` | Yes | How it's paid: `bank` or `mobile_money`. |\n| `source_amount` or `target_amount` | Yes | Send exactly one. Fiat paid in, **or** crypto to receive. Positive decimal strings. With `target_amount`, the quote returns the `source_amount` needed. |\n| `country_code` | No | Needed when `source_currency` exists in several countries. It doesn't have to match the customer's country. |\n| `destination_network` | No | The chain. Defaults to the wallet's newest active credential, or `solana` if it has none. |\n| `phone_number` | No | The payer's phone, in E.164 format. |\n| `provider_id` | No | Required for mobile money. The payer's operator (`prov_…`). |\n| `full_name` | No | The phone owner's name, 2–128 chars. Sometimes required for mobile money: see below. |\n| `reference` | No | Echoed back on the quote. |\n\n### Mobile money\n\nWhen `source_network` is `mobile_money`:\n\n- A payer phone is required: either `phone_number`, or a phone on the customer's profile.\n- `provider_id` is required.\n- `full_name` is required if you send `phone_number` (the payer may not be the customer) or the\n  customer is a business. It's sent to the network as the sender name.\n\n`full_name` on a non-mobile-money onramp is rejected.\n\n### Errors\n\n| Status | Code | When |\n| --- | --- | --- |\n| 400 | `bad_request` / `invalid_input` | Both or neither amount sent, an unsupported currency or network, an ambiguous currency without `country_code`, a missing mobile money field, or a customer profile missing a field the route needs. |\n\n### Example\n\n```\nPOST /v1/onramps/quotes\n{\n  \"wallet_id\": \"wal_01HXYZ…\",\n  \"source_currency\": \"NGN\",\n  \"source_network\": \"bank\",\n  \"source_amount\": \"50000\"\n}\n```\n",
+        "description": "Price an onramp: local currency paid in, credited as crypto to a wallet. The quote is `active`\nuntil `expires_at`. Execute it with `POST /v1/onramps` before then.\n\n### Body\n\n| Field | Required | Description |\n| --- | --- | --- |\n| `wallet_id` | Yes | The crypto wallet to credit. Its currency, e.g. `USDC`, is the destination. |\n| `source_currency` | Yes | The fiat being paid in, e.g. `NGN`. |\n| `source_network` | Yes | How it's paid: `bank` or `mobile_money`. |\n| `source_amount` or `target_amount` | Yes | Send exactly one. Fiat paid in, **or** crypto to receive. Positive decimal strings. With `target_amount`, the quote returns the `source_amount` needed. |\n| `country_code` | No | Needed when `source_currency` exists in several countries. It doesn't have to match the customer's country. |\n| `destination_network` | No | The chain. Defaults to the wallet's newest active credential, or `solana` if it has none. |\n| `phone_number` | No | The payer's phone, in E.164 format. |\n| `provider_id` | No | Required for mobile money. The payer's operator (`prov_…`). |\n| `full_name` | No | The phone owner's name, 2–128 chars. Sometimes required for mobile money: see below. |\n| `reference` | No | Echoed back on the quote. |\n| `split_code` | No | A saved split to apply (`spl_…`). See **Splits** below. |\n| `split` | No | An inline split to apply. See **Splits** below. |\n\n### Mobile money\n\nWhen `source_network` is `mobile_money`:\n\n- A payer phone is required: either `phone_number`, or a phone on the customer's profile.\n- `provider_id` is required.\n- `full_name` is required if you send `phone_number` (the payer may not be the customer) or the\n  customer is a business. It's sent to the network as the sender name.\n\n`full_name` on a non-mobile-money onramp is rejected.\n\n### Splits\n\nAttach a split to share what the quote's destination wallet receives between several wallets\n(for example, a marketplace paying its sellers). Send **either** `split_code`, a saved split's\nid (`spl_…`, see `POST /v1/splits`), **or** `split`, the same object inline (`type` plus\n`shares`). Not both.\n\n- Recipients must be **custodial** wallets of your integration that hold the destination\n  currency.\n- The destination wallet must be custodial too, and must not be a recipient: it keeps the\n  remainder.\n- `percentage` shares are percentages of the amount actually delivered. `flat` shares are fixed\n  amounts and need `target_amount` on the quote; together they must not exceed it.\n- The quote keeps a copy of the split, so editing or deactivating a saved split later never\n  changes a quote that already uses it.\n\nThe split is applied when the deposit settles. If the delivered amount can't cover a flat split,\nor every share rounds to zero, nothing is split and the whole amount stays on the destination\nwallet; the operation's `split.status` is then `skipped`, with the `reason`.\n\n### Errors\n\n| Status | Code | When |\n| --- | --- | --- |\n| 400 | `bad_request` / `invalid_input` | Both or neither amount sent, an unsupported currency or network, an ambiguous currency without `country_code`, a missing mobile money field, or a customer profile missing a field the route needs. |\n| 400 | `invalid_input` | Splits: both `split_code` and `split` sent, a non-custodial wallet, split wallets in a different currency from the destination wallet, the destination wallet listed as a recipient, an inactive saved split, a flat split without `target_amount` or above it; an inline `split` with a wallet listed twice, `percentage` on a flat split or `amount` on a percentage split, a zero value or too many decimals, or percentages adding up to more than 100. |\n| 400 | `bad_request` | Splits: an inline `split` body that fails validation, e.g. fewer than 1 or more than 20 shares, or an unknown `type`. |\n| 404 | `not_found` | Splits: an unknown `split_code`, or a share wallet that isn't yours. |\n\n### Example\n\n```\nPOST /v1/onramps/quotes\n{\n  \"wallet_id\": \"wal_01HXYZ…\",\n  \"source_currency\": \"NGN\",\n  \"source_network\": \"bank\",\n  \"source_amount\": \"50000\"\n}\n```\n",
         "parameters": [
           {
             "in": "header",
@@ -6782,7 +7756,7 @@
             "description": "Quote created successfully"
           },
           "400": {
-            "description": "Request body failed validation (source_wallet_id / destination_wallet_id / source_amount / target_amount), a wallet id is not a valid wal_… id, source_amount or target_amount is not a positive decimal, neither or both of source_amount and target_amount were provided (exactly one is required), source_amount has more decimal places than the source currency settles (`invalid_amount_precision` — USDC supports at most 2, trailing zeros allowed; not enforced when target_amount drives the quote), the source and destination currencies are the same, a fiat wallet has no active credential to derive its network from, or the Idempotency-Key header is malformed",
+            "description": "Request body failed validation (source_wallet_id / destination_wallet_id / source_amount / target_amount), a wallet id is not a valid wal_… id, source_amount or target_amount is not a positive decimal, neither or both of source_amount and target_amount were provided (exactly one is required), source_amount has more decimal places than the source currency settles (`invalid_amount_precision` — USDC supports at most 2, trailing zeros allowed; not enforced when target_amount drives the quote), the source and destination currencies are the same, a fiat wallet has no active credential to derive its network from, or the Idempotency-Key header is malformed. A split adds: `invalid_input` for both split_code and split sent, a non-custodial or wrong-currency wallet, the destination wallet as a recipient, an inactive saved split, a flat split without or above target_amount, a wallet listed twice, a zero or over-precise share, or percentages over 100; `bad_request` for an inline split body that fails validation (1–20 shares, the split type, the share fields). A split also needs a crypto destination.",
             "content": {
               "application/json": {
                 "schema": {
@@ -6797,7 +7771,8 @@
                           "type": "string",
                           "enum": [
                             "invalid_input",
-                            "invalid_amount_precision"
+                            "invalid_amount_precision",
+                            "bad_request"
                           ]
                         }
                       }
@@ -6833,7 +7808,7 @@
             }
           },
           "404": {
-            "description": "The source or destination wallet was not found in this integration",
+            "description": "The source or destination wallet was not found in this integration, or the split_code or a split share wallet was not found",
             "content": {
               "application/json": {
                 "schema": {
@@ -6888,7 +7863,7 @@
         "tags": [
           "Quotes"
         ],
-        "description": "Creates a **conversion quote** — a short-lived, priced offer to convert the balance\nof one wallet (`source_wallet_id`) into another wallet (`destination_wallet_id`).\n\nThe source wallet's currency (e.g. `USDC`) is the source; the destination wallet's\ncurrency (e.g. `NGN`) is the destination — the two currencies must differ. `source_network` and `destination_network` are each derived from the\nrespective wallet's newest active credential, defaulting to `solana` when a crypto wallet has no active credential (a fiat wallet with no active credential is\nrejected). `reference` is optional and echoed back as the quote `reference`. The\nresponse carries the source wallet in `wallet_id` and the destination wallet in\n`destination_wallet_id`.\n\nThe quote is created with `status: active` and an `expires_at` in the near future.\n\nSpecify **either** `source_amount` (the source-wallet amount converted) **or**\n`target_amount` (the amount credited to the destination wallet) — exactly one, each a\npositive decimal string. Providing both, or neither, is rejected with a 400. When\n`target_amount` is supplied, we compute and return the required `source_amount` on the quote.\n\nUSDC amounts settle in whole US cents: `source_amount` may carry at most **2 significant\ndecimal places**. Trailing zeros are fine — `2.980000` is accepted, `2.980228` is rejected\nwith `400 invalid_amount_precision`. This precision check applies only when you supply\n`source_amount`; a `target_amount`-driven quote is not constrained this way.\n",
+        "description": "Creates a **conversion quote** — a short-lived, priced offer to convert the balance\nof one wallet (`source_wallet_id`) into another wallet (`destination_wallet_id`).\n\nThe source wallet's currency (e.g. `USDC`) is the source; the destination wallet's\ncurrency (e.g. `NGN`) is the destination — the two currencies must differ. `source_network` and `destination_network` are each derived from the\nrespective wallet's newest active credential, defaulting to `solana` when a crypto wallet has no active credential (a fiat wallet with no active credential is\nrejected). `reference` is optional and echoed back as the quote `reference`. The\nresponse carries the source wallet in `wallet_id` and the destination wallet in\n`destination_wallet_id`.\n\nThe quote is created with `status: active` and an `expires_at` in the near future.\n\nSpecify **either** `source_amount` (the source-wallet amount converted) **or**\n`target_amount` (the amount credited to the destination wallet) — exactly one, each a\npositive decimal string. Providing both, or neither, is rejected with a 400. When\n`target_amount` is supplied, we compute and return the required `source_amount` on the quote.\n\nUSDC amounts settle in whole US cents: `source_amount` may carry at most **2 significant\ndecimal places**. Trailing zeros are fine — `2.980000` is accepted, `2.980228` is rejected\nwith `400 invalid_amount_precision`. This precision check applies only when you supply\n`source_amount`; a `target_amount`-driven quote is not constrained this way.\n\n### Splits\n\nAttach a split to share what the quote's destination wallet receives between several wallets\n(for example, a marketplace paying its sellers). Send **either** `split_code`, a saved split's\nid (`spl_…`, see `POST /v1/splits`), **or** `split`, the same object inline (`type` plus\n`shares`). Not both.\n\n- Recipients must be **custodial** wallets of your integration that hold the destination\n  currency.\n- The destination wallet must be custodial too, and must not be a recipient: it keeps the\n  remainder.\n- `percentage` shares are percentages of the amount actually delivered. `flat` shares are fixed\n  amounts and need `target_amount` on the quote; together they must not exceed it.\n- A conversion can be split only when its destination is a crypto currency.\n- The quote keeps a copy of the split, so editing or deactivating a saved split later never\n  changes a quote that already uses it.\n\nThe split is applied when the deposit settles. If the delivered amount can't cover a flat split,\nor every share rounds to zero, nothing is split and the whole amount stays on the destination\nwallet; the operation's `split.status` is then `skipped`, with the `reason`.\n\nSplit errors: `400 invalid_input` for both `split_code` and `split` sent, a non-custodial wallet, split wallets in a different currency from the destination wallet, the destination wallet listed as a recipient, a non-crypto destination, an inactive saved split, a flat split without `target_amount` or above it, or an inline `split` with a wallet listed twice, `percentage` on a flat split or `amount` on a percentage split, a zero value or too many decimals, or percentages adding up to more than 100; `400 bad_request` for an inline `split` body that fails validation (fewer than 1 or more than 20 shares, an unknown `type`); `404 not_found` for an unknown `split_code` or a share wallet that isn't yours.\n",
         "parameters": [
           {
             "in": "header",
@@ -7031,7 +8006,7 @@
         "tags": [
           "Quotes"
         ],
-        "description": "Fetch a quote by ID. Use this after you create a quote with `POST /v1/onramps/quotes`, `POST /v1/offramps/quotes`, or `POST /v1/conversions/quotes`.\n\nWe return the full quote object for any lifecycle state (`active`, `consumed`, or `expired`).\n\n### Errors\n\n- `400 invalid_input` — `quote_id` does not start with `quo_`.\n- `404 not_found` — returned for **all** lookup misses.\n\n### Example\n\n```\nGET /v1/quotes/quo_01KPBK123456789ABCDEFG\n```\n"
+        "description": "Fetch a quote by ID. Use this after you create a quote with `POST /v1/onramps/quotes`, `POST /v1/offramps/quotes`, or `POST /v1/conversions/quotes`.\n\nWe return the full quote object for any lifecycle state (`active`, `consumed`, or `expired`).\n\n`split` is the split attached to the quote (`split_id`, `type` and `shares`), or `null`. It is a\ncopy taken when the quote was created.\n\n### Errors\n\n- `400 invalid_input` — `quote_id` does not start with `quo_`.\n- `404 not_found` — returned for **all** lookup misses.\n\n### Example\n\n```\nGET /v1/quotes/quo_01KPBK123456789ABCDEFG\n```\n"
       }
     },
     "/v1/onramps": {
@@ -7190,7 +8165,7 @@
         "tags": [
           "Onramps"
         ],
-        "description": "Execute an onramp from a previously created **onramp quote** to convert external fiat into crypto in a GlobalStack wallet.\n\nSupply the `quote_id` returned by `POST /v1/onramps/quotes`. `source_currency` and\n`destination_currency` are optional; when provided they must match the quote's\ncurrencies exactly, otherwise the request is rejected with `400 invalid_input`.\n\nAn expired quote returns `409 invalid_status`.\n\nSend an `Idempotency-Key` header to make retries safe: an identical key with an\nidentical body within 24h replays the original response.\n",
+        "description": "Execute an onramp from a previously created **onramp quote** to convert external fiat into crypto in a GlobalStack wallet.\n\nSupply the `quote_id` returned by `POST /v1/onramps/quotes`. `source_currency` and\n`destination_currency` are optional; when provided they must match the quote's\ncurrencies exactly, otherwise the request is rejected with `400 invalid_input`.\n\nAn expired quote returns `409 invalid_status`.\n\nSend an `Idempotency-Key` header to make retries safe: an identical key with an\nidentical body within 24h replays the original response.\n\nIf the quote carries a split, the response's `split` block starts `in_progress`; it is applied when\nthe deposit settles (see `GET` by id).\n",
         "parameters": [
           {
             "in": "header",
@@ -7348,7 +8323,7 @@
         "tags": [
           "Onramps"
         ],
-        "description": "List onramps, newest first. Results are scoped to\nthe authenticated integration.\n\nAll filters are optional. With no filters every onramp for the integration is\nreturned (paginated).\n\n### Filter behavior\n\n- `customer_id` — restricts to onramps for a single customer. Must be a valid\n  `cust_…` id. An unknown id returns an empty page (`200`,\n  `data: []`), not `404`.\n- `status` — restricts to a single lifecycle status. One of `created`,\n  `awaiting_deposit`, `processing`, `temporary_failure`, `success`, `failed`,\n  `returned`.\n- `created_after` / `created_before` — either a `YYYY-MM-DD` calendar date (UTC,\n  inclusive: `created_after` matches at or after `00:00:00`, `created_before` at\n  or before `23:59:59.999`) or a full ISO 8601 UTC timestamp ending in `Z`\n  (e.g. `2026-04-16T16:16:03Z`), used as the exact instant.\n\n### Pagination\n\n- `page` — 1-indexed page number. Defaults to `1`. Must be between `1` and `1,000,000`.\n- `per_page` — page size. Defaults to `50`. Must be between `1` and `200`.\n\nThe response carries pagination metadata under `meta`:\n\n```json\n\"meta\": {\n  \"request_id\": \"req_...\",\n  \"timestamp\": \"...\",\n  \"version\": \"1\",\n  \"page\": 1,\n  \"per_page\": 50,\n  \"total\": 137,\n  \"has_more\": true\n}\n```\n\n`has_more` is `true` when at least one more page is available.\n\n### Ordering\n\nResults are sorted by `created_at DESC, id DESC` (newest first, deterministic on\nties).\n\n### Example\n\n```\nGET /v1/onramps?status=awaiting_deposit&customer_id=cust_seed_alice&page=1&per_page=50\n```\n"
+        "description": "List onramps, newest first. Results are scoped to\nthe authenticated integration.\n\nAll filters are optional. With no filters every onramp for the integration is\nreturned (paginated).\n\n### Filter behavior\n\n- `customer_id` — restricts to onramps for a single customer. Must be a valid\n  `cust_…` id. An unknown id returns an empty page (`200`,\n  `data: []`), not `404`.\n- `status` — restricts to a single lifecycle status. One of `created`,\n  `awaiting_deposit`, `processing`, `temporary_failure`, `success`, `failed`,\n  `returned`.\n- `created_after` / `created_before` — either a `YYYY-MM-DD` calendar date (UTC,\n  inclusive: `created_after` matches at or after `00:00:00`, `created_before` at\n  or before `23:59:59.999`) or a full ISO 8601 UTC timestamp ending in `Z`\n  (e.g. `2026-04-16T16:16:03Z`), used as the exact instant.\n\n### Pagination\n\n- `page` — 1-indexed page number. Defaults to `1`. Must be between `1` and `1,000,000`.\n- `per_page` — page size. Defaults to `50`. Must be between `1` and `200`.\n\nThe response carries pagination metadata under `meta`:\n\n```json\n\"meta\": {\n  \"request_id\": \"req_...\",\n  \"timestamp\": \"...\",\n  \"version\": \"1\",\n  \"page\": 1,\n  \"per_page\": 50,\n  \"total\": 137,\n  \"has_more\": true\n}\n```\n\n`has_more` is `true` when at least one more page is available.\n\n### Ordering\n\nResults are sorted by `created_at DESC, id DESC` (newest first, deterministic on\nties).\n\n### Example\n\n```\nGET /v1/onramps?status=awaiting_deposit&customer_id=cust_seed_alice&page=1&per_page=50\n```\n\nEach item carries the `split` block described on `GET` by id.\n"
       }
     },
     "/v1/onramps/{onrampId}": {
@@ -7479,7 +8454,7 @@
         "tags": [
           "Onramps"
         ],
-        "description": "Fetches a single onramp by its external id (prefixed `onr_`).\n\n### Path parameter\n\n- `id` — required. The onramp's external id (e.g. `onr_01KPBH802PXQQXT8ASJGE0QX2K`).\n  A value that is not a valid `onr_…` id returns `400`. An id that does not exist returns `404`.\n\n### Example\n\n```\nGET /v1/onramps/onr_01KPBH802PXQQXT8ASJGE0QX2K\n```\n"
+        "description": "Fetches a single onramp by its external id (prefixed `onr_`).\n\n### Path parameter\n\n- `id` — required. The onramp's external id (e.g. `onr_01KPBH802PXQQXT8ASJGE0QX2K`).\n  A value that is not a valid `onr_…` id returns `400`. An id that does not exist returns `404`.\n\n### Example\n\n```\nGET /v1/onramps/onr_01KPBH802PXQQXT8ASJGE0QX2K\n```\n\n### Split\n\n`split` is `null` unless the quote carried a split. Otherwise it reports how the split went:\n\n- `status`:\n  - `in_progress`: the split hasn't been applied yet, or isn't decided for every recipient. The\n    deposit that applies it can arrive after `success`. If the operation ends without a deposit\n    the split could apply to, it stays `in_progress` and no `split.completed` event follows.\n  - `completed`: every recipient has an outcome. A held share counts: check each leg. A leg held\n    for `tier_limit` can still move to `success` later; `split.leg_released` announces it.\n  - `skipped`: the split couldn't apply (`reason`: `insufficient_delivered_amount` or\n    `shares_round_to_zero`); the whole amount stayed on the destination wallet.\n- `shares`: the split as attached to the quote.\n- `legs`: every wallet credited, with its `amount` and `status` (`processing`, `success`, `held`\n  or `failed`). The destination's remainder is a leg with `is_remainder: true` (there's none when\n  the shares take the whole amount), and a recipient whose share rounds to zero gets no leg. A\n  `held` leg has a `hold_reason`: `tier_limit` (the recipient is over their limit; the share is\n  released when the limit allows it, for example after the customer is verified at a higher\n  tier), `payin_frozen` or `payin_disabled`.\n\n`split.completed` carries the block when the split is `completed` or `skipped`. It isn't sent\nagain when a held leg is released later: `split.leg_released` reports that.\n"
       }
     },
     "/v1/offramps": {
@@ -8085,7 +9060,7 @@
         "tags": [
           "Notification Webhooks"
         ],
-        "description": "Register an HTTPS endpoint to receive webhook events for your integration.\n\nSubscribe to one or more **event categories** — coarse families of events rather than\nindividual topics. The available categories are: `onramp`, `offramp`, `conversion`,\n`transfer`, `deposit`, `kyc`.\n\nEvery event in a subscribed category is delivered. For the events each category contains,\nwhen each one fires, and the payload it carries, see\n[Webhook events](https://docs.globalstack.io/webhooks/events).\n\nThe response includes a **`signing_secret`** (prefixed `whsec_`) returned **in plaintext\nexactly once** — on create and on rotate-secret only. Store it securely; you cannot retrieve\nit again. Use it to verify the signature on every delivered event.\n\nNew endpoints are created **inactive** (`active: false`). Activate the endpoint with a\n`PATCH` once you have stored the signing secret and are ready to receive deliveries.\n\n### Body\n\n- `url` — required. Must be a valid **HTTPS** URL.\n- `event_categories` — required. Non-empty array of event categories (see above). Unknown\n  values are rejected with `400`.\n\n### Example\n\n```\nPOST /v1/notifications/webhooks\n{\n  \"url\": \"https://merchant.example.com/webhooks\",\n  \"event_categories\": [\"onramp\", \"conversion\"]\n}\n```\n",
+        "description": "Register an HTTPS endpoint to receive webhook events for your integration.\n\nSubscribe to one or more **event categories** — coarse families of events rather than\nindividual topics. The available categories are: `onramp`, `offramp`, `conversion`,\n`transfer`, `deposit`, `kyc`, `wallet_transfer`, `split`.\n\nEvery event in a subscribed category is delivered. For the events each category contains,\nwhen each one fires, and the payload it carries, see\n[Webhook events](https://docs.globalstack.io/webhooks/events).\n\nThe response includes a **`signing_secret`** (prefixed `whsec_`) returned **in plaintext\nexactly once** — on create and on rotate-secret only. Store it securely; you cannot retrieve\nit again. Use it to verify the signature on every delivered event.\n\nNew endpoints are created **inactive** (`active: false`). Activate the endpoint with a\n`PATCH` once you have stored the signing secret and are ready to receive deliveries.\n\n### Body\n\n- `url` — required. Must be a valid **HTTPS** URL.\n- `event_categories` — required. Non-empty array of event categories (see above). Unknown\n  values are rejected with `400`.\n\n### Example\n\n```\nPOST /v1/notifications/webhooks\n{\n  \"url\": \"https://merchant.example.com/webhooks\",\n  \"event_categories\": [\"onramp\", \"conversion\"]\n}\n```\n",
         "parameters": [
           {
             "in": "header",
@@ -12760,7 +13735,7 @@
         "tags": [
           "Conversions"
         ],
-        "description": "Execute a conversion from a previously created conversion quote: converts the\nbalance of the quote's source wallet into the quote's destination wallet.\n\nSupply the `quote_id` returned by `POST /v1/conversions/quotes`. `source_currency`\nand `destination_currency` are optional; when provided they must match the quote's\ncurrencies exactly, otherwise the request is rejected with `400 invalid_input`.\n`reference` is required and must be unique within your integration.\n\nThe quote must belong to the calling integration, be of type `conversion`, and be\nunexpired. An expired quote returns `409 invalid_status`.\n\nSend an `Idempotency-Key` header to make retries safe: an identical key with an\nidentical body within 24h replays the original response. A given quote can be\nexecuted at most once.\n\n> Note: `rate` and `destination_amount` are placeholders in the current release and\n> will be populated in a later release.\n",
+        "description": "Execute a conversion from a previously created conversion quote: converts the\nbalance of the quote's source wallet into the quote's destination wallet.\n\nSupply the `quote_id` returned by `POST /v1/conversions/quotes`. `source_currency`\nand `destination_currency` are optional; when provided they must match the quote's\ncurrencies exactly, otherwise the request is rejected with `400 invalid_input`.\n`reference` is required and must be unique within your integration.\n\nThe quote must belong to the calling integration, be of type `conversion`, and be\nunexpired. An expired quote returns `409 invalid_status`.\n\nSend an `Idempotency-Key` header to make retries safe: an identical key with an\nidentical body within 24h replays the original response. A given quote can be\nexecuted at most once.\n\n> Note: `rate` and `destination_amount` are placeholders in the current release and\n> will be populated in a later release.\n\nIf the quote carries a split, the response's `split` block starts `in_progress`; it is applied when\nthe deposit settles (see `GET` by id).\n",
         "parameters": [
           {
             "in": "header",
@@ -12918,7 +13893,7 @@
         "tags": [
           "Conversions"
         ],
-        "description": "Returns the calling integration's conversions, newest first. Results are scoped\nto the authenticated integration; conversions belonging to other integrations\nare never returned.\n\nAll filters are optional. With no filters, every conversion for the integration\nis returned (paginated).\n\n### Filter behavior\n\n- `customer_id` — restricts to conversions for a single customer. Must be a\n  valid `cust_…` id. An unknown or cross-integration id returns an empty page\n  (`200`, `data: []`), not `404`.\n- `status` — restricts to a single lifecycle status. One of `created`,\n  `processing`, `temporary_failure`, `success`, `failed`, `returned`.\n- `created_after` / `created_before` — either a `YYYY-MM-DD` calendar date (UTC,\n  inclusive: `created_after` matches at or after `00:00:00`, `created_before` at\n  or before `23:59:59.999`) or a full ISO 8601 UTC timestamp ending in `Z`\n  (e.g. `2026-04-16T16:16:03Z`), used as the exact instant.\n\n### Pagination\n\n- `page` — 1-indexed page number. Defaults to `1`. Must be between `1` and `1,000,000`.\n- `per_page` — page size. Defaults to `50`. Must be between `1` and `200`.\n\nThe response carries pagination metadata under `meta`:\n\n```json\n\"meta\": {\n  \"request_id\": \"req_...\",\n  \"timestamp\": \"...\",\n  \"version\": \"1\",\n  \"page\": 1,\n  \"per_page\": 50,\n  \"total\": 137,\n  \"has_more\": true\n}\n```\n\n`has_more` is `true` when at least one more page is available.\n\n### Ordering\n\nResults are sorted by `created_at DESC, id DESC` (newest first, deterministic on\nties).\n\n### Example\n\n```\nGET /v1/conversions?status=processing&customer_id=cust_seed_alice&page=1&per_page=50\n```\n"
+        "description": "Returns the calling integration's conversions, newest first. Results are scoped\nto the authenticated integration; conversions belonging to other integrations\nare never returned.\n\nAll filters are optional. With no filters, every conversion for the integration\nis returned (paginated).\n\n### Filter behavior\n\n- `customer_id` — restricts to conversions for a single customer. Must be a\n  valid `cust_…` id. An unknown or cross-integration id returns an empty page\n  (`200`, `data: []`), not `404`.\n- `status` — restricts to a single lifecycle status. One of `created`,\n  `processing`, `temporary_failure`, `success`, `failed`, `returned`.\n- `created_after` / `created_before` — either a `YYYY-MM-DD` calendar date (UTC,\n  inclusive: `created_after` matches at or after `00:00:00`, `created_before` at\n  or before `23:59:59.999`) or a full ISO 8601 UTC timestamp ending in `Z`\n  (e.g. `2026-04-16T16:16:03Z`), used as the exact instant.\n\n### Pagination\n\n- `page` — 1-indexed page number. Defaults to `1`. Must be between `1` and `1,000,000`.\n- `per_page` — page size. Defaults to `50`. Must be between `1` and `200`.\n\nThe response carries pagination metadata under `meta`:\n\n```json\n\"meta\": {\n  \"request_id\": \"req_...\",\n  \"timestamp\": \"...\",\n  \"version\": \"1\",\n  \"page\": 1,\n  \"per_page\": 50,\n  \"total\": 137,\n  \"has_more\": true\n}\n```\n\n`has_more` is `true` when at least one more page is available.\n\n### Ordering\n\nResults are sorted by `created_at DESC, id DESC` (newest first, deterministic on\nties).\n\n### Example\n\n```\nGET /v1/conversions?status=processing&customer_id=cust_seed_alice&page=1&per_page=50\n```\n\nEach item carries the `split` block described on `GET` by id.\n"
       }
     },
     "/v1/conversions/{conversionId}": {
@@ -13049,7 +14024,7 @@
         "tags": [
           "Conversions"
         ],
-        "description": "Fetches a single conversion by its external id (prefixed `con_`), scoped to the\ncalling integration.\n\n### Path parameter\n\n- `id` — required. The conversion's external id (e.g.\n  `con_01KPBH8MD6R7YDJ82T4D6M3V1T`). A value that is not a valid `con_…` id\n  returns `400`. An id that does not exist or belongs to a different integration\n  returns `404`.\n\n### Example\n\n```\nGET /v1/conversions/con_01KPBH8MD6R7YDJ82T4D6M3V1T\n```\n"
+        "description": "Fetches a single conversion by its external id (prefixed `con_`), scoped to the\ncalling integration.\n\n### Path parameter\n\n- `id` — required. The conversion's external id (e.g.\n  `con_01KPBH8MD6R7YDJ82T4D6M3V1T`). A value that is not a valid `con_…` id\n  returns `400`. An id that does not exist or belongs to a different integration\n  returns `404`.\n\n### Example\n\n```\nGET /v1/conversions/con_01KPBH8MD6R7YDJ82T4D6M3V1T\n```\n\n### Split\n\n`split` is `null` unless the quote carried a split. Otherwise it reports how the split went:\n\n- `status`:\n  - `in_progress`: the split hasn't been applied yet, or isn't decided for every recipient. The\n    deposit that applies it can arrive after `success`. If the operation ends without a deposit\n    the split could apply to, it stays `in_progress` and no `split.completed` event follows.\n  - `completed`: every recipient has an outcome. A held share counts: check each leg. A leg held\n    for `tier_limit` can still move to `success` later; `split.leg_released` announces it.\n  - `skipped`: the split couldn't apply (`reason`: `insufficient_delivered_amount` or\n    `shares_round_to_zero`); the whole amount stayed on the destination wallet.\n- `shares`: the split as attached to the quote.\n- `legs`: every wallet credited, with its `amount` and `status` (`processing`, `success`, `held`\n  or `failed`). The destination's remainder is a leg with `is_remainder: true` (there's none when\n  the shares take the whole amount), and a recipient whose share rounds to zero gets no leg. A\n  `held` leg has a `hold_reason`: `tier_limit` (the recipient is over their limit; the share is\n  released when the limit allows it, for example after the customer is verified at a higher\n  tier), `payin_frozen` or `payin_disabled`.\n\n`split.completed` carries the block when the split is `completed` or `skipped`. It isn't sent\nagain when a held leg is released later: `split.leg_released` reports that.\n"
       }
     },
     "/v1/beneficiaries": {
@@ -13877,6 +14852,9 @@
     },
     {
       "name": "Wallet Transfers"
+    },
+    {
+      "name": "Splits"
     },
     {
       "name": "Transactions"
