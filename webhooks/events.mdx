@@ -26,6 +26,7 @@ and receive every event in the family.
 | `wallet_transfer` | `wallet_transfer.success` |
 | `deposit` | `deposit.received`, `deposit.held`, `deposit.confirmed`, `deposit.failed` |
 | `kyc` | `kyc.approved`, `kyc.rejected` |
+| `split` | `split.completed`, `split.leg_released` |
 
 <Note>
   New endpoints are created **inactive**. Store the `signing_secret` from the create response — it is
@@ -131,6 +132,20 @@ is terminal. Insufficient-funds attempts return `422 ledger_insufficient_funds` 
 a row, so no `.failed` webhook fires; the `reference` stays free for retry once the balance is
 topped up. If the ledger is unreachable or the response could not be parsed, nothing is written
 and no webhook fires either; retry the request with the same `reference`.
+
+### Splits
+
+These cover [split payments](/guides/split-payments): an onramp or conversion whose quote carries a
+split.
+
+| Event | Fires when |
+| --- | --- |
+| `split.completed` | The split of one payment is final: `completed` (every recipient has an outcome; a held share counts) or `skipped` (the split couldn't apply and the whole amount stayed on the destination wallet). Once per payment. |
+| `split.leg_released` | A share held for its recipient's limit was released and credited. Once per released share. |
+
+`split.completed` isn't sent again when a held share is released; `split.leg_released` reports it.
+If the onramp or conversion ends without a payment the split could apply to, no `split.completed`
+is sent and the operation's `split.status` stays `in_progress`.
 
 ### Deposits
 
@@ -600,6 +615,51 @@ project onto the transaction tree the way the FX families do. `failure_reason` i
   `wallet_transfer.success`. Wallet transfers do not pass through a `processing` state — the
   very first event is terminal, so there is no previous status to report.
 </Note>
+
+### Split
+
+`event_object` names the payment (`deposit_transaction_id`, the `txn_…` that is also
+`event_object_id`), the onramp or conversion it settled (`source`, or `null` if neither exists), and
+the `split` block, the same one onramps and conversions carry.
+
+```json
+{
+  "event_id": "evt_8d2c4f1a-7b39-5e60-a1d4-3c9b2e7f6a10",
+  "event_type": "split.completed",
+  "event_category": "split",
+  "event_developer_id": "int_01HXYZABC1234567890ABCDEFG",
+  "api_version": "v1",
+  "event_created_at": "2026-11-16T09:00:00.000Z",
+  "event_object_id": "txn_01KPCX8MKD6P4R8T0V2X4Z6B8D",
+  "event_object_status": "completed",
+  "event_object_changes": { "status": [null, "completed"] },
+  "event_object": {
+    "deposit_transaction_id": "txn_01KPCX8MKD6P4R8T0V2X4Z6B8D",
+    "source": { "type": "onramp", "id": "onr_01KPBH802PXQQXT8ASJGE0QX2K" },
+    "split": {
+      "split_id": "spl_01HXYZABC1234567890ABCDEFG",
+      "type": "percentage",
+      "status": "completed",
+      "reason": null,
+      "shares": [
+        { "wallet_id": "wal_01HXYZSELLERA0000000000000", "percentage": "60.00" },
+        { "wallet_id": "wal_01HXYZSELLERB0000000000000", "percentage": "25.00" }
+      ],
+      "legs": [
+        { "wallet_id": "wal_01HXYZSELLERA0000000000000", "amount": "60.000000", "is_remainder": false, "status": "success", "hold_reason": null },
+        { "wallet_id": "wal_01HXYZSELLERB0000000000000", "amount": "25.000000", "is_remainder": false, "status": "held", "hold_reason": "tier_limit" },
+        { "wallet_id": "wal_01HXYZMARKETPLACE000000000", "amount": "15.000000", "is_remainder": true, "status": "success", "hold_reason": null }
+      ]
+    }
+  }
+}
+```
+
+`split.leg_released` carries the same object plus `transaction_id`, the transaction the release
+moved to `success`: the recipient's `split` transaction, or the deposit itself for the destination
+wallet's remainder. That id is also its `event_object_id`. `event_object_status` is `success` and
+`event_object_changes.status` is `["held", "success"]`; in its `split` block the released leg is
+`success`.
 
 ### Deposit
 

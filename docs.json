@@ -49,6 +49,7 @@
             "pages": [
               "guides/virtual-accounts",
               "guides/collect-and-pay-out",
+              "guides/split-payments",
               "guides/verify-customers",
               "guides/beneficiaries",
               "guides/auto-conversion"
