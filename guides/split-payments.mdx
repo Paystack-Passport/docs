@@ -1,0 +1,130 @@
+---
+title: "Split payments"
+description: "Share what an onramp or conversion delivers between several of your wallets, for example a marketplace paying its sellers."
+---
+
+A **split** shares the amount an onramp or a conversion delivers between several wallets. The
+typical case is a marketplace: a buyer pays once, each seller's wallet gets its share, and the
+marketplace's own wallet keeps the rest.
+
+You attach a split to a **quote**. When the payment settles, every recipient is credited in the
+same step, and you can follow each share in the transactions API and through webhooks.
+
+## How a split works
+
+- The quote's **destination wallet** receives the payment, as it does without a split. It keeps
+  the **remainder**: whatever the shares don't assign.
+- Each **share** names a recipient wallet and either a `percentage` of the delivered amount or a
+  flat `amount`.
+- All wallets (recipients and destination) must be **custodial** wallets of your integration that
+  hold the quote's destination currency. The destination wallet can't also be a recipient.
+
+| Type | Each share is | Needs | If the payment falls short |
+| --- | --- | --- | --- |
+| `percentage` | A percentage of the amount actually delivered. Percentages add up to 100 or less. | Nothing extra. | Every share shrinks in proportion. |
+| `flat` | A fixed amount. | `target_amount` on the quote; the shares must not exceed it. | If the delivered amount can't cover the shares, nothing is split (see below). |
+
+## Create a saved split, or send one inline
+
+Save a split you reuse with [`POST /v1/splits`](/api-reference/splits/create-a-split):
+
+```json
+POST /v1/splits
+{
+  "name": "Order 1042 sellers",
+  "type": "percentage",
+  "shares": [
+    { "wallet_id": "wal_SELLER_A", "percentage": "60.00" },
+    { "wallet_id": "wal_SELLER_B", "percentage": "25.00" }
+  ]
+}
+```
+
+Then pass its `id` as `split_code` when you create the quote. For a one-off, send the same
+object inline as `split` instead. Send one or the other, not both.
+
+```json
+POST /v1/onramps/quotes
+{
+  "wallet_id": "wal_MARKETPLACE",
+  "source_currency": "NGN",
+  "source_network": "bank",
+  "source_amount": "160000",
+  "split_code": "spl_01HXYZ…"
+}
+```
+
+The quote keeps a copy of the split. Editing or deactivating a saved split later never changes a
+quote that already uses it.
+
+<Note>
+  Splits are available on onramps, and on conversions whose destination is a crypto currency.
+  Offramps and transfers can't be split.
+</Note>
+
+## Follow the split
+
+Onramps and conversions carry a `split` block (`null` when the quote had no split):
+
+| `status` | Meaning |
+| --- | --- |
+| `in_progress` | The split hasn't been applied yet, or isn't decided for every recipient. The payment that applies it can arrive after `onramp.success` or `conversion.success`. |
+| `completed` | Every recipient has an outcome. A held share counts as decided: check each leg. |
+| `skipped` | The split couldn't apply (`reason`: `insufficient_delivered_amount` or `shares_round_to_zero`). The whole amount stayed on the destination wallet. |
+
+`legs` lists every wallet credited, the destination's remainder included (`is_remainder: true`),
+each with its `amount` and `status`: `processing`, `success`, `held` or `failed`.
+
+<Note>
+  If an onramp or conversion ends without a payment the split could apply to (for example it
+  failed or was returned), its split stays `in_progress` and no `split.completed` event follows.
+</Note>
+
+### Held shares
+
+Each recipient's share counts toward that recipient's own limits, just like a deposit. A share
+can be `held`, with a `hold_reason`:
+
+- `tier_limit`: the recipient's customer is over their limit. The share is released
+  automatically when their limit allows it, for example after they're verified at a higher tier.
+- `payin_frozen` or `payin_disabled`: the destination wallet's pay-in is blocked.
+
+The other shares settle normally.
+
+### Webhooks
+
+Subscribe your endpoint to the `split` category:
+
+- `split.completed` fires once per payment, when its split is `completed` or `skipped`.
+- `split.leg_released` fires when a held share is released.
+
+See [Webhook events → Splits](/webhooks/events#splits).
+
+### Transactions
+
+The payment's own `deposit` transaction still shows the full amount credited to the destination
+wallet. Each recipient's share is a child transaction of type `split`, from the destination wallet
+to the recipient. List them with
+`GET /v1/transactions?type=split&include_related=true`, optionally with the recipient's
+`wallet_id`.
+
+## Worked example
+
+A buyer pays for an order worth 100 USDC on your marketplace. Seller A gets 60%, seller B 25%,
+and your marketplace wallet keeps the rest.
+
+| Wallet | Share | Credited |
+| --- | --- | --- |
+| Seller A | 60% | 60 USDC |
+| Seller B | 25% | 25 USDC |
+| Marketplace (destination) | remainder | 15 USDC |
+
+When the payment settles you receive `onramp.success`, then `split.completed` with all three legs
+`success`. If seller B is over their limit, their leg is `held` (`tier_limit`) and the other two
+are `success`; `split.leg_released` follows when B's share is released.
+
+## Limits
+
+- Wallets must be custodial, belong to your integration and hold the destination currency.
+- 1 to 20 shares per split.
+- Conversions can be split only into a crypto destination.

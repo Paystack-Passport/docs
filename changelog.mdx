@@ -6,6 +6,20 @@ description: "Notable changes to the GlobalStack API — new endpoints, behavior
 Changes that affect how you integrate: new endpoints and fields, behavior changes, and new error
 or failure codes. Breaking changes are called out explicitly.
 
+<Update label="2026-11-16" tags={["New feature", "Webhook"]}>
+  ## Split payments
+
+  You can now share what an onramp or a conversion delivers between several of your wallets, for
+  example to pay a marketplace's sellers. Attach a split to the quote, either a saved one with
+  `split_code` (create it with `POST /v1/splits`) or an inline `split`. When the payment settles,
+  every recipient is credited and the destination wallet keeps the remainder.
+
+  Onramps and conversions now carry a `split` block, each recipient's share is a `split`
+  transaction, and the new webhook category `split` fires `split.completed` and
+  `split.leg_released`. See [Split payments](/guides/split-payments) and
+  [Webhook events → Splits](/webhooks/events#splits).
+</Update>
+
 <Update label="2026-11-02" tags={["New feature", "Webhook"]}>
   ## Move funds between two of your wallets
 
