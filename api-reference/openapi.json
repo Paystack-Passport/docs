@@ -716,7 +716,7 @@
           },
           "source_id": {
             "type": "string",
-            "description": "External id of the source resource (onr_/ofr_/con_/tfr_/da_/wcr_).",
+            "description": "External id of the source resource (onr_/ofr_/con_/tfr_/da_/wcr_). On a `split` transaction, the `txn_…` id of the deposit it was split from.",
             "example": "onr_01KPBH802PXQQXT8ASJGE0QX2K"
           },
           "transaction_hash": {
