@@ -6,6 +6,22 @@ description: "Notable changes to the GlobalStack API — new endpoints, behavior
 Changes that affect how you integrate: new endpoints and fields, behavior changes, and new error
 or failure codes. Breaking changes are called out explicitly.
 
+<Update label="2026-11-19" tags={["New feature", "Webhook"]}>
+  ## Split fiat conversions, and who bears the provider fee
+
+  Splits now take an optional `fee_bearer`: `merchant` (default; the destination wallet's remainder
+  absorbs a provider fee) or `all_proportional` (every share gives up its part of the fee). Shares
+  are worked out on the amount before the fee, and each wallet is credited net of its part. Set it
+  on `POST /v1/splits`, change it with `PATCH /v1/splits/{split_id}`, or send it on an inline
+  `split`.
+
+  The `split` block on onramps and conversions, and the `split.completed` and `split.leg_released`
+  webhooks, now carry `fee_bearer` and each leg's `fee` next to its `amount`.
+
+  Conversions into a fiat currency enabled for splits can now carry a split; for other fiat
+  currencies the quote returns `invalid_input`. See [Split payments](/guides/split-payments).
+</Update>
+
 <Update label="2026-11-16" tags={["New feature", "Webhook"]}>
   ## Split payments
 

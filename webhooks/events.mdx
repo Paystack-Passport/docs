@@ -639,6 +639,7 @@ the `split` block, the same one onramps and conversions carry.
     "split": {
       "split_id": "spl_01HXYZABC1234567890ABCDEFG",
       "type": "percentage",
+      "fee_bearer": "merchant",
       "status": "completed",
       "reason": null,
       "shares": [
@@ -646,14 +647,19 @@ the `split` block, the same one onramps and conversions carry.
         { "wallet_id": "wal_01HXYZSELLERB0000000000000", "percentage": "25.00" }
       ],
       "legs": [
-        { "wallet_id": "wal_01HXYZSELLERA0000000000000", "amount": "60.000000", "is_remainder": false, "status": "success", "hold_reason": null },
-        { "wallet_id": "wal_01HXYZSELLERB0000000000000", "amount": "25.000000", "is_remainder": false, "status": "held", "hold_reason": "tier_limit" },
-        { "wallet_id": "wal_01HXYZMARKETPLACE000000000", "amount": "15.000000", "is_remainder": true, "status": "success", "hold_reason": null }
+        { "wallet_id": "wal_01HXYZSELLERA0000000000000", "amount": "60.000000", "fee": "0.000000", "is_remainder": false, "status": "success", "hold_reason": null },
+        { "wallet_id": "wal_01HXYZSELLERB0000000000000", "amount": "25.000000", "fee": "0.000000", "is_remainder": false, "status": "held", "hold_reason": "tier_limit" },
+        { "wallet_id": "wal_01HXYZMARKETPLACE000000000", "amount": "15.000000", "fee": "0.000000", "is_remainder": true, "status": "success", "hold_reason": null }
       ]
     }
   }
 }
 ```
+
+Each leg's `amount` is what the wallet received, net of its part of any provider fee; `fee` is that
+part (zero when the payment carried no fee, as with crypto). `fee_bearer` says who absorbed the fee:
+`merchant` (the destination wallet's remainder) or `all_proportional`. See
+[Split payments](/guides/split-payments).
 
 `split.leg_released` carries the same object plus `transaction_id`, the transaction the release
 moved to `success`: the recipient's `split` transaction, or the deposit itself for the destination

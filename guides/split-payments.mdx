@@ -24,6 +24,21 @@ same step, and you can follow each share in the transactions API and through web
 | `percentage` | A percentage of the amount actually delivered. Percentages add up to 100 or less. | Nothing extra. | Every share shrinks in proportion. |
 | `flat` | A fixed amount. | `target_amount` on the quote; the shares must not exceed it. | If the delivered amount can't cover the shares, nothing is split (see below). |
 
+### Provider fees: `fee_bearer`
+
+A conversion into a fiat currency can arrive with a provider fee already taken off. Shares are
+always worked out on the **gross** amount, before the fee, so "60%" or "ZAR 1,000" means the same
+with or without a fee. `fee_bearer` decides who gives up the fee:
+
+| `fee_bearer` | Who absorbs the fee |
+| --- | --- |
+| `merchant` (default) | The destination wallet's remainder. Recipients get their full share. |
+| `all_proportional` | Every share, the remainder included, in proportion to its size. |
+
+Each wallet is credited its share **net** of its part of the fee. Crypto payments carry no fee, so
+`fee_bearer` changes nothing there. If the shares can't be covered once the fee is taken off, the
+split is skipped with `insufficient_delivered_amount`.
+
 ## Create a saved split, or send one inline
 
 Save a split you reuse with [`POST /v1/splits`](/api-reference/splits/create-a-split):
@@ -33,6 +48,7 @@ POST /v1/splits
 {
   "name": "Order 1042 sellers",
   "type": "percentage",
+  "fee_bearer": "merchant",
   "shares": [
     { "wallet_id": "wal_SELLER_A", "percentage": "60.00" },
     { "wallet_id": "wal_SELLER_B", "percentage": "25.00" }
@@ -54,12 +70,16 @@ POST /v1/onramps/quotes
 }
 ```
 
-The quote keeps a copy of the split. Editing or deactivating a saved split later never changes a
-quote that already uses it.
+`fee_bearer` is optional and defaults to `merchant`. You can change it later with
+`PATCH /v1/splits/{split_id}`.
+
+The quote keeps a copy of the split, `fee_bearer` included. Editing or deactivating a saved split
+later never changes a quote that already uses it.
 
 <Note>
-  Splits are available on onramps, and on conversions whose destination is a crypto currency.
-  Offramps and transfers can't be split.
+  Splits are available on onramps, on conversions whose destination is a crypto currency, and on
+  conversions into a fiat currency enabled for splits (otherwise the quote returns
+  `invalid_input`). Offramps and transfers can't be split.
 </Note>
 
 ## Follow the split
@@ -72,8 +92,10 @@ Onramps and conversions carry a `split` block (`null` when the quote had no spli
 | `completed` | Every recipient has an outcome. A held share counts as decided: check each leg. |
 | `skipped` | The split couldn't apply (`reason`: `insufficient_delivered_amount` or `shares_round_to_zero`). The whole amount stayed on the destination wallet. |
 
-`legs` lists every wallet credited, the destination's remainder included (`is_remainder: true`),
-each with its `amount` and `status`: `processing`, `success`, `held` or `failed`.
+The block also carries the split's `fee_bearer`. `legs` lists every wallet credited, the
+destination's remainder included (`is_remainder: true`), each with its `amount` (what the wallet
+received, net of its part of any provider fee), its `fee` (that part; zero when there was no fee)
+and its `status`: `processing`, `success`, `held` or `failed`.
 
 <Note>
   If an onramp or conversion ends without a payment the split could apply to (for example it
@@ -103,8 +125,10 @@ See [Webhook events → Splits](/webhooks/events#splits).
 ### Transactions
 
 The payment's own `deposit` transaction still shows the full amount credited to the destination
-wallet. Each recipient's share is a child transaction of type `split`, from the destination wallet
-to the recipient. List them with
+wallet, and a provider fee still has its own `fee` transaction. Each recipient's share is a child
+transaction of type `split`, from the destination wallet to the recipient, for the amount the
+recipient received; when the recipient bore part of a fee, its `metadata.fee_amount` holds that
+part. List them with
 `GET /v1/transactions?type=split&include_related=true`, optionally with the recipient's
 `wallet_id`.
 
@@ -123,8 +147,19 @@ When the payment settles you receive `onramp.success`, then `split.completed` wi
 `success`. If seller B is over their limit, their leg is `held` (`tier_limit`) and the other two
 are `success`; `split.leg_released` follows when B's share is released.
 
+### With a provider fee
+
+A USDC → ZAR conversion settles ZAR 6,000.00 with a ZAR 100.00 provider fee. Seller A gets 60%.
+
+| Wallet | Gross share | `merchant`: fee / credited | `all_proportional`: fee / credited |
+| --- | --- | --- | --- |
+| Seller A | 3,600.00 | 0.00 / 3,600.00 | 60.00 / 3,540.00 |
+| Marketplace (destination) | 2,400.00 | 100.00 / 2,300.00 | 40.00 / 2,360.00 |
+
+Either way the wallets receive ZAR 5,900.00 in total: the amount that arrived after the fee.
+
 ## Limits
 
 - Wallets must be custodial, belong to your integration and hold the destination currency.
 - 1 to 20 shares per split.
-- Conversions can be split only into a crypto destination.
+- Conversions can be split into a crypto destination, or into a fiat currency enabled for splits.
