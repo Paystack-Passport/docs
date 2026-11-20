@@ -865,6 +865,15 @@
               "flat"
             ]
           },
+          "fee_bearer": {
+            "type": "string",
+            "enum": [
+              "merchant",
+              "all_proportional"
+            ],
+            "description": "Who absorbs a provider fee on the settling deposit. `merchant` (default): the destination wallet's remainder. `all_proportional`: every share, in proportion to its size.",
+            "example": "merchant"
+          },
           "shares": {
             "items": {
               "$ref": "#/components/schemas/SplitShareDto"
@@ -900,6 +909,15 @@
             ],
             "example": "percentage"
           },
+          "fee_bearer": {
+            "type": "string",
+            "enum": [
+              "merchant",
+              "all_proportional"
+            ],
+            "description": "Who absorbs a provider fee on the settling deposit: `merchant` (the destination wallet's remainder) or `all_proportional` (every share, in proportion to its size).",
+            "example": "merchant"
+          },
           "currency": {
             "type": "string",
             "description": "Currency every share wallet holds.",
@@ -933,6 +951,7 @@
           "id",
           "name",
           "type",
+          "fee_bearer",
           "currency",
           "active",
           "shares",
@@ -949,6 +968,15 @@
           },
           "active": {
             "type": "boolean"
+          },
+          "fee_bearer": {
+            "type": "string",
+            "enum": [
+              "merchant",
+              "all_proportional"
+            ],
+            "description": "Who absorbs a provider fee on the settling deposit. `merchant` (default): the destination wallet's remainder. `all_proportional`: every share, in proportion to its size.",
+            "example": "merchant"
           },
           "shares": {
             "items": {
@@ -3560,6 +3588,15 @@
               "flat"
             ]
           },
+          "fee_bearer": {
+            "type": "string",
+            "enum": [
+              "merchant",
+              "all_proportional"
+            ],
+            "description": "Who absorbs a provider fee on the settling deposit. `merchant` (default): the destination wallet's remainder. `all_proportional`: every share, in proportion to its size.",
+            "example": "merchant"
+          },
           "shares": {
             "items": {
               "$ref": "#/components/schemas/SplitShareDto"
@@ -3590,6 +3627,15 @@
             ],
             "example": "percentage"
           },
+          "fee_bearer": {
+            "type": "string",
+            "enum": [
+              "merchant",
+              "all_proportional"
+            ],
+            "description": "Who absorbs a provider fee on the settling deposit: `merchant` (the destination wallet's remainder) or `all_proportional` (every share, in proportion to its size).",
+            "example": "merchant"
+          },
           "shares": {
             "items": {
               "$ref": "#/components/schemas/SplitShareResponse"
@@ -3600,6 +3646,7 @@
         "type": "object",
         "required": [
           "type",
+          "fee_bearer",
           "shares"
         ]
       },
@@ -3692,6 +3739,15 @@
             ],
             "example": "percentage"
           },
+          "fee_bearer": {
+            "type": "string",
+            "enum": [
+              "merchant",
+              "all_proportional"
+            ],
+            "description": "Who absorbed the provider fee: `merchant` (the remainder) or `all_proportional`.",
+            "example": "merchant"
+          },
           "status": {
             "type": "string",
             "enum": [
@@ -3726,6 +3782,7 @@
         "type": "object",
         "required": [
           "type",
+          "fee_bearer",
           "status",
           "shares",
           "legs"
@@ -4401,6 +4458,11 @@
             "description": "Amount credited to the wallet, at the currency precision.",
             "example": "60.000000"
           },
+          "fee": {
+            "type": "string",
+            "description": "This leg's share of the deposit's provider fee, at the currency precision. `amount` is already net of it. Zero when the deposit carried no fee.",
+            "example": "1.50"
+          },
           "is_remainder": {
             "type": "boolean",
             "description": "True for what the shares left in the quote's destination wallet."
@@ -4428,6 +4490,7 @@
         "required": [
           "wallet_id",
           "amount",
+          "fee",
           "is_remainder",
           "status"
         ]
@@ -6909,7 +6972,7 @@
         "tags": [
           "Splits"
         ],
-        "description": "Create a reusable split: a list of wallets and the share each receives when a payment settles.\nA split does nothing on its own: pass its `id` as `split_code` when you create an onramp or conversion quote.\n\nAll share wallets must belong to your integration, be `custodial`, and hold the same currency.\nWhatever the shares do not assign stays in the quote's destination wallet.\n\n### Body\n\n| Field | Required | Description |\n| --- | --- | --- |\n| `name` | Yes | A label, up to 128 characters. Not unique. |\n| `type` | Yes | `percentage` or `flat`. Cannot be changed later. |\n| `shares` | Yes | 1–20 entries of `{ wallet_id, percentage }` (percentage splits) or `{ wallet_id, amount }` (flat splits). |\n\n- `percentage`: decimal string, greater than 0, at most 2 decimal places; all percentages add up to 100 or less.\n- `amount`: decimal string, greater than 0, at most the currency's decimal places.\n\nSend an `Idempotency-Key` header so retries are safe.\n",
+        "description": "Create a reusable split: a list of wallets and the share each receives when a payment settles.\nA split does nothing on its own: pass its `id` as `split_code` when you create an onramp or conversion quote.\n\nAll share wallets must belong to your integration, be `custodial`, and hold the same currency.\nWhatever the shares do not assign stays in the quote's destination wallet.\n\n### Body\n\n| Field | Required | Description |\n| --- | --- | --- |\n| `name` | Yes | A label, up to 128 characters. Not unique. |\n| `type` | Yes | `percentage` or `flat`. Cannot be changed later. |\n| `fee_bearer` | No | Who absorbs a provider fee when the split settles a fiat payment: `merchant` (default; the destination wallet's remainder) or `all_proportional` (every share in proportion to its size). Shares are worked out before the fee; each wallet is credited net of its part. No effect on crypto, which carries no fee. |\n| `shares` | Yes | 1–20 entries of `{ wallet_id, percentage }` (percentage splits) or `{ wallet_id, amount }` (flat splits). |\n\n- `percentage`: decimal string, greater than 0, at most 2 decimal places; all percentages add up to 100 or less.\n- `amount`: decimal string, greater than 0, at most the currency's decimal places.\n\nSend an `Idempotency-Key` header so retries are safe.\n",
         "parameters": [
           {
             "in": "header",
@@ -7339,7 +7402,7 @@
         "tags": [
           "Splits"
         ],
-        "description": "Update a split's `name`, `active` flag or `shares`. Send at least one field.\n\n- `shares` replaces the whole list and is validated exactly as on create. The new wallets must hold\n  the split's currency.\n- `type` and the currency cannot be changed — create a new split instead.\n- Changes never affect quotes already created with this split: a quote keeps a copy of the split as\n  it was when the quote was created.\n"
+        "description": "Update a split's `name`, `active` flag, `shares` or `fee_bearer`. Send at least one field.\n\n- `shares` replaces the whole list and is validated exactly as on create. The new wallets must hold\n  the split's currency.\n- `type` and the currency cannot be changed — create a new split instead.\n- Changes never affect quotes already created with this split: a quote keeps a copy of the split as\n  it was when the quote was created.\n"
       }
     },
     "/v1/onramps/quotes": {
@@ -7522,7 +7585,7 @@
         "tags": [
           "Quotes"
         ],
-        "description": "Price an onramp: local currency paid in, credited as crypto to a wallet. The quote is `active`\nuntil `expires_at`. Execute it with `POST /v1/onramps` before then.\n\n### Body\n\n| Field | Required | Description |\n| --- | --- | --- |\n| `wallet_id` | Yes | The crypto wallet to credit. Its currency, e.g. `USDC`, is the destination. |\n| `source_currency` | Yes | The fiat being paid in, e.g. `NGN`. |\n| `source_network` | Yes | How it's paid: `bank` or `mobile_money`. |\n| `source_amount` or `target_amount` | Yes | Send exactly one. Fiat paid in, **or** crypto to receive. Positive decimal strings. With `target_amount`, the quote returns the `source_amount` needed. |\n| `country_code` | No | Needed when `source_currency` exists in several countries. It doesn't have to match the customer's country. |\n| `destination_network` | No | The chain. Defaults to the wallet's newest active credential, or `solana` if it has none. |\n| `phone_number` | No | The payer's phone, in E.164 format. |\n| `provider_id` | No | Required for mobile money. The payer's operator (`prov_…`). |\n| `full_name` | No | The phone owner's name, 2–128 chars. Sometimes required for mobile money: see below. |\n| `reference` | No | Echoed back on the quote. |\n| `split_code` | No | A saved split to apply (`spl_…`). See **Splits** below. |\n| `split` | No | An inline split to apply. See **Splits** below. |\n\n### Mobile money\n\nWhen `source_network` is `mobile_money`:\n\n- A payer phone is required: either `phone_number`, or a phone on the customer's profile.\n- `provider_id` is required.\n- `full_name` is required if you send `phone_number` (the payer may not be the customer) or the\n  customer is a business. It's sent to the network as the sender name.\n\n`full_name` on a non-mobile-money onramp is rejected.\n\n### Splits\n\nAttach a split to share what the quote's destination wallet receives between several wallets\n(for example, a marketplace paying its sellers). Send **either** `split_code`, a saved split's\nid (`spl_…`, see `POST /v1/splits`), **or** `split`, the same object inline (`type` plus\n`shares`). Not both.\n\n- Recipients must be **custodial** wallets of your integration that hold the destination\n  currency.\n- The destination wallet must be custodial too, and must not be a recipient: it keeps the\n  remainder.\n- `percentage` shares are percentages of the amount actually delivered. `flat` shares are fixed\n  amounts and need `target_amount` on the quote; together they must not exceed it.\n- The quote keeps a copy of the split, so editing or deactivating a saved split later never\n  changes a quote that already uses it.\n\nThe split is applied when the deposit settles. If the delivered amount can't cover a flat split,\nor every share rounds to zero, nothing is split and the whole amount stays on the destination\nwallet; the operation's `split.status` is then `skipped`, with the `reason`.\n\n### Errors\n\n| Status | Code | When |\n| --- | --- | --- |\n| 400 | `bad_request` / `invalid_input` | Both or neither amount sent, an unsupported currency or network, an ambiguous currency without `country_code`, a missing mobile money field, or a customer profile missing a field the route needs. |\n| 400 | `invalid_input` | Splits: both `split_code` and `split` sent, a non-custodial wallet, split wallets in a different currency from the destination wallet, the destination wallet listed as a recipient, an inactive saved split, a flat split without `target_amount` or above it; an inline `split` with a wallet listed twice, `percentage` on a flat split or `amount` on a percentage split, a zero value or too many decimals, or percentages adding up to more than 100. |\n| 400 | `bad_request` | Splits: an inline `split` body that fails validation, e.g. fewer than 1 or more than 20 shares, or an unknown `type`. |\n| 404 | `not_found` | Splits: an unknown `split_code`, or a share wallet that isn't yours. |\n\n### Example\n\n```\nPOST /v1/onramps/quotes\n{\n  \"wallet_id\": \"wal_01HXYZ…\",\n  \"source_currency\": \"NGN\",\n  \"source_network\": \"bank\",\n  \"source_amount\": \"50000\"\n}\n```\n",
+        "description": "Price an onramp: local currency paid in, credited as crypto to a wallet. The quote is `active`\nuntil `expires_at`. Execute it with `POST /v1/onramps` before then.\n\n### Body\n\n| Field | Required | Description |\n| --- | --- | --- |\n| `wallet_id` | Yes | The crypto wallet to credit. Its currency, e.g. `USDC`, is the destination. |\n| `source_currency` | Yes | The fiat being paid in, e.g. `NGN`. |\n| `source_network` | Yes | How it's paid: `bank` or `mobile_money`. |\n| `source_amount` or `target_amount` | Yes | Send exactly one. Fiat paid in, **or** crypto to receive. Positive decimal strings. With `target_amount`, the quote returns the `source_amount` needed. |\n| `country_code` | No | Needed when `source_currency` exists in several countries. It doesn't have to match the customer's country. |\n| `destination_network` | No | The chain. Defaults to the wallet's newest active credential, or `solana` if it has none. |\n| `phone_number` | No | The payer's phone, in E.164 format. |\n| `provider_id` | No | Required for mobile money. The payer's operator (`prov_…`). |\n| `full_name` | No | The phone owner's name, 2–128 chars. Sometimes required for mobile money: see below. |\n| `reference` | No | Echoed back on the quote. |\n| `split_code` | No | A saved split to apply (`spl_…`). See **Splits** below. |\n| `split` | No | An inline split to apply. See **Splits** below. |\n\n### Mobile money\n\nWhen `source_network` is `mobile_money`:\n\n- A payer phone is required: either `phone_number`, or a phone on the customer's profile.\n- `provider_id` is required.\n- `full_name` is required if you send `phone_number` (the payer may not be the customer) or the\n  customer is a business. It's sent to the network as the sender name.\n\n`full_name` on a non-mobile-money onramp is rejected.\n\n### Splits\n\nAttach a split to share what the quote's destination wallet receives between several wallets\n(for example, a marketplace paying its sellers). Send **either** `split_code`, a saved split's\nid (`spl_…`, see `POST /v1/splits`), **or** `split`, the same object inline (`type` plus\n`shares`). Not both.\n\n- Recipients must be **custodial** wallets of your integration that hold the destination\n  currency.\n- The destination wallet must be custodial too, and must not be a recipient: it keeps the\n  remainder.\n- `percentage` shares are percentages of the amount actually delivered. `flat` shares are fixed\n  amounts and need `target_amount` on the quote; together they must not exceed it.\n- An inline `split` also accepts `fee_bearer` (`merchant` or `all_proportional`). An onramp\n  delivers crypto, which carries no provider fee, so it changes nothing here.\n- The quote keeps a copy of the split, so editing or deactivating a saved split later never\n  changes a quote that already uses it.\n\nThe split is applied when the deposit settles. If the delivered amount can't cover a flat split,\nor every share rounds to zero, nothing is split and the whole amount stays on the destination\nwallet; the operation's `split.status` is then `skipped`, with the `reason`.\n\n### Errors\n\n| Status | Code | When |\n| --- | --- | --- |\n| 400 | `bad_request` / `invalid_input` | Both or neither amount sent, an unsupported currency or network, an ambiguous currency without `country_code`, a missing mobile money field, or a customer profile missing a field the route needs. |\n| 400 | `invalid_input` | Splits: both `split_code` and `split` sent, a non-custodial wallet, split wallets in a different currency from the destination wallet, the destination wallet listed as a recipient, an inactive saved split, a flat split without `target_amount` or above it; an inline `split` with a wallet listed twice, `percentage` on a flat split or `amount` on a percentage split, a zero value or too many decimals, or percentages adding up to more than 100. |\n| 400 | `bad_request` | Splits: an inline `split` body that fails validation, e.g. fewer than 1 or more than 20 shares, or an unknown `type`. |\n| 404 | `not_found` | Splits: an unknown `split_code`, or a share wallet that isn't yours. |\n\n### Example\n\n```\nPOST /v1/onramps/quotes\n{\n  \"wallet_id\": \"wal_01HXYZ…\",\n  \"source_currency\": \"NGN\",\n  \"source_network\": \"bank\",\n  \"source_amount\": \"50000\"\n}\n```\n",
         "parameters": [
           {
             "in": "header",
@@ -7756,7 +7819,7 @@
             "description": "Quote created successfully"
           },
           "400": {
-            "description": "Request body failed validation (source_wallet_id / destination_wallet_id / source_amount / target_amount), a wallet id is not a valid wal_… id, source_amount or target_amount is not a positive decimal, neither or both of source_amount and target_amount were provided (exactly one is required), source_amount has more decimal places than the source currency settles (`invalid_amount_precision` — USDC supports at most 2, trailing zeros allowed; not enforced when target_amount drives the quote), the source and destination currencies are the same, a fiat wallet has no active credential to derive its network from, or the Idempotency-Key header is malformed. A split adds: `invalid_input` for both split_code and split sent, a non-custodial or wrong-currency wallet, the destination wallet as a recipient, an inactive saved split, a flat split without or above target_amount, a wallet listed twice, a zero or over-precise share, or percentages over 100; `bad_request` for an inline split body that fails validation (1–20 shares, the split type, the share fields). A split also needs a crypto destination.",
+            "description": "Request body failed validation (source_wallet_id / destination_wallet_id / source_amount / target_amount), a wallet id is not a valid wal_… id, source_amount or target_amount is not a positive decimal, neither or both of source_amount and target_amount were provided (exactly one is required), source_amount has more decimal places than the source currency settles (`invalid_amount_precision` — USDC supports at most 2, trailing zeros allowed; not enforced when target_amount drives the quote), the source and destination currencies are the same, a fiat wallet has no active credential to derive its network from, or the Idempotency-Key header is malformed. A split adds: `invalid_input` for both split_code and split sent, a non-custodial or wrong-currency wallet, the destination wallet as a recipient, an inactive saved split, a flat split without or above target_amount, a wallet listed twice, a zero or over-precise share, or percentages over 100; `bad_request` for an inline split body that fails validation (1–20 shares, the split type, the share fields). A split needs a crypto destination, or a fiat destination enabled for splits (otherwise `invalid_input`).",
             "content": {
               "application/json": {
                 "schema": {
@@ -7863,7 +7926,7 @@
         "tags": [
           "Quotes"
         ],
-        "description": "Creates a **conversion quote** — a short-lived, priced offer to convert the balance\nof one wallet (`source_wallet_id`) into another wallet (`destination_wallet_id`).\n\nThe source wallet's currency (e.g. `USDC`) is the source; the destination wallet's\ncurrency (e.g. `NGN`) is the destination — the two currencies must differ. `source_network` and `destination_network` are each derived from the\nrespective wallet's newest active credential, defaulting to `solana` when a crypto wallet has no active credential (a fiat wallet with no active credential is\nrejected). `reference` is optional and echoed back as the quote `reference`. The\nresponse carries the source wallet in `wallet_id` and the destination wallet in\n`destination_wallet_id`.\n\nThe quote is created with `status: active` and an `expires_at` in the near future.\n\nSpecify **either** `source_amount` (the source-wallet amount converted) **or**\n`target_amount` (the amount credited to the destination wallet) — exactly one, each a\npositive decimal string. Providing both, or neither, is rejected with a 400. When\n`target_amount` is supplied, we compute and return the required `source_amount` on the quote.\n\nUSDC amounts settle in whole US cents: `source_amount` may carry at most **2 significant\ndecimal places**. Trailing zeros are fine — `2.980000` is accepted, `2.980228` is rejected\nwith `400 invalid_amount_precision`. This precision check applies only when you supply\n`source_amount`; a `target_amount`-driven quote is not constrained this way.\n\n### Splits\n\nAttach a split to share what the quote's destination wallet receives between several wallets\n(for example, a marketplace paying its sellers). Send **either** `split_code`, a saved split's\nid (`spl_…`, see `POST /v1/splits`), **or** `split`, the same object inline (`type` plus\n`shares`). Not both.\n\n- Recipients must be **custodial** wallets of your integration that hold the destination\n  currency.\n- The destination wallet must be custodial too, and must not be a recipient: it keeps the\n  remainder.\n- `percentage` shares are percentages of the amount actually delivered. `flat` shares are fixed\n  amounts and need `target_amount` on the quote; together they must not exceed it.\n- A conversion can be split only when its destination is a crypto currency.\n- The quote keeps a copy of the split, so editing or deactivating a saved split later never\n  changes a quote that already uses it.\n\nThe split is applied when the deposit settles. If the delivered amount can't cover a flat split,\nor every share rounds to zero, nothing is split and the whole amount stays on the destination\nwallet; the operation's `split.status` is then `skipped`, with the `reason`.\n\nSplit errors: `400 invalid_input` for both `split_code` and `split` sent, a non-custodial wallet, split wallets in a different currency from the destination wallet, the destination wallet listed as a recipient, a non-crypto destination, an inactive saved split, a flat split without `target_amount` or above it, or an inline `split` with a wallet listed twice, `percentage` on a flat split or `amount` on a percentage split, a zero value or too many decimals, or percentages adding up to more than 100; `400 bad_request` for an inline `split` body that fails validation (fewer than 1 or more than 20 shares, an unknown `type`); `404 not_found` for an unknown `split_code` or a share wallet that isn't yours.\n",
+        "description": "Creates a **conversion quote** — a short-lived, priced offer to convert the balance\nof one wallet (`source_wallet_id`) into another wallet (`destination_wallet_id`).\n\nThe source wallet's currency (e.g. `USDC`) is the source; the destination wallet's\ncurrency (e.g. `NGN`) is the destination — the two currencies must differ. `source_network` and `destination_network` are each derived from the\nrespective wallet's newest active credential, defaulting to `solana` when a crypto wallet has no active credential (a fiat wallet with no active credential is\nrejected). `reference` is optional and echoed back as the quote `reference`. The\nresponse carries the source wallet in `wallet_id` and the destination wallet in\n`destination_wallet_id`.\n\nThe quote is created with `status: active` and an `expires_at` in the near future.\n\nSpecify **either** `source_amount` (the source-wallet amount converted) **or**\n`target_amount` (the amount credited to the destination wallet) — exactly one, each a\npositive decimal string. Providing both, or neither, is rejected with a 400. When\n`target_amount` is supplied, we compute and return the required `source_amount` on the quote.\n\nUSDC amounts settle in whole US cents: `source_amount` may carry at most **2 significant\ndecimal places**. Trailing zeros are fine — `2.980000` is accepted, `2.980228` is rejected\nwith `400 invalid_amount_precision`. This precision check applies only when you supply\n`source_amount`; a `target_amount`-driven quote is not constrained this way.\n\n### Splits\n\nAttach a split to share what the quote's destination wallet receives between several wallets\n(for example, a marketplace paying its sellers). Send **either** `split_code`, a saved split's\nid (`spl_…`, see `POST /v1/splits`), **or** `split`, the same object inline (`type` plus\n`shares`). Not both.\n\n- Recipients must be **custodial** wallets of your integration that hold the destination\n  currency.\n- The destination wallet must be custodial too, and must not be a recipient: it keeps the\n  remainder.\n- `percentage` shares are percentages of the amount actually delivered, before any provider fee.\n  `flat` shares are fixed amounts and need `target_amount` on the quote; together they must not\n  exceed it.\n- `fee_bearer` (optional, default `merchant`) decides who absorbs a provider fee on a fiat\n  settlement: `merchant` (the destination wallet's remainder) or `all_proportional` (every share in\n  proportion to its size). Each wallet is credited net of its part of the fee.\n- A conversion can be split when its destination is a crypto currency, or a fiat currency enabled\n  for splits.\n- The quote keeps a copy of the split, so editing or deactivating a saved split later never\n  changes a quote that already uses it.\n\nThe split is applied when the deposit settles. If the delivered amount can't cover a flat split,\nor every share rounds to zero, nothing is split and the whole amount stays on the destination\nwallet; the operation's `split.status` is then `skipped`, with the `reason`.\n\nSplit errors: `400 invalid_input` for both `split_code` and `split` sent, a non-custodial wallet, split wallets in a different currency from the destination wallet, the destination wallet listed as a recipient, a fiat destination not enabled for splits, an inactive saved split, a flat split without `target_amount` or above it, or an inline `split` with a wallet listed twice, `percentage` on a flat split or `amount` on a percentage split, a zero value or too many decimals, or percentages adding up to more than 100; `400 bad_request` for an inline `split` body that fails validation (fewer than 1 or more than 20 shares, an unknown `type`); `404 not_found` for an unknown `split_code` or a share wallet that isn't yours.\n",
         "parameters": [
           {
             "in": "header",
@@ -8454,7 +8517,7 @@
         "tags": [
           "Onramps"
         ],
-        "description": "Fetches a single onramp by its external id (prefixed `onr_`).\n\n### Path parameter\n\n- `id` — required. The onramp's external id (e.g. `onr_01KPBH802PXQQXT8ASJGE0QX2K`).\n  A value that is not a valid `onr_…` id returns `400`. An id that does not exist returns `404`.\n\n### Example\n\n```\nGET /v1/onramps/onr_01KPBH802PXQQXT8ASJGE0QX2K\n```\n\n### Split\n\n`split` is `null` unless the quote carried a split. Otherwise it reports how the split went:\n\n- `status`:\n  - `in_progress`: the split hasn't been applied yet, or isn't decided for every recipient. The\n    deposit that applies it can arrive after `success`. If the operation ends without a deposit\n    the split could apply to, it stays `in_progress` and no `split.completed` event follows.\n  - `completed`: every recipient has an outcome. A held share counts: check each leg. A leg held\n    for `tier_limit` can still move to `success` later; `split.leg_released` announces it.\n  - `skipped`: the split couldn't apply (`reason`: `insufficient_delivered_amount` or\n    `shares_round_to_zero`); the whole amount stayed on the destination wallet.\n- `shares`: the split as attached to the quote.\n- `legs`: every wallet credited, with its `amount` and `status` (`processing`, `success`, `held`\n  or `failed`). The destination's remainder is a leg with `is_remainder: true` (there's none when\n  the shares take the whole amount), and a recipient whose share rounds to zero gets no leg. A\n  `held` leg has a `hold_reason`: `tier_limit` (the recipient is over their limit; the share is\n  released when the limit allows it, for example after the customer is verified at a higher\n  tier), `payin_frozen` or `payin_disabled`.\n\n`split.completed` carries the block when the split is `completed` or `skipped`. It isn't sent\nagain when a held leg is released later: `split.leg_released` reports that.\n"
+        "description": "Fetches a single onramp by its external id (prefixed `onr_`).\n\n### Path parameter\n\n- `id` — required. The onramp's external id (e.g. `onr_01KPBH802PXQQXT8ASJGE0QX2K`).\n  A value that is not a valid `onr_…` id returns `400`. An id that does not exist returns `404`.\n\n### Example\n\n```\nGET /v1/onramps/onr_01KPBH802PXQQXT8ASJGE0QX2K\n```\n\n### Split\n\n`split` is `null` unless the quote carried a split. Otherwise it reports how the split went:\n\n- `status`:\n  - `in_progress`: the split hasn't been applied yet, or isn't decided for every recipient. The\n    deposit that applies it can arrive after `success`. If the operation ends without a deposit\n    the split could apply to, it stays `in_progress` and no `split.completed` event follows.\n  - `completed`: every recipient has an outcome. A held share counts: check each leg. A leg held\n    for `tier_limit` can still move to `success` later; `split.leg_released` announces it.\n  - `skipped`: the split couldn't apply (`reason`: `insufficient_delivered_amount` or\n    `shares_round_to_zero`); the whole amount stayed on the destination wallet.\n- `shares`: the split as attached to the quote.\n- `fee_bearer`: who absorbed a provider fee, `merchant` or `all_proportional`.\n- `legs`: every wallet credited, with its `amount` (what it received, net of its part of any\n  provider fee), its `fee` (that part; zero when there was none) and `status` (`processing`,\n  `success`, `held` or `failed`). The destination's remainder is a leg with `is_remainder: true` (there's none when\n  the shares take the whole amount), and a recipient whose share rounds to zero gets no leg. A\n  `held` leg has a `hold_reason`: `tier_limit` (the recipient is over their limit; the share is\n  released when the limit allows it, for example after the customer is verified at a higher\n  tier), `payin_frozen` or `payin_disabled`.\n\n`split.completed` carries the block when the split is `completed` or `skipped`. It isn't sent\nagain when a held leg is released later: `split.leg_released` reports that.\n"
       }
     },
     "/v1/offramps": {
@@ -14024,7 +14087,7 @@
         "tags": [
           "Conversions"
         ],
-        "description": "Fetches a single conversion by its external id (prefixed `con_`), scoped to the\ncalling integration.\n\n### Path parameter\n\n- `id` — required. The conversion's external id (e.g.\n  `con_01KPBH8MD6R7YDJ82T4D6M3V1T`). A value that is not a valid `con_…` id\n  returns `400`. An id that does not exist or belongs to a different integration\n  returns `404`.\n\n### Example\n\n```\nGET /v1/conversions/con_01KPBH8MD6R7YDJ82T4D6M3V1T\n```\n\n### Split\n\n`split` is `null` unless the quote carried a split. Otherwise it reports how the split went:\n\n- `status`:\n  - `in_progress`: the split hasn't been applied yet, or isn't decided for every recipient. The\n    deposit that applies it can arrive after `success`. If the operation ends without a deposit\n    the split could apply to, it stays `in_progress` and no `split.completed` event follows.\n  - `completed`: every recipient has an outcome. A held share counts: check each leg. A leg held\n    for `tier_limit` can still move to `success` later; `split.leg_released` announces it.\n  - `skipped`: the split couldn't apply (`reason`: `insufficient_delivered_amount` or\n    `shares_round_to_zero`); the whole amount stayed on the destination wallet.\n- `shares`: the split as attached to the quote.\n- `legs`: every wallet credited, with its `amount` and `status` (`processing`, `success`, `held`\n  or `failed`). The destination's remainder is a leg with `is_remainder: true` (there's none when\n  the shares take the whole amount), and a recipient whose share rounds to zero gets no leg. A\n  `held` leg has a `hold_reason`: `tier_limit` (the recipient is over their limit; the share is\n  released when the limit allows it, for example after the customer is verified at a higher\n  tier), `payin_frozen` or `payin_disabled`.\n\n`split.completed` carries the block when the split is `completed` or `skipped`. It isn't sent\nagain when a held leg is released later: `split.leg_released` reports that.\n"
+        "description": "Fetches a single conversion by its external id (prefixed `con_`), scoped to the\ncalling integration.\n\n### Path parameter\n\n- `id` — required. The conversion's external id (e.g.\n  `con_01KPBH8MD6R7YDJ82T4D6M3V1T`). A value that is not a valid `con_…` id\n  returns `400`. An id that does not exist or belongs to a different integration\n  returns `404`.\n\n### Example\n\n```\nGET /v1/conversions/con_01KPBH8MD6R7YDJ82T4D6M3V1T\n```\n\n### Split\n\n`split` is `null` unless the quote carried a split. Otherwise it reports how the split went:\n\n- `status`:\n  - `in_progress`: the split hasn't been applied yet, or isn't decided for every recipient. The\n    deposit that applies it can arrive after `success`. If the operation ends without a deposit\n    the split could apply to, it stays `in_progress` and no `split.completed` event follows.\n  - `completed`: every recipient has an outcome. A held share counts: check each leg. A leg held\n    for `tier_limit` can still move to `success` later; `split.leg_released` announces it.\n  - `skipped`: the split couldn't apply (`reason`: `insufficient_delivered_amount` or\n    `shares_round_to_zero`); the whole amount stayed on the destination wallet.\n- `shares`: the split as attached to the quote.\n- `fee_bearer`: who absorbed a provider fee, `merchant` or `all_proportional`.\n- `legs`: every wallet credited, with its `amount` (what it received, net of its part of any\n  provider fee), its `fee` (that part; zero when there was none) and `status` (`processing`,\n  `success`, `held` or `failed`). The destination's remainder is a leg with `is_remainder: true` (there's none when\n  the shares take the whole amount), and a recipient whose share rounds to zero gets no leg. A\n  `held` leg has a `hold_reason`: `tier_limit` (the recipient is over their limit; the share is\n  released when the limit allows it, for example after the customer is verified at a higher\n  tier), `payin_frozen` or `payin_disabled`.\n\n`split.completed` carries the block when the split is `completed` or `skipped`. It isn't sent\nagain when a held leg is released later: `split.leg_released` reports that.\n"
       }
     },
     "/v1/beneficiaries": {
