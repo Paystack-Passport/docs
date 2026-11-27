@@ -49,7 +49,7 @@ Cross-currency is admitted only when **every** condition below holds. Any failur
 - The credential currency must resolve to a supported currency row. An unknown code returns `404` `not_found`.
 
 <Note>
-  The set of currencies that support `can_onramp` / `can_offramp` is fixed by GlobalStack. If your wallet's currency isn't eligible for a given direction, cross-currency provisioning will fail — reach out to support to confirm coverage.
+  The set of currencies that support `can_onramp` / `can_offramp` is fixed by Global Stack. If your wallet's currency isn't eligible for a given direction, cross-currency provisioning will fail — reach out to support to confirm coverage.
 </Note>
 
 ## Minimum conversion amount
@@ -106,7 +106,7 @@ no converted value.
 | `conversion.funds_received` | The source funds have been received | The FX-side settlement leg is queued. |
 | `conversion.processing` | Conversion is executing | Money is moving through the FX rails. |
 | `conversion.success` | Conversion settled | The **wallet balance** has been credited in the wallet's currency. |
-| `conversion.failed` | Conversion did not settle | Funds are parked on the credential balance until GlobalStack drains it (see [Recovery on failure](#recovery-on-failure)). |
+| `conversion.failed` | Conversion did not settle | Funds are parked on the credential balance until Global Stack drains it (see [Recovery on failure](#recovery-on-failure)). |
 | `conversion.returned` | Conversion reversed after success | Same "funds parked, contact support" recovery as `conversion.failed`. |
 
 ### What `deposit.received` carries
@@ -198,7 +198,7 @@ A deposit that was **not** converted carries the same shape with no converted va
 
 If an arriving deposit breaches the customer's rolling money-in limit, you get `deposit.held`
 instead, with `metadata.hold_reason` set to `tier_limit` and a null `destination_amount` — no
-conversion is quoted while the deposit is under review. When GlobalStack releases it, the
+conversion is quoted while the deposit is under review. When Global Stack releases it, the
 conversion runs at the **then-current rate** and you receive `deposit.received` carrying the
 quoted amount, followed by the usual `conversion.*` sequence. A released deposit is subject to the
 same [minimum](#minimum-conversion-amount): if the balance is under the floor at release, the
@@ -220,10 +220,10 @@ Auto-conversion fees follow the FX conversion contract: the destination amount i
 
 If `conversion.failed` (or `conversion.returned`) fires, funds stay on the credential's own balance. There is no auto-retry of the failed conversion — FX failures are typically structural, not transient — but the parked funds are **not stranded**: because conversions are sized from the credential's whole available balance, the next deposit into that credential converts the leftover along with itself, at the then-current rate.
 
-If no further deposit is expected, contact GlobalStack support to drain the parked funds; ops will run a fresh conversion at the then-current rate. Once the drain lands, the wallet balance is credited and the credential balance clears.
+If no further deposit is expected, contact Global Stack support to drain the parked funds; ops will run a fresh conversion at the then-current rate. Once the drain lands, the wallet balance is credited and the credential balance clears.
 
 <Warning>
-  There is no merchant-facing "retry" or "refund" endpoint in v1. Recovery goes through GlobalStack support.
+  There is no merchant-facing "retry" or "refund" endpoint in v1. Recovery goes through Global Stack support.
 </Warning>
 
 ## When to use auto-conversion
