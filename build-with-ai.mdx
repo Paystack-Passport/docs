@@ -3,9 +3,8 @@ title: "Build with AI"
 description: "Give your coding agent the Global Stack plugin so it builds and tests your integration the way the API expects."
 ---
 
-This page shows you how to give your coding agent (Claude Code, Codex, Cursor and other agents that
-read skills) the Global Stack plugin, so it builds and tests your integration the way the API
-expects.
+This page works with Claude Code, Codex, Cursor and other agents that read skills. It covers three
+steps:
 
 1. Install the plugin.
 2. Build and test your first flow in the failure sandbox.
@@ -36,7 +35,9 @@ The plugin runs on your machine. The source is public at
 
 <Tabs>
   <Tab title="Claude Code">
-    ```bash
+    Run these inside Claude Code, not in a terminal:
+
+    ```text
     /plugin marketplace add globalstack-oss/agent-toolkit
     /plugin install globalstack@globalstack
     ```
