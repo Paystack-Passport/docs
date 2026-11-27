@@ -1,4 +1,4 @@
-# GlobalStack API docs
+# Global Stack API docs
 
 Source for https://docs.globalstack.io, built with [Mintlify](https://mintlify.com).
 

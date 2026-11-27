@@ -1,7 +1,7 @@
 {
   "$schema": "https://mintlify.com/docs.json",
   "theme": "mint",
-  "name": "GlobalStack API",
+  "name": "Global Stack API",
   "colors": {
     "primary": "#0E141B",
     "light": "#FFFFFF",

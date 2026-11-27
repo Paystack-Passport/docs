@@ -1,6 +1,6 @@
 ---
 title: "Error reference"
-description: "Every error code the GlobalStack API can return, with HTTP status, common causes, and how to resolve it."
+description: "Every error code the Global Stack API can return, with HTTP status, common causes, and how to resolve it."
 ---
 
 Every API response — success or failure — uses the same envelope. On failure, `status` is `false`, `data` is `null`, `code` is a stable machine-readable error code, and `meta.next_steps` carries an `action` and a `docs_url` that links straight to this page at the matching anchor.
@@ -100,7 +100,7 @@ The amount carries more decimal places than the currency can settle. USDC settle
 
 **HTTP 400** · `prohibited_country`
 
-The `country_code` supplied is on GlobalStack's compliance prohibited list, so the merchant or customer cannot be onboarded from it. Onboarding is open to all other countries; this is a presence restriction only — it does not limit which currencies or corridors an onboarded merchant can transact in.
+The `country_code` supplied is on Global Stack's compliance prohibited list, so the merchant or customer cannot be onboarded from it. Onboarding is open to all other countries; this is a presence restriction only — it does not limit which currencies or corridors an onboarded merchant can transact in.
 
 **Common causes**
 - Registering a merchant or creating a customer with a `country_code` on the prohibited list.

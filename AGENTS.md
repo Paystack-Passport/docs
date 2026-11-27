@@ -1,4 +1,4 @@
-# GlobalStack docs — agent and contributor guide
+# Global Stack docs — agent and contributor guide
 
 This repo is the Mintlify site served at https://docs.globalstack.io.
 
@@ -30,6 +30,8 @@ synced here. To change any endpoint description, field description or the API ov
 sentinel and regenerate. Edits made here are overwritten on the next sync.
 
 ## Terminology
+
+- **Global Stack**: always two words in prose. Keep `globalstack` as one word only where it is an identifier: URLs, repo names, env vars, commands.
 
 - **Virtual account**: a fiat **wallet** plus a **bank credential** on it. The API has no
   "virtual account" resource. Always explain it in those terms, because partners search for

@@ -3,7 +3,7 @@ title: "Authentication"
 description: "Authenticate every request with your secret API key."
 ---
 
-The GlobalStack API uses **bearer authentication**. Pass your secret API key — issued during merchant onboarding — in the `Authorization` header of every request:
+The Global Stack API uses **bearer authentication**. Pass your secret API key — issued during merchant onboarding — in the `Authorization` header of every request:
 
 ```bash
 Authorization: Bearer YOUR_SECRET_KEY
@@ -19,7 +19,7 @@ curl https://api.globalstack.io/v1/wallets \
 ## Keys
 
 <Card title="Get your keys" icon="key" href="https://dashboard.globalstack.io">
-  Manage and rotate your API keys from the GlobalStack dashboard.
+  Manage and rotate your API keys from the Global Stack dashboard.
 </Card>
 
 - Your secret key authenticates server-to-server calls. **Treat it like a password** — never commit it to source control or expose it in client-side code.
