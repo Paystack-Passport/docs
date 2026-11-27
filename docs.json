@@ -36,7 +36,8 @@
             "group": "Get Started",
             "pages": [
               "how-it-works",
-              "quickstart"
+              "quickstart",
+              "build-with-ai"
             ]
           }
         ]

@@ -1,0 +1,113 @@
+---
+title: "Build with AI"
+description: "Give your coding agent the Global Stack plugin so it builds and tests your integration the way the API expects."
+---
+
+This page works with Claude Code, Codex, Cursor and other agents that read skills. It covers three
+steps:
+
+1. Install the plugin.
+2. Build and test your first flow in the failure sandbox.
+3. Optionally, let the agent check your live account.
+
+The plugin runs on your machine. The source is public at
+[globalstack-oss/agent-toolkit](https://github.com/globalstack-oss/agent-toolkit).
+
+<CardGroup cols={2}>
+  <Card title="Integration skill" icon="list-check">
+    One playbook per flow, the code checklist, and the formats and fields by topic.
+  </Card>
+  <Card title="Reference code" icon="code">
+    Tested TypeScript for retries, lost responses, crash recovery and webhook handling. Copy it
+    unchanged.
+  </Card>
+  <Card title="Failure sandbox" icon="flask">
+    A local copy of the API that fails on purpose: lost response, provider error, rate limit,
+    missing or forged webhooks. It never calls the real API.
+  </Card>
+  <Card title="Account checks" icon="magnifying-glass">
+    Read-only checks with your own key: is the route open, is access approved, is a webhook
+    active, what is in your wallets.
+  </Card>
+</CardGroup>
+
+## Install
+
+<Tabs>
+  <Tab title="Claude Code">
+    Run these inside Claude Code, not in a terminal:
+
+    ```text
+    /plugin marketplace add globalstack-oss/agent-toolkit
+    /plugin install globalstack@globalstack
+    ```
+  </Tab>
+  <Tab title="Codex">
+    ```bash
+    codex plugin marketplace add globalstack-oss/agent-toolkit
+    ```
+  </Tab>
+  <Tab title="Cursor and other agents">
+    Run this in your project folder. It copies the two skills into `.agents/skills/`:
+
+    ```bash
+    npx skills add globalstack-oss/agent-toolkit --skill '*' -a cursor --copy -y
+    ```
+  </Tab>
+</Tabs>
+
+The scripts need Node 20 or later, whatever language your app is in.
+
+## Build your first flow
+
+You don't need a Global Stack account or an API key to build and test an integration.
+
+<Steps>
+  <Step title="Start your agent in your app's folder">
+    Install the plugin first (above).
+  </Step>
+  <Step title="Name your flow">
+    Ask for the flow you need, with the direction, currency, country and rail. For example:
+
+    ```text
+    Build a Global Stack payout to a Nigerian bank account,
+    and test it in the failure sandbox.
+    ```
+
+    The agent reads the playbook for that flow and writes the code on top of the reference code.
+  </Step>
+  <Step title="Test every failure">
+    The agent starts the failure sandbox, points your app at it, and runs the flow once per fault.
+    Each run ends with a report. Fix the app until no report has a warning.
+  </Step>
+</Steps>
+
+## Optional: check your live account
+
+With a key, the agent can also check your account. These checks only send `GET` requests, so
+create an API key with the **Viewer** role in the [dashboard](https://dashboard.globalstack.io)
+and set it in the terminal you start the agent from:
+
+```bash
+export GLOBALSTACK_API_KEY=gsa_sk_...
+```
+
+Never paste a key into the chat or a project file. Give the agent a Viewer key only: the plugin
+has no tool that moves money.
+
+<Warning>
+  There is no test mode. The first call with a key that can move money moves real money. Make that
+  call yourself, through your app, after every sandbox fault passes and someone other than the
+  agent has read the code that moves money. The plugin's README lists the
+  [going-live steps](https://github.com/globalstack-oss/agent-toolkit#going-live-the-developers-step-not-the-agents).
+</Warning>
+
+## Updates
+
+The plugin checks for a new version each time it runs and tells you once when your copy is older.
+
+| Installed with | To update |
+| --- | --- |
+| Claude Code | `claude plugin marketplace update globalstack`, then `claude plugin update globalstack@globalstack`, then restart Claude Code |
+| Codex | `codex plugin marketplace upgrade globalstack`, then restart Codex |
+| `npx skills` | `npx skills update -y` in the project folder |
